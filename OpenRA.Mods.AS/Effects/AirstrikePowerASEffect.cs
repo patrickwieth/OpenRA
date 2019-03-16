@@ -49,6 +49,7 @@ namespace OpenRA.Mods.AS.Effects
 					info.BeaconPaletteIsPlayerPalette,
 					info.BeaconPalette,
 					info.BeaconImage,
+					info.BeaconSequence,
 					info.BeaconPoster,
 					info.BeaconPosterPalette,
 					info.ArrowSequence,

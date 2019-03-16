@@ -122,6 +122,7 @@ namespace OpenRA.Mods.AS.Traits
 					Info.BeaconPaletteIsPlayerPalette,
 					Info.BeaconPalette,
 					Info.BeaconImage,
+					Info.BeaconSequence,
 					Info.BeaconPoster,
 					Info.BeaconPosterPalette,
 					Info.ArrowSequence,
