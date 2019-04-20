@@ -84,6 +84,7 @@
     <Compile Include="Duplicates\Traits\Sound\AnnounceOnKillAS.cs" />
     <Compile Include="Effects\AirstrikePowerASEffect.cs" />
     <Compile Include="Effects\WarheadTrailProjectileEffect.cs" />
+    <Compile Include="FileSystem\BagFile.cs" />
     <Compile Include="Graphics\ArcRenderable.cs" />
     <Compile Include="Graphics\ElectricBoltRenderable.cs" />
     <Compile Include="Graphics\KKNDLaserRenderable.cs" />
