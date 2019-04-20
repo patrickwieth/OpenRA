@@ -75,6 +75,7 @@
     <Compile Include="Activities\ChronoResourceTeleport.cs" />
     <Compile Include="Activities\EnterTeleportNetwork.cs" />
     <Compile Include="Activities\FallDown.cs" />
+    <Compile Include="Activities\FallToEarthAS.cs" />
     <Compile Include="Activities\HeliFlyCircleTimed.cs" />
     <Compile Include="Activities\LeapAS.cs" />
     <Compile Include="Commands\TauntCommands.cs" />
@@ -103,6 +104,7 @@
     <Compile Include="Projectiles\SpriteRailgun.cs" />
     <Compile Include="TraitsInterfaces.cs" />
     <Compile Include="Traits\AIDeployHelper.cs" />
+    <Compile Include="Traits\Air\FallsToEarthAS.cs" />
     <Compile Include="Traits\AttackLeapAS.cs" />
     <Compile Include="Traits\Berserkable.cs" />
     <Compile Include="Traits\BotModules\BaseBuilderBotASModule.cs" />
