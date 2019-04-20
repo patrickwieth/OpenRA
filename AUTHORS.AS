@@ -27,6 +27,9 @@ The plugin is maintained by
  * lucasss
    > (Gives)ProximityBounty basic implementation
 
+ * Lukas Franke (abcdefg30)
+   > WithTurretDeployAnimation
+
  * Matthias Mailänder (Mailaender)
    > WithExitOverlay
 
