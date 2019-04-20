@@ -125,6 +125,7 @@
     <Compile Include="Traits\GivesIntelligence.cs" />
     <Compile Include="Traits\InfiltrateForProxyActor.cs" />
     <Compile Include="Traits\DelayedWeaponTrigger.cs" />
+    <Compile Include="Traits\Player\ClassicParallelProductionQueue.cs" />
     <Compile Include="Traits\Player\Taunts.cs" />
     <Compile Include="Traits\Player\TeleportNetworkManager.cs" />
     <Compile Include="Traits\Render\WithTurretDeployAnimation.cs" />
