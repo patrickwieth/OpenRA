@@ -16,7 +16,7 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.AS.Traits
 {
-	[Desc("Spawns survivors when an actor is destroyed.")]
+	[Desc("Spawns survivors when an actor is destroyed or sold.")]
 	public class SpawnSurvivorsInfo : ConditionalTraitInfo
 	{
 		[ActorReference, FieldLoader.Require]
@@ -29,7 +29,7 @@ namespace OpenRA.Mods.AS.Traits
 		public override object Create(ActorInitializer actor) { return new SpawnSurvivors(this); }
 	}
 
-	public class SpawnSurvivors : ConditionalTrait<SpawnSurvivorsInfo>, INotifyKilled
+	public class SpawnSurvivors : ConditionalTrait<SpawnSurvivorsInfo>, INotifyKilled, INotifySold
 	{
 		public SpawnSurvivors(SpawnSurvivorsInfo info)
 			: base(info) { }
@@ -42,6 +42,21 @@ namespace OpenRA.Mods.AS.Traits
 			if (!Info.DeathTypes.IsEmpty && !attack.Damage.DamageTypes.Overlaps(Info.DeathTypes))
 				return;
 
+			Spawn(self);
+		}
+
+		void INotifySold.Selling(Actor self) { }
+
+		void INotifySold.Sold(Actor self)
+		{
+			if (IsTraitDisabled)
+				return;
+
+			Spawn(self);
+		}
+
+		void Spawn(Actor self)
+		{ 
 			var buildingInfo = self.Info.TraitInfoOrDefault<BuildingInfo>();
 			var eligibleLocations = buildingInfo != null
 				? buildingInfo.Tiles(self.Location).ToList()
