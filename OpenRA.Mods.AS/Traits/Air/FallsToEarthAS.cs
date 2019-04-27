@@ -24,9 +24,11 @@ namespace OpenRA.Mods.AS.Traits
 		public readonly bool Spins = true;
 		public readonly int SpinInitial = 10;
 		public readonly int SpinAcceleration = 0;
+		public readonly int SpinAccelerationDelay = 1;
 		public readonly bool Moves = false;
 		public readonly WDist Velocity = new WDist(0);
 		public readonly WDist VelocityAcceleration = new WDist(22);
+		public readonly int VelocityAccelerationDelay = 1;
 
 		public WeaponInfo ExplosionWeapon { get; private set; }
 

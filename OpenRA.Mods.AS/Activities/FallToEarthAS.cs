@@ -20,8 +20,10 @@ namespace OpenRA.Mods.AS.Activities
 	{
 		readonly Aircraft aircraft;
 		readonly FallsToEarthASInfo info;
-		int acceleration = 0;
+		int spinAcceleration = 0;
 		int spin = 0;
+		int spinAccelerationDelay;
+		int velocityAccelerationDelay;
 		WDist velocity;
 
 		public FallToEarthAS(Actor self, FallsToEarthASInfo info)
@@ -29,10 +31,13 @@ namespace OpenRA.Mods.AS.Activities
 			this.info = info;
 			aircraft = self.Trait<Aircraft>();
 			velocity = info.Velocity;
+			velocityAccelerationDelay = info.VelocityAccelerationDelay;
+
 			if (info.Spins)
 			{
 				spin = info.SpinInitial;
-				acceleration = info.SpinAcceleration;
+				spinAcceleration = info.SpinAcceleration;
+				spinAccelerationDelay = info.SpinAccelerationDelay;
 			}
 		}
 
@@ -52,12 +57,23 @@ namespace OpenRA.Mods.AS.Activities
 
 			if (info.Spins)
 			{
-				spin += acceleration;
+				if (--spinAccelerationDelay <= 0)
+				{
+					spin += spinAcceleration;
+					spinAccelerationDelay = info.SpinAccelerationDelay;
+				}
+
 				aircraft.Facing = (aircraft.Facing + spin) % 256;
 			}
 
 			var move = info.Moves ? aircraft.FlyStep(aircraft.Facing) : WVec.Zero;
-			velocity += info.VelocityAcceleration;
+
+			if (--velocityAccelerationDelay <= 0)
+			{
+				velocity += info.VelocityAcceleration;
+				velocityAccelerationDelay = info.VelocityAccelerationDelay;
+			}
+
 			move -= new WVec(WDist.Zero, WDist.Zero, velocity);
 			aircraft.SetPosition(self, aircraft.CenterPosition + move);
 
