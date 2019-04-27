@@ -53,7 +53,7 @@ namespace OpenRA.Mods.AS.Traits
 
 		[SequenceReference]
 		[Desc("Sequence the launching actor should play when activating this power.")]
-		public readonly string ActivationSequence = "active";
+		public readonly string ActivationSequence = "";
 
 		[Desc("Altitude above terrain below which to explode. Zero effectively deactivates airburst.")]
 		public readonly WDist AirburstAltitude = WDist.Zero;
