@@ -11,7 +11,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using OpenRA.GameRules;
-using OpenRA.Mods.Common;
 using OpenRA.Mods.Common.Traits;
 using OpenRA.Traits;
 
@@ -24,6 +23,9 @@ namespace OpenRA.Mods.AS.Warheads
 		[WeaponReference, FieldLoader.Require]
 		[Desc("Has to be defined in weapons.yaml as well.")]
 		public readonly string Weapon = null;
+
+		[Desc("Percentual chance the fragment is fired.")]
+		public readonly int Chance = 100;
 
 		[Desc("Target offset relative to warhead explosion.")]
 		public readonly WVec Offset = new WVec(0, 0, 0);
@@ -46,6 +48,9 @@ namespace OpenRA.Mods.AS.Warheads
 
 			var world = firedBy.World;
 			var map = world.Map;
+
+			if (Chance < world.SharedRandom.Next(100))
+				return;
 
 			if (!IsValidImpact(target.CenterPosition, firedBy))
 				return;
