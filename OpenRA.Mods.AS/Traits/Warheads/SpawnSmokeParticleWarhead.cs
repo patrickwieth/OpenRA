@@ -92,7 +92,7 @@ namespace OpenRA.Mods.AS.Warheads
 			if (!IsValidImpact(target.CenterPosition, firedBy))
 				return;
 
-			if (!firedBy.IsDead)
+			if (Neutral || !firedBy.IsDead)
 			{
 				firedBy.World.AddFrameEndTask(w => w.Add(new SmokeParticle(!Neutral ? firedBy : firedBy.World.WorldActor, this, target.CenterPosition)));
 			}
