@@ -20,6 +20,8 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.AS.Warheads
 {
+	public enum ASOwnerType { Attacker, InternalName }
+
 	[Desc("Spawn actors upon explosion. Don't use this with buildings.")]
 	public class SpawnActorWarhead : WarheadAS, IRulesetLoaded<WeaponInfo>
 	{
@@ -38,8 +40,12 @@ namespace OpenRA.Mods.AS.Warheads
 		[Desc("Always spawn the actors on the ground.")]
 		public readonly bool ForceGround = false;
 
-		[Desc("Map player to give the actors to. Defaults to the firer.")]
-		public readonly string Owner = null;
+		[Desc("Owner of the spawned actor. Allowed keywords:" +
+			"'Attacker' and 'InternalName'.")]
+		public readonly ASOwnerType OwnerType = ASOwnerType.Attacker;
+
+		[Desc("Map player to use when 'InternalName' is defined on 'OwnerType'.")]
+		public readonly string InternalOwner = "Neutral";
 
 		[Desc("Defines the image of an optional animation played at the spawning location.")]
 		public readonly string Image = null;
@@ -89,10 +95,10 @@ namespace OpenRA.Mods.AS.Warheads
 				var td = new TypeDictionary();
 				var ai = map.Rules.Actors[a.ToLowerInvariant()];
 
-				if (Owner == null)
+				if (OwnerType == ASOwnerType.Attacker)
 					td.Add(new OwnerInit(firedBy.Owner));
 				else
-					td.Add(new OwnerInit(firedBy.World.Players.First(p => p.InternalName == Owner)));
+					td.Add(new OwnerInit(firedBy.World.Players.First(p => p.InternalName == InternalOwner)));
 
 				// HACK HACK HACK
 				// Immobile does not offer a check directly if the actor can exist in a position.
