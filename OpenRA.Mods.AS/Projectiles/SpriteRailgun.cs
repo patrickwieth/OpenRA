@@ -163,14 +163,16 @@ namespace OpenRA.Mods.AS.Projectiles
 
 			// An easy vector to find which is perpendicular vector to forwardStep, with 0 Z component
 			leftVector = new WVec(forwardStep.Y, -forwardStep.X, 0);
-			leftVector = 1024 * leftVector / leftVector.Length;
+			if (leftVector.Length != 0)
+				leftVector = 1024 * leftVector / leftVector.Length;
 
 			// Vector that is pointing upwards from the ground
 			upVector = new WVec(
 				-forwardStep.X * forwardStep.Z,
 				-forwardStep.Z * forwardStep.Y,
 				forwardStep.X * forwardStep.X + forwardStep.Y * forwardStep.Y);
-			upVector = 1024 * upVector / upVector.Length;
+			if (upVector.Length != 0)
+				upVector = 1024 * upVector / upVector.Length;
 
 			//// LeftVector and UpVector are unit vectors of size 1024.
 
