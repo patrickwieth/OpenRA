@@ -56,7 +56,7 @@ namespace OpenRA.Mods.AS.Traits
 		}
 
 		void Spawn(Actor self)
-		{ 
+		{
 			var buildingInfo = self.Info.TraitInfoOrDefault<BuildingInfo>();
 			var eligibleLocations = buildingInfo != null
 				? buildingInfo.Tiles(self.Location).ToList()

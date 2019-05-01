@@ -9,8 +9,8 @@
 #endregion
 
 using OpenRA.GameRules;
-using OpenRA.Mods.Common.Traits;
 using OpenRA.Mods.AS.Activities;
+using OpenRA.Mods.Common.Traits;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.AS.Traits
