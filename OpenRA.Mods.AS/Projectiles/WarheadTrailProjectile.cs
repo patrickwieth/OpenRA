@@ -127,18 +127,16 @@ namespace OpenRA.Mods.AS.Projectiles
 	{
 		readonly WarheadTrailProjectileInfo info;
 		readonly ProjectileArgs args;
-		[Sync]
-		readonly WDist speed;
+		[Sync] readonly WDist speed;
+		readonly WRot offsetRotation;
+		readonly int lifespan;
+		readonly int mindelay;
+		[Sync] readonly WPos projectilepos, targetpos, sourcepos, offsetTargetPos = WPos.Zero;
+		readonly WarheadTrailProjectileEffect[] projectiles; // offset projectiles
 
-		[Sync]
-		WPos projectilepos, targetpos, sourcepos, offsetTargetPos = WPos.Zero;
 		WPos offsetSourcePos = WPos.Zero;
-		int lifespan;
 		int ticks;
-		int mindelay;
 		World world;
-		WRot offsetRotation;
-		WarheadTrailProjectileEffect[] projectiles; // offset projectiles
 
 		public Actor SourceActor { get { return args.SourceActor; } }
 
@@ -164,7 +162,7 @@ namespace OpenRA.Mods.AS.Projectiles
 			mindelay = args.Weapon.MinRange.Length / speed.Length;
 
 			projectiles = new WarheadTrailProjectileEffect[info.Offsets.Count()];
-			var range = OpenRA.Mods.Common.Util.ApplyPercentageModifiers(args.Weapon.Range.Length, args.RangeModifiers);
+			var range = Common.Util.ApplyPercentageModifiers(args.Weapon.Range.Length, args.RangeModifiers);
 			var mainFacing = (targetpos - sourcepos).Yaw.Facing;
 
 			// used for lerping projectiles at the same pace
@@ -199,7 +197,7 @@ namespace OpenRA.Mods.AS.Projectiles
 
 				if (info.Inaccuracy.Length > 0)
 				{
-					var inaccuracy = OpenRA.Mods.Common.Util.ApplyPercentageModifiers(info.Inaccuracy.Length, args.InaccuracyModifiers);
+					var inaccuracy = Common.Util.ApplyPercentageModifiers(info.Inaccuracy.Length, args.InaccuracyModifiers);
 					var maxOffset = inaccuracy * (args.PassiveTarget - projectilepos).Length / range;
 					var inaccuracyOffset = WVec.FromPDF(world.SharedRandom, 2) * maxOffset / 1024;
 					offsetTargetPos += inaccuracyOffset;

@@ -28,7 +28,7 @@ namespace OpenRA.Mods.AS.Effects
 		readonly bool scaleSizeWithZoom;
 		readonly bool canDamage;
 
-		WPos pos;
+		[Sync] WPos pos;
 		int lifetime;
 		int explosionInterval;
 

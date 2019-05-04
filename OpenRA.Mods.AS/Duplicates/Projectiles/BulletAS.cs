@@ -110,20 +110,17 @@ namespace OpenRA.Mods.AS.Projectiles
 		readonly BulletASInfo info;
 		readonly ProjectileArgs args;
 		readonly Animation anim;
-		[Sync]
-		readonly WAngle angle;
-		[Sync]
-		readonly WDist speed;
+		[Sync] readonly WAngle angle;
+		[Sync] readonly WDist speed;
+		[Sync] readonly int facing;
+
+		readonly string trailPalette;
+		readonly string palette;
 
 		ContrailRenderable contrail;
-		string trailPalette;
-		string palette;
 
-		[Sync]
-		WPos pos, target, source;
+		[Sync] WPos pos, target, source;
 		int length;
-		[Sync]
-		int facing;
 		int ticks, smokeTicks;
 		int remainingBounces;
 
@@ -155,8 +152,8 @@ namespace OpenRA.Mods.AS.Projectiles
 			target = args.PassiveTarget;
 			if (info.Inaccuracy.Length > 0)
 			{
-				var inaccuracy = OpenRA.Mods.Common.Util.ApplyPercentageModifiers(info.Inaccuracy.Length, args.InaccuracyModifiers);
-				var range = OpenRA.Mods.Common.Util.ApplyPercentageModifiers(args.Weapon.Range.Length, args.RangeModifiers);
+				var inaccuracy = Common.Util.ApplyPercentageModifiers(info.Inaccuracy.Length, args.InaccuracyModifiers);
+				var range = Common.Util.ApplyPercentageModifiers(args.Weapon.Range.Length, args.RangeModifiers);
 				var maxOffset = inaccuracy * (target - pos).Length / range;
 				target += WVec.FromPDF(world.SharedRandom, 2) * maxOffset / 1024;
 			}

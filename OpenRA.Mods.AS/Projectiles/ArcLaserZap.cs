@@ -72,11 +72,11 @@ namespace OpenRA.Mods.AS.Projectiles
 		readonly ArcLaserZapInfo info;
 		readonly Animation hitanim;
 		readonly Color color;
+		[Sync] readonly WPos source;
 		int ticks = 0;
 		bool doneDamage;
 		bool animationComplete;
 		[Sync] WPos target;
-		[Sync] WPos source;
 
 		public ArcLaserZap(ArcLaserZapInfo info, ProjectileArgs args, Color color)
 		{
@@ -107,9 +107,8 @@ namespace OpenRA.Mods.AS.Projectiles
 			WPos blockedPos;
 			if (info.Blockable && BlocksProjectiles.AnyBlockingActorsBetween(world, source, target,
 				info.Width, out blockedPos))
-			{
 				target = blockedPos;
-			}
+
 
 			if (!doneDamage)
 			{

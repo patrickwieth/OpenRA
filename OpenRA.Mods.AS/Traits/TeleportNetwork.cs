@@ -8,8 +8,6 @@
  */
 #endregion
 
-using System;
-using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Traits;
 
@@ -37,7 +35,7 @@ namespace OpenRA.Mods.AS.Traits
 
 		public TeleportNetwork(ActorInitializer init, TeleportNetworkInfo info)
 		{
-			this.Info = info;
+			Info = info;
 		}
 
 		void IncreaseTeleportNetworkCount(Actor self, Player owner)
