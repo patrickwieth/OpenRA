@@ -50,9 +50,6 @@
       <HintPath>..\thirdparty\download\Eluant.dll</HintPath>
       <Private>False</Private>
     </Reference>
-    <Reference Include="StyleCop">
-      <HintPath>..\thirdparty\download\StyleCop.dll</HintPath>
-    </Reference>
     <Reference Include="ICSharpCode.SharpZipLib">
       <HintPath>..\thirdparty\download\ICSharpCode.SharpZipLib.dll</HintPath>
       <Private>False</Private>
@@ -616,7 +613,6 @@
     <Compile Include="UpdateRules\Rules\20190106\MultipleDeploySounds.cs" />
     <Compile Include="UpdateRules\Rules\20190106\RemoveSimpleBeacon.cs" />
     <Compile Include="UtilityCommands\CheckYaml.cs" />
-    <Compile Include="UtilityCommands\CheckCodeStyle.cs" />
     <Compile Include="UtilityCommands\ConvertPngToShpCommand.cs" />
     <Compile Include="UtilityCommands\ConvertSpriteToPngCommand.cs" />
     <Compile Include="UtilityCommands\CreateManPage.cs" />
