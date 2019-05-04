@@ -38,7 +38,7 @@ The plugin is maintained by
    > DelayedWeapon system
 
  * Mustafa Alperen Seki (MustaphaTR)
-   > ProductionCost/TimeMultiplier
+   > GrantConditionOnProduction
    > mindcontrol traits cleanup
    > /taunt command
    > Intelligence logic

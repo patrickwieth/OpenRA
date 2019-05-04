@@ -111,7 +111,6 @@ namespace OpenRA.Mods.Common.Traits
 		PowerManager playerPower;
 		protected PlayerResources playerResources;
 		protected DeveloperMode developerMode;
-		protected TechTree techTree;
 
 		public Actor Actor { get { return self; } }
 
@@ -142,10 +141,8 @@ namespace OpenRA.Mods.Common.Traits
 			// Created is called before Player.PlayerActor is assigned,
 			// so we must query other player traits from self, knowing that
 			// it refers to the same actor as self.Owner.PlayerActor
-			var playerActor = self.Info.Name == "player" ? self : self.Owner.PlayerActor;
-			playerPower = playerActor.TraitOrDefault<PowerManager>();
-			productionTraits = self.TraitsImplementing<Production>().Where(p => p.Info.Produces.Contains(Info.Type)).ToArray();
-			techTree = playerActor.Trait<TechTree>();
+			playerPower = (self.Info.Name == "player" ? self : self.Owner.PlayerActor).TraitOrDefault<PowerManager>();
+			productionTraits = self.TraitsImplementing<Production>().ToArray();
 		}
 
 		protected void ClearQueue()
@@ -163,7 +160,6 @@ namespace OpenRA.Mods.Common.Traits
 			playerPower = newOwner.PlayerActor.TraitOrDefault<PowerManager>();
 			playerResources = newOwner.PlayerActor.Trait<PlayerResources>();
 			developerMode = newOwner.PlayerActor.Trait<DeveloperMode>();
-			techTree = newOwner.PlayerActor.Trait<TechTree>();
 
 			if (!Info.Sticky)
 			{
@@ -397,7 +393,8 @@ namespace OpenRA.Mods.Common.Traits
 							return;
 					}
 
-					var cost = GetProductionCost(unit);
+					var valued = unit.TraitInfoOrDefault<ValuedInfo>();
+					var cost = valued != null ? valued.Cost : 0;
 					var time = GetBuildTime(unit, bi);
 					var amountToBuild = Math.Min(fromLimit, order.ExtraData);
 					for (var n = 0; n < amountToBuild; n++)
@@ -437,32 +434,13 @@ namespace OpenRA.Mods.Common.Traits
 
 			var time = bi.BuildDuration;
 			if (time == -1)
-				time = GetProductionCost(unit);
-
-			var iptmis = unit.TraitInfos<IProductionTimeModifierInfo>().Select(t => t.GetProductionTimeModifier(techTree, Info.Type));
-			var modifiers = iptmis.Select(t => t.First);
-			time = Util.ApplyPercentageModifiers(time, modifiers);
-			foreach (var iptmi in iptmis)
-				time = time + iptmi.Second;
+			{
+				var valued = unit.TraitInfoOrDefault<ValuedInfo>();
+				time = valued != null ? valued.Cost : 0;
+			}
 
 			time = time * bi.BuildDurationModifier * Info.BuildDurationModifier / 10000;
 			return time;
-		}
-
-		public virtual int GetProductionCost(ActorInfo unit)
-		{
-			var valued = unit.TraitInfoOrDefault<ValuedInfo>();
-
-			if (valued == null)
-				return 0;
-
-			var ipcmis = unit.TraitInfos<IProductionCostModifierInfo>().Select(t => t.GetProductionCostModifier(techTree, Info.Type));
-			var modifiers = ipcmis.Select(t => t.First);
-			var cost = Util.ApplyPercentageModifiers(valued.Cost, modifiers);
-			foreach (var ipcmi in ipcmis)
-				cost = cost + ipcmi.Second;
-
-			return cost;
 		}
 
 		protected void PauseProduction(string itemName, bool paused)
