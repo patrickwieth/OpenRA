@@ -352,5 +352,7 @@ namespace OpenRA.Mods.AS.Traits
 			return instances.Any(x => !x.Item1.IsTraitPaused && !x.Item1.IsTraitDisabled
 				&& tc.IsInRange(x.Item1.Self.CenterPosition, x.Item3) && !tc.IsInRange(x.Item1.Self.CenterPosition, x.Item2));
 		}
+
+		public void Deactivate() { }
 	}
 }

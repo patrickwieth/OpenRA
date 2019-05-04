@@ -214,5 +214,7 @@ namespace OpenRA.Mods.AS.Traits
 		{
 			return world.Map.Contains(cell) ? power.Info.Cursor : "generic-blocked";
 		}
+
+		public void Deactivate() { }
 	}
 }
