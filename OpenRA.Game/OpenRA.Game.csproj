@@ -100,6 +100,7 @@
     <Compile Include="CacheStorage.cs" />
     <Compile Include="FileFormats\Png.cs" />
     <Compile Include="FileSystem\IPackage.cs" />
+    <Compile Include="Network\GameSave.cs" />
     <Compile Include="Primitives\Color.cs" />
     <Compile Include="Primitives\Int32Matrix4x4.cs" />
     <Compile Include="LogProxy.cs" />
@@ -160,7 +161,6 @@
     <Compile Include="Primitives\Size.cs" />
     <Compile Include="Primitives\SpatiallyPartitioned.cs" />
     <Compile Include="Primitives\ConcurrentCache.cs" />
-    <Compile Include="Primitives\ZipFileHelper.cs" />
     <Compile Include="SelectableExts.cs" />
     <Compile Include="Selection.cs" />
     <Compile Include="Server\Connection.cs" />
@@ -182,7 +182,6 @@
     <Compile Include="Traits\Target.cs" />
     <Compile Include="Traits\TraitsInterfaces.cs" />
     <Compile Include="Traits\World\Faction.cs" />
-    <Compile Include="Traits\World\ResourceType.cs" />
     <Compile Include="Traits\World\ScreenShaker.cs" />
     <Compile Include="Traits\World\DebugVisualizations.cs" />
     <Compile Include="World.cs" />

@@ -39,6 +39,7 @@ namespace OpenRA
 		public static ModData ModData;
 		public static Settings Settings;
 		public static ICursor Cursor;
+		public static bool HideCursor;
 		static WorldRenderer worldRenderer;
 
 		internal static OrderManager OrderManager;
@@ -464,6 +465,9 @@ namespace OpenRA
 				Log.Write("nat", e.ToString());
 			}
 
+			ChromeMetrics.TryGet("ChatMessageColor", out chatMessageColor);
+			ChromeMetrics.TryGet("SystemMessageColor", out systemMessageColor);
+
 			ModData.LoadScreen.StartGame(args);
 		}
 
@@ -523,6 +527,8 @@ namespace OpenRA
 		// Note: These delayed actions should only be used by widgets or disposing objects
 		// - things that depend on a particular world should be queuing them on the world actor.
 		static volatile ActionQueue delayedActions = new ActionQueue();
+		static Color systemMessageColor = Color.White;
+		static Color chatMessageColor = Color.White;
 		public static void RunAfterTick(Action a) { delayedActions.Add(a, RunTime); }
 		public static void RunAfterDelay(int delayMilliseconds, Action a) { delayedActions.Add(a, RunTime + delayMilliseconds); }
 
@@ -560,7 +566,7 @@ namespace OpenRA
 				Cursor.Tick();
 			}
 
-			var worldTimestep = world == null ? Timestep : world.Timestep;
+			var worldTimestep = world == null ? Timestep : world.IsLoadingGameSave ? 1 : world.Timestep;
 			var worldTickDelta = tick - orderManager.LastTickTime;
 			if (worldTimestep != 0 && worldTickDelta >= worldTimestep)
 			{
@@ -644,7 +650,10 @@ namespace OpenRA
 				{
 					Renderer.BeginFrame(worldRenderer.Viewport.TopLeft, worldRenderer.Viewport.Zoom);
 					Sound.SetListenerPosition(worldRenderer.Viewport.CenterPosition);
-					worldRenderer.Draw();
+
+					// Use worldRenderer.World instead of OrderManager.World to avoid a rendering mismatch while processing orders
+					if (!worldRenderer.World.IsLoadingGameSave)
+						worldRenderer.Draw();
 				}
 				else
 					Renderer.BeginFrame(int2.Zero, 1f);
@@ -659,8 +668,13 @@ namespace OpenRA
 
 					if (ModData != null && ModData.CursorProvider != null)
 					{
-						Cursor.SetCursor(Ui.Root.GetCursorOuter(Viewport.LastMousePos) ?? "default");
-						Cursor.Render(Renderer);
+						if (HideCursor)
+							Cursor.SetCursor(null);
+						else
+						{
+							Cursor.SetCursor(Ui.Root.GetCursorOuter(Viewport.LastMousePos) ?? "default");
+							Cursor.Render(Renderer);
+						}
 					}
 				}
 
@@ -737,6 +751,13 @@ namespace OpenRA
 				var maxFramerate = Settings.Graphics.CapFramerate ? Settings.Graphics.MaxFramerate.Clamp(1, 1000) : 1000;
 				var renderInterval = 1000 / maxFramerate;
 
+				// Tick as fast as possible while restoring game saves, capping rendering at 5 FPS
+				if (OrderManager.World != null && OrderManager.World.IsLoadingGameSave)
+				{
+					logicInterval = 1;
+					renderInterval = 200;
+				}
+
 				var now = RunTime;
 
 				// If the logic has fallen behind too much, skip it and catch up
@@ -756,7 +777,7 @@ namespace OpenRA
 						LogicTick();
 
 						// Force at least one render per tick during regular gameplay
-						if (OrderManager.World != null && !OrderManager.World.IsReplay)
+						if (OrderManager.World != null && !OrderManager.World.IsLoadingGameSave)
 							forceRender = true;
 					}
 
@@ -820,14 +841,19 @@ namespace OpenRA
 			state = RunStatus.Success;
 		}
 
-		public static void AddChatLine(Color color, string name, string text)
+		public static void AddSystemLine(string name, string text)
 		{
-			OrderManager.AddChatLine(color, name, text);
+			OrderManager.AddChatLine(name, systemMessageColor, text, systemMessageColor);
+		}
+
+		public static void AddChatLine(string name, Color nameColor, string text)
+		{
+			OrderManager.AddChatLine(name, nameColor, text, chatMessageColor);
 		}
 
 		public static void Debug(string s, params object[] args)
 		{
-			AddChatLine(Color.White, "Debug", string.Format(s, args));
+			AddSystemLine("Debug", string.Format(s, args));
 		}
 
 		public static void Disconnect()

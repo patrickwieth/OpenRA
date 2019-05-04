@@ -68,6 +68,7 @@
     <Compile Include="Traits\Buildings\ProductionAirdrop.cs" />
     <Compile Include="Traits\Infiltration\InfiltrateForTransform.cs" />
     <Compile Include="Traits\Render\WithGunboatBody.cs" />
+    <Compile Include="Traits\Render\WithHarvesterSpriteBody.cs" />
     <Compile Include="Traits\Render\WithEmbeddedTurretSpriteBody.cs" />
     <Compile Include="Traits\Render\WithCargo.cs" />
     <Compile Include="Traits\Render\WithDeliveryAnimation.cs" />
@@ -194,18 +195,10 @@
     <Copy
       SourceFiles="$(TargetPath)"
       DestinationFolder="$(SolutionDir)mods/common/"/>
-    <!--
-      csc generates .pdb symbol files (not `.dll.pdb`).
-      mcs generates .dll.mdb symbol files.
-    -->
     <Copy
       SourceFiles="$(TargetDir)$(TargetName).pdb"
       DestinationFolder="$(SolutionDir)mods/common/"
       Condition="Exists('$(TargetDir)$(TargetName).pdb')"/>
-    <Copy
-      SourceFiles="$(TargetPath).mdb"
-      DestinationFolder="$(SolutionDir)mods/common/"
-      Condition="Exists('$(TargetPath).mdb')"/>
     <!-- Uncomment these lines when debugging or adding to this target
     <Message Text="DEBUG OS:                     $(OS)"/>
     <Message Text="DEBUG SolutionDir:            $(SolutionDir)"/>

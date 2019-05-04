@@ -51,7 +51,7 @@ namespace OpenRA.Mods.Common.Traits
 		public object Create(ActorInitializer init) { return new Passenger(this); }
 	}
 
-	public class Passenger : INotifyCreated, IIssueOrder, IResolveOrder, IOrderVoice, INotifyRemovedFromWorld, INotifyEnteredCargo, INotifyExitedCargo
+	public class Passenger : INotifyCreated, IIssueOrder, IResolveOrder, IOrderVoice, INotifyRemovedFromWorld, INotifyEnteredCargo, INotifyExitedCargo, INotifyKilled
 	{
 		public readonly PassengerInfo Info;
 		public Actor Transport;
@@ -182,6 +182,16 @@ namespace OpenRA.Mods.Common.Traits
 				return;
 			ReservedCargo.UnreserveSpace(self);
 			ReservedCargo = null;
+		}
+
+		void INotifyKilled.Killed(Actor self, AttackInfo e)
+		{
+			if (Transport == null)
+				return;
+
+			// Something killed us, but it wasn't our transport blowing up. Remove us from the cargo.
+			if (!Transport.IsDead)
+				Transport.Trait<Cargo>().Unload(Transport, self);
 		}
 	}
 }

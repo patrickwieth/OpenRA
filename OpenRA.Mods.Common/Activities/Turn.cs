@@ -17,37 +17,23 @@ namespace OpenRA.Mods.Common.Activities
 {
 	public class Turn : Activity
 	{
-		readonly IDisabledTrait disablable;
-		readonly IFacing facing;
 		readonly Mobile mobile;
+		readonly IFacing facing;
 		readonly int desiredFacing;
-		readonly bool setIsMoving;
 
-		public Turn(Actor self, int desiredFacing, bool setIsMoving = false, bool isInterruptible = true)
+		public Turn(Actor self, int desiredFacing)
 		{
-			disablable = self.TraitOrDefault<IMove>() as IDisabledTrait;
+			mobile = self.TraitOrDefault<Mobile>();
 			facing = self.Trait<IFacing>();
 			this.desiredFacing = desiredFacing;
-			this.setIsMoving = setIsMoving;
-			IsInterruptible = isInterruptible;
-
-			// This might look confusing, but the current implementation of Mobile is both IMove and IDisabledTrait,
-			// and this way we can save a separate Mobile trait look-up.
-			mobile = disablable as Mobile;
-		}
-
-		protected override void OnFirstRun(Actor self)
-		{
-			if (setIsMoving && mobile != null && !mobile.IsMoving)
-				mobile.IsMoving = true;
 		}
 
 		public override Activity Tick(Actor self)
 		{
-			if (IsInterruptible && IsCanceling)
+			if (IsCanceling)
 				return NextActivity;
 
-			if (disablable != null && disablable.IsTraitDisabled)
+			if (mobile != null && (mobile.IsTraitDisabled || mobile.IsTraitPaused))
 				return this;
 
 			if (desiredFacing == facing.Facing)
@@ -56,13 +42,6 @@ namespace OpenRA.Mods.Common.Activities
 			facing.Facing = Util.TickFacing(facing.Facing, desiredFacing, facing.TurnSpeed);
 
 			return this;
-		}
-
-		protected override void OnLastRun(Actor self)
-		{
-			// If Mobile.IsMoving was set to 'true' earlier, we want to reset it to 'false' before the next tick.
-			if (setIsMoving && mobile != null && mobile.IsMoving)
-				mobile.IsMoving = false;
 		}
 	}
 }

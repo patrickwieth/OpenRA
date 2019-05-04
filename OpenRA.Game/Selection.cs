@@ -187,11 +187,55 @@ namespace OpenRA
 				controlGroups[group].Add(a);
 		}
 
+		public void RemoveFromControlGroup(Actor a)
+		{
+			var group = GetControlGroupForActor(a);
+			if (group.HasValue)
+				controlGroups[group.Value].Remove(a);
+		}
+
 		public int? GetControlGroupForActor(Actor a)
 		{
 			return controlGroups.Where(g => g.Value.Contains(a))
 				.Select(g => (int?)g.Key)
 				.FirstOrDefault();
+		}
+
+		public List<MiniYamlNode> Serialize()
+		{
+			var groups = controlGroups
+				.Where(cg => cg.Value.Any())
+				.Select(cg => new MiniYamlNode(cg.Key.ToString(),
+					FieldSaver.FormatValue(cg.Value.Select(a => a.ActorID).ToArray())))
+				.ToList();
+
+			return new List<MiniYamlNode>()
+			{
+				new MiniYamlNode("Selection", FieldSaver.FormatValue(Actors.Select(a => a.ActorID).ToArray())),
+				new MiniYamlNode("Groups", new MiniYaml("", groups))
+			};
+		}
+
+		public void Deserialize(World world, List<MiniYamlNode> data)
+		{
+			var selectionNode = data.FirstOrDefault(n => n.Key == "Selection");
+			if (selectionNode != null)
+			{
+				var selected = FieldLoader.GetValue<uint[]>("Selection", selectionNode.Value.Value)
+					.Select(a => world.GetActorById(a));
+				Combine(world, selected, false, false);
+			}
+
+			var groupsNode = data.FirstOrDefault(n => n.Key == "Groups");
+			if (groupsNode != null)
+			{
+				foreach (var n in groupsNode.Value.Nodes)
+				{
+					var group = FieldLoader.GetValue<uint[]>(n.Key, n.Value.Value)
+						.Select(a => world.GetActorById(a));
+					controlGroups[int.Parse(n.Key)].AddRange(group);
+				}
+			}
 		}
 	}
 }

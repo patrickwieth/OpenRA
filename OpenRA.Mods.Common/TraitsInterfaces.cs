@@ -24,6 +24,14 @@ namespace OpenRA.Mods.Common.Traits
 
 	public enum AttackDelayType { Preparation, Attack }
 
+	[Flags]
+	public enum ResupplyType
+	{
+		None = 0,
+		Rearm = 1,
+		Repair = 2
+	}
+
 	public interface IQuantizeBodyOrientationInfo : ITraitInfo
 	{
 		int QuantizedBodyFacings(ActorInfo ai, SequenceProvider sequenceProvider, string race);
@@ -116,11 +124,10 @@ namespace OpenRA.Mods.Common.Traits
 	public interface INotifyAppliedDamage { void AppliedDamage(Actor self, Actor damaged, AttackInfo e); }
 
 	[RequireExplicitImplementation]
-	public interface INotifyRepair
+	public interface INotifyResupply
 	{
-		void BeforeRepair(Actor self, Actor target);
-		void RepairTick(Actor self, Actor target);
-		void AfterRepair(Actor self, Actor target);
+		void BeforeResupply(Actor host, Actor target, ResupplyType types);
+		void ResupplyTick(Actor host, Actor target, ResupplyType types);
 	}
 
 	[RequireExplicitImplementation]
@@ -324,6 +331,12 @@ namespace OpenRA.Mods.Common.Traits
 	}
 
 	[RequireExplicitImplementation]
+	public interface IProductionCostModifierInfo : ITraitInfo { int GetProductionCostModifier(TechTree techTree, string queue); }
+
+	[RequireExplicitImplementation]
+	public interface IProductionTimeModifierInfo : ITraitInfo { int GetProductionTimeModifier(TechTree techTree, string queue); }
+
+	[RequireExplicitImplementation]
 	public interface ICashTricklerModifier { int GetCashTricklerModifier(); }
 
 	[RequireExplicitImplementation]
@@ -410,8 +423,7 @@ namespace OpenRA.Mods.Common.Traits
 		Activity VisualMove(Actor self, WPos fromPos, WPos toPos);
 		int EstimatedMoveDuration(Actor self, WPos fromPos, WPos toPos);
 		CPos NearestMoveableCell(CPos target);
-		bool IsMoving { get; set; }
-		bool IsMovingVertically { get; set; }
+		MovementType CurrentMovementTypes { get; set; }
 		bool CanEnterTargetNow(Actor self, Target target);
 	}
 
@@ -431,11 +443,16 @@ namespace OpenRA.Mods.Common.Traits
 	[RequireExplicitImplementation]
 	public interface INotifyObjectivesUpdated
 	{
-		void OnPlayerWon(Player winner);
-		void OnPlayerLost(Player loser);
 		void OnObjectiveAdded(Player player, int objectiveID);
 		void OnObjectiveCompleted(Player player, int objectiveID);
 		void OnObjectiveFailed(Player player, int objectiveID);
+	}
+
+	[RequireExplicitImplementation]
+	public interface INotifyWinStateChanged
+	{
+		void OnPlayerWon(Player winner);
+		void OnPlayerLost(Player loser);
 	}
 
 	public interface INotifyCashTransfer
@@ -547,5 +564,20 @@ namespace OpenRA.Mods.Common.Traits
 	public interface IPreventMapSpawn
 	{
 		bool PreventMapSpawn(World world, ActorReference actorReference);
+	}
+
+	[Flags]
+	public enum MovementType
+	{
+		None = 0,
+		Horizontal = 1,
+		Vertical = 2,
+		Turn = 4
+	}
+
+	[RequireExplicitImplementation]
+	public interface INotifyMoving
+	{
+		void MovementTypeChanged(Actor self, MovementType type);
 	}
 }

@@ -57,13 +57,15 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Skip make/deploy animation?")]
 		public readonly bool SkipMakeAnimation = false;
 
+		[VoiceReference] public readonly string Voice = "Action";
+
 		public override object Create(ActorInitializer init) { return new GrantConditionOnDeploy(init, this); }
 	}
 
 	public enum DeployState { Undeployed, Deploying, Deployed, Undeploying }
 
 	public class GrantConditionOnDeploy : PausableConditionalTrait<GrantConditionOnDeployInfo>, IResolveOrder, IIssueOrder, INotifyCreated,
-		INotifyDeployComplete, IIssueDeployOrder
+		INotifyDeployComplete, IIssueDeployOrder, IOrderVoice
 	{
 		readonly Actor self;
 		readonly bool checkTerrainType;
@@ -198,6 +200,11 @@ namespace OpenRA.Mods.Common.Traits
 				self.QueueActivity(new DeployForGrantedCondition(self, this));
 		}
 
+		public string VoicePhraseForOrder(Actor self, Order order)
+		{
+			return order.OrderString == "GrantConditionOnDeploy" ? Info.Voice : null;
+		}
+
 		bool IsCursorBlocked()
 		{
 			if (IsTraitPaused)
@@ -263,7 +270,7 @@ namespace OpenRA.Mods.Common.Traits
 				return;
 
 			if (Info.DeploySounds != null && Info.DeploySounds.Any())
-				Game.Sound.Play(SoundType.World, Info.DeploySounds.Random(self.World.LocalRandom), self.CenterPosition);
+				Game.Sound.Play(SoundType.World, Info.DeploySounds, self.World, self.CenterPosition);
 
 			// Revoke condition that is applied while undeployed.
 			if (!init)
@@ -287,7 +294,7 @@ namespace OpenRA.Mods.Common.Traits
 				return;
 
 			if (Info.UndeploySounds != null && Info.UndeploySounds.Any())
-				Game.Sound.Play(SoundType.World, Info.UndeploySounds.Random(self.World.LocalRandom), self.CenterPosition);
+				Game.Sound.Play(SoundType.World, Info.UndeploySounds, self.World, self.CenterPosition);
 
 			if (!init)
 				OnUndeployStarted();

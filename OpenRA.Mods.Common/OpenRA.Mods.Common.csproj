@@ -63,7 +63,6 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Activities\Air\AllowYieldingReservation.cs" />
     <Compile Include="Activities\Air\FallToEarth.cs" />
     <Compile Include="Activities\Air\Fly.cs" />
     <Compile Include="Activities\Air\FlyAttack.cs" />
@@ -73,11 +72,8 @@
     <Compile Include="Activities\Air\FlyTimed.cs" />
     <Compile Include="Activities\Air\HeliAttack.cs" />
     <Compile Include="Activities\Air\HeliFly.cs" />
-    <Compile Include="Activities\Air\HeliFlyCircle.cs" />
     <Compile Include="Activities\Air\HeliLand.cs" />
-    <Compile Include="Activities\Air\HeliReturnToBase.cs" />
     <Compile Include="Activities\Air\Land.cs" />
-    <Compile Include="Activities\Air\ResupplyAircraft.cs" />
     <Compile Include="Activities\Air\ReturnToBase.cs" />
     <Compile Include="Activities\Air\TakeOff.cs" />
     <Compile Include="Activities\Attack.cs" />
@@ -89,7 +85,7 @@
     <Compile Include="Activities\DonateExperience.cs" />
     <Compile Include="Activities\Enter.cs" />
     <Compile Include="Activities\EnterTransport.cs" />
-    <Compile Include="Activities\FindResources.cs" />
+    <Compile Include="Activities\FindAndDeliverResources.cs" />
     <Compile Include="Activities\HarvestResource.cs" />
     <Compile Include="Activities\HarvesterDockSequence.cs" />
     <Compile Include="Activities\Hunt.cs" />
@@ -101,9 +97,8 @@
     <Compile Include="Activities\Move\MoveWithinRange.cs" />
     <Compile Include="Activities\Move\VisualMoveIntoTarget.cs" />
     <Compile Include="Activities\Parachute.cs" />
-    <Compile Include="Activities\Rearm.cs" />
     <Compile Include="Activities\RemoveSelf.cs" />
-    <Compile Include="Activities\Repair.cs" />
+    <Compile Include="Activities\Resupply.cs" />
     <Compile Include="Activities\RepairBridge.cs" />
     <Compile Include="Activities\RepairBuilding.cs" />
     <Compile Include="Activities\Sell.cs" />
@@ -117,10 +112,13 @@
     <Compile Include="Activities\WaitForTransport.cs" />
     <Compile Include="ActorExts.cs" />
     <Compile Include="AIUtils.cs" />
+    <Compile Include="Traits\EngineerRepairable.cs" />
+    <Compile Include="Orders\OrderGenerator.cs" />
     <Compile Include="TargetExtensions.cs" />
     <Compile Include="Traits\BotModules\Squads\AttackOrFleeFuzzy.cs" />
     <Compile Include="Traits\BotModules\BotModuleLogic\BaseBuilderQueueManager.cs" />
     <Compile Include="Traits\ExperienceTrickler.cs" />
+    <Compile Include="Traits\Conditions\GrantConditionOnHealth.cs" />
     <Compile Include="Traits\Player\ModularBot.cs" />
     <Compile Include="Traits\BotModules\HarvesterBotModule.cs" />
     <Compile Include="Traits\BotModules\SupportPowerBotModule.cs" />
@@ -280,6 +278,7 @@
     <Compile Include="Traits\Air\FlyAwayOnIdle.cs" />
     <Compile Include="Traits\Air\FallsToEarth.cs" />
     <Compile Include="Traits\Air\ReturnOnIdle.cs" />
+    <Compile Include="Traits\AppearsOnMapPreview.cs" />
     <Compile Include="Traits\Armament.cs" />
     <Compile Include="Traits\Armor.cs" />
     <Compile Include="Traits\AttackMove.cs" />
@@ -329,6 +328,9 @@
     <Compile Include="Traits\Conditions\GrantExternalConditionToCrusher.cs" />
     <Compile Include="Traits\Conditions\GrantRandomCondition.cs" />
     <Compile Include="Traits\Contrail.cs" />
+    <Compile Include="Traits\SupportPowers\SelectDirectionalTarget.cs" />
+    <Compile Include="Traits\Multipliers\ProductionCostMultiplier.cs" />
+    <Compile Include="Traits\Multipliers\ProductionTimeMultiplier.cs" />
     <Compile Include="Traits\TemporaryOwnerManager.cs" />
     <Compile Include="Traits\TooltipDescription.cs" />
     <Compile Include="Traits\Health.cs" />
@@ -565,6 +567,8 @@
     <Compile Include="Traits\World\Locomotor.cs" />
     <Compile Include="Traits\World\JumpjetLocomotor.cs" />
     <Compile Include="Traits\World\PaletteFromEmbeddedSpritePalette.cs" />
+    <Compile Include="Traits\World\ResourceType.cs" />
+    <Compile Include="Traits\World\GameSaveViewportManager.cs" />
     <Compile Include="Traits\World\SubterraneanLocomotor.cs" />
     <Compile Include="Traits\World\LoadWidgetAtGameStart.cs" />
     <Compile Include="Traits\World\MPStartLocations.cs" />
@@ -609,9 +613,11 @@
     <Compile Include="UpdateRules\Rules\20181215\ChangeTakeOffSoundAndLandingSound.cs" />
     <Compile Include="UpdateRules\Rules\20181215\AddCarryableHarvester.cs" />
     <Compile Include="UpdateRules\Rules\20181215\RequireProductionType.cs" />
-    <Compile Include="UpdateRules\Rules\20190106\MakeMobilePausableConditional.cs" />
-    <Compile Include="UpdateRules\Rules\20190106\MultipleDeploySounds.cs" />
-    <Compile Include="UpdateRules\Rules\20190106\RemoveSimpleBeacon.cs" />
+    <Compile Include="UpdateRules\Rules\20190314\MakeMobilePausableConditional.cs" />
+    <Compile Include="UpdateRules\Rules\20190314\MultipleDeploySounds.cs" />
+    <Compile Include="UpdateRules\Rules\20190314\RemoveSimpleBeacon.cs" />
+    <Compile Include="UpdateRules\Rules\20190314\SplitHarvesterSpriteBody.cs" />
+    <Compile Include="UtilityCommands\CheckRuntimeAssembliesCommand.cs" />
     <Compile Include="UtilityCommands\CheckYaml.cs" />
     <Compile Include="UtilityCommands\ConvertPngToShpCommand.cs" />
     <Compile Include="UtilityCommands\ConvertSpriteToPngCommand.cs" />
@@ -624,12 +630,15 @@
     <Compile Include="UtilityCommands\ExtractZeroBraneStudioLuaAPI.cs" />
     <Compile Include="UtilityCommands\ExtractTraitDocsCommand.cs" />
     <Compile Include="UtilityCommands\ExtractWeaponDocsCommand.cs" />
+    <Compile Include="UtilityCommands\RefreshMapCommand.cs" />
     <Compile Include="Warheads\ChangeOwnerWarhead.cs" />
     <Compile Include="UtilityCommands\PngSheetExportMetadataCommand.cs" />
     <Compile Include="UtilityCommands\PngSheetImportMetadataCommand.cs" />
     <Compile Include="Widgets\Logic\Editor\ActorEditLogic.cs" />
     <Compile Include="Widgets\ExponentialSliderWidget.cs" />
+    <Compile Include="Widgets\Logic\Ingame\GameSaveLoadingLogic.cs" />
     <Compile Include="Widgets\Logic\MusicHotkeyLogic.cs" />
+    <Compile Include="Widgets\Logic\GameSaveBrowserLogic.cs" />
     <Compile Include="WorldExtensions.cs" />
     <Compile Include="UtilityCommands\GetMapHashCommand.cs" />
     <Compile Include="UtilityCommands\Glob.cs" />
@@ -891,6 +900,7 @@
     <Compile Include="Widgets\Logic\Ingame\Hotkeys\TogglePlayerStanceColorHotkeyLogic.cs" />
     <Compile Include="Widgets\Logic\Ingame\Hotkeys\PauseHotkeyLogic.cs" />
     <Compile Include="Widgets\Logic\Ingame\Hotkeys\CycleStatusBarsHotkeyLogic.cs" />
+    <Compile Include="Widgets\Logic\Ingame\Hotkeys\RemoveFromControlGroupHotkeyLogic.cs" />
     <Compile Include="Widgets\Logic\Lobby\LobbyOptionsLogic.cs" />
     <Compile Include="Traits\World\LobbyPrerequisiteCheckbox.cs" />
     <Compile Include="Widgets\Logic\DirectConnectLogic.cs" />
@@ -957,7 +967,9 @@
     <Compile Include="UpdateRules\Rules\20181215\RemovedAutoCarryallCircleTurnSpeed.cs" />
     <Compile Include="UpdateRules\Rules\20181215\ReplacedWithChargeAnimation.cs" />
     <Compile Include="UpdateRules\Rules\20181215\RefactorResourceLevelAnimating.cs" />
-    <Compile Include="UpdateRules\Rules\20190106\StreamlineRepairableTraits.cs" />
+    <Compile Include="UpdateRules\Rules\20190314\StreamlineRepairableTraits.cs" />
+    <Compile Include="UpdateRules\Rules\20190314\ReplaceSpecialMoveConsiderations.cs" />
+    <Compile Include="UpdateRules\Rules\20190314\RefactorHarvesterIdle.cs" />
     <Compile Include="Traits\Player\PlayerResources.cs" />
     <Compile Include="UtilityCommands\DumpSequenceSheetsCommand.cs" />
     <Compile Include="Traits\Render\WithBuildingRepairDecoration.cs" />
@@ -975,14 +987,14 @@
       csc generates .pdb symbol files (not `.dll.pdb`).
       mcs generates .dll.mdb symbol files.
     -->
+    <MakeDir Directories="$(SolutionDir)mods/common/"/>
+    <Copy
+      SourceFiles="$(TargetPath)"
+      DestinationFolder="$(SolutionDir)mods/common/"/>
     <Copy
       SourceFiles="$(TargetDir)$(TargetName).pdb"
       DestinationFolder="$(SolutionDir)mods/common/"
       Condition="Exists('$(TargetDir)$(TargetName).pdb')"/>
-    <Copy
-      SourceFiles="$(TargetPath).mdb"
-      DestinationFolder="$(SolutionDir)mods/common/"
-      Condition="Exists('$(TargetPath).mdb')"/>
     <!-- Uncomment these lines when debugging or adding to this target
     <Message Text="DEBUG OS:                     $(OS)"/>
     <Message Text="DEBUG SolutionDir:            $(SolutionDir)"/>

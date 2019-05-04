@@ -67,6 +67,8 @@ HVR:
 	Mobile:
 		Speed: 99
 		Locomotor: hover
+	Selectable:
+		Bounds: 40,24,0,-10
 	Health:
 		HP: 23000
 	Armor:
@@ -86,6 +88,8 @@ HVR:
 		PauseOnCondition: empdisable
 	WithVoxelTurret:
 	Hovers:
+		RequiresCondition: !empdisable
+		OffsetModifier: 64
 	LeavesTrails:
 		RequiresCondition: !inside-tunnel
 		Image: wake
@@ -115,7 +119,6 @@ SMECH:
 	Mobile:
 		TurnSpeed: 5
 		Speed: 99
-		AlwaysConsiderTurnAsMove: true
 	Health:
 		HP: 17500
 	Armor:
@@ -139,6 +142,7 @@ SMECH:
 		Sequence: shoot
 	WithMoveAnimation:
 		MoveSequence: walk
+		ValidMovementTypes: Horizontal, Turn
 	Selectable:
 		Bounds: 20, 32, 0, -8
 	-DamagedByTerrain@VEINS:
@@ -162,7 +166,6 @@ MMCH:
 	Mobile:
 		TurnSpeed: 5
 		Speed: 56
-		AlwaysConsiderTurnAsMove: true
 	Health:
 		HP: 40000
 	Armor:
@@ -178,6 +181,7 @@ MMCH:
 		Sequence: stand
 	WithMoveAnimation:
 		MoveSequence: walk
+		ValidMovementTypes: Horizontal, Turn
 	Turreted:
 		TurnSpeed: 5
 	AttackTurreted:
@@ -225,7 +229,6 @@ HMEC:
 	Mobile:
 		TurnSpeed: 3
 		Speed: 42
-		AlwaysConsiderTurnAsMove: true
 	Health:
 		HP: 80000
 	SelfHealing:
@@ -270,7 +273,7 @@ SONIC:
 		Prerequisites: ~gaweap, gatech, ~techlevel.high
 		Description: Armored high-tech vehicle with\nlong range and sonic armament.\n  Strong vs Infantry, Vehicles, Buildings\n  Weak vs Aircraft
 	Targetable:
-		TargetTypes: Ground, Vehicle, Repair, Disruptor
+		TargetTypes: Ground, Vehicle, Disruptor
 	Mobile:
 		TurnSpeed: 4
 		Speed: 56
@@ -328,7 +331,6 @@ JUGG:
 		TurnSpeed: 5
 		RequiresCondition: undeployed
 		PauseOnCondition: empdisable || being-captured
-		AlwaysConsiderTurnAsMove: true
 	RevealsShroud:
 		RequiresCondition: !inside-tunnel
 		Range: 9c0
@@ -344,13 +346,16 @@ JUGG:
 		RequiresCondition: undeployed
 	WithMoveAnimation:
 		MoveSequence: walk
+		ValidMovementTypes: Horizontal, Turn
 	GrantConditionOnDeploy:
+		PauseOnCondition: empdisable || being-captured
 		DeployedCondition: deployed
 		UndeployedCondition: undeployed
 		Facing: 96
 		AllowedTerrainTypes: Clear, Road, DirtRoad, Rough
 		DeploySounds: place2.aud
 		UndeploySounds: clicky1.aud
+		Voice: Move
 	GrantCondition@PREVIEWWORKAROUND:
 		Condition: real-actor
 	QuantizeFacingsFromSequence:

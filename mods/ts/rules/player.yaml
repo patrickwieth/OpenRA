@@ -86,7 +86,7 @@ Player:
 	LobbyPrerequisiteCheckbox@GLOBALFACTUNDEPLOY:
 		ID: factundeploy
 		Label: Redeployable MCVs
-		Description: Allow undeploying Construction Yard.
+		Description: Allow undeploying Construction Yard
 		Enabled: True
 		DisplayOrder: 7
 		Prerequisites: global-factundeploy
@@ -120,3 +120,4 @@ Player:
 	ResourceStorageWarning:
 	PlayerExperience:
 	ConditionManager:
+	GameSaveViewportManager:

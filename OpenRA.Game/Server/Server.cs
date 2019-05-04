@@ -54,6 +54,7 @@ namespace OpenRA.Server
 
 		// Managed by LobbyCommands
 		public MapPreview Map;
+		public GameSave GameSave = null;
 
 		readonly int randomSeed;
 		readonly TcpListener listener;
@@ -274,8 +275,13 @@ namespace OpenRA.Server
 				// Assign the player number.
 				newConn.PlayerIndex = ChooseFreePlayerIndex();
 				newConn.AuthToken = token;
-				SendData(newConn.Socket, BitConverter.GetBytes(ProtocolVersion.Version));
-				SendData(newConn.Socket, BitConverter.GetBytes(newConn.PlayerIndex));
+
+				// Send handshake and client index.
+				var ms = new MemoryStream(8);
+				ms.WriteArray(BitConverter.GetBytes(ProtocolVersion.Version));
+				ms.WriteArray(BitConverter.GetBytes(newConn.PlayerIndex));
+				SendData(newConn.Socket, ms.ToArray());
+
 				PreConns.Add(newConn);
 
 				// Dispatch a handshake order
@@ -532,10 +538,12 @@ namespace OpenRA.Server
 		{
 			try
 			{
-				SendData(c.Socket, BitConverter.GetBytes(data.Length + 4));
-				SendData(c.Socket, BitConverter.GetBytes(client));
-				SendData(c.Socket, BitConverter.GetBytes(frame));
-				SendData(c.Socket, data);
+				var ms = new MemoryStream(data.Length + 12);
+				ms.WriteArray(BitConverter.GetBytes(data.Length + 4));
+				ms.WriteArray(BitConverter.GetBytes(client));
+				ms.WriteArray(BitConverter.GetBytes(frame));
+				ms.WriteArray(data);
+				SendData(c.Socket, ms.ToArray());
 			}
 			catch (Exception e)
 			{
@@ -558,6 +566,9 @@ namespace OpenRA.Server
 				InterpretServerOrders(conn, data);
 			else
 				DispatchOrdersToClients(conn, frame, data);
+
+			if (GameSave != null && conn != null)
+				GameSave.DispatchOrders(conn, frame, data);
 		}
 
 		void InterpretServerOrders(Connection conn, byte[] data)
@@ -627,7 +638,6 @@ namespace OpenRA.Server
 					}
 
 				case "Chat":
-				case "TeamChat":
 				case "PauseGame":
 					DispatchOrdersToClients(conn, 0, so.Serialize());
 					break;
@@ -659,6 +669,119 @@ namespace OpenRA.Server
 						pingFromClient.LatencyJitter = (history.Max() - history.Min()) / 2;
 						pingFromClient.LatencyHistory = history.ToArray();
 
+						SyncClientPing();
+
+						break;
+					}
+
+				case "GameSaveTraitData":
+					{
+						if (GameSave != null)
+						{
+							var data = MiniYaml.FromString(so.Data)[0];
+							GameSave.AddTraitData(int.Parse(data.Key), data.Value);
+						}
+
+						break;
+					}
+
+				case "CreateGameSave":
+					{
+						if (GameSave != null)
+						{
+							// Sanitize potentially malicious input
+							var filename = so.Data;
+							var invalidIndex = -1;
+							var invalidChars = Path.GetInvalidFileNameChars();
+							while ((invalidIndex = filename.IndexOfAny(invalidChars)) != -1)
+								filename = filename.Remove(invalidIndex, 1);
+
+							var baseSavePath = Platform.ResolvePath(
+								Platform.SupportDirPrefix,
+								"Saves",
+								ModData.Manifest.Id,
+								ModData.Manifest.Metadata.Version);
+
+							if (!Directory.Exists(baseSavePath))
+								Directory.CreateDirectory(baseSavePath);
+
+							GameSave.Save(Path.Combine(baseSavePath, filename));
+							DispatchOrdersToClients(null, 0, new ServerOrder("GameSaved", filename).Serialize());
+						}
+
+						break;
+					}
+
+				case "LoadGameSave":
+					{
+						if (Dedicated || State >= ServerState.GameStarted)
+							break;
+
+						// Sanitize potentially malicious input
+						var filename = so.Data;
+						var invalidIndex = -1;
+						var invalidChars = Path.GetInvalidFileNameChars();
+						while ((invalidIndex = filename.IndexOfAny(invalidChars)) != -1)
+							filename = filename.Remove(invalidIndex, 1);
+
+						var savePath = Platform.ResolvePath(
+							Platform.SupportDirPrefix,
+							"Saves",
+							ModData.Manifest.Id,
+							ModData.Manifest.Metadata.Version,
+							filename);
+
+						GameSave = new GameSave(savePath);
+						LobbyInfo.GlobalSettings = GameSave.GlobalSettings;
+						LobbyInfo.Slots = GameSave.Slots;
+
+						// Reassign clients to slots
+						//  - Bot ordering is preserved
+						//  - Humans are assigned on a first-come-first-serve basis
+						//  - Leftover humans become spectators
+
+						// Start by removing all bots and assigning all players as spectators
+						foreach (var c in LobbyInfo.Clients)
+						{
+							if (c.Bot != null)
+							{
+								LobbyInfo.Clients.Remove(c);
+								var ping = LobbyInfo.PingFromClient(c);
+								if (ping != null)
+									LobbyInfo.ClientPings.Remove(ping);
+							}
+							else
+								c.Slot = null;
+						}
+
+						// Rebuild/remap the saved client state
+						// TODO: Multiplayer saves should leave all humans as spectators so they can manually pick slots
+						var adminClientIndex = LobbyInfo.Clients.First(c => c.IsAdmin).Index;
+						foreach (var kv in GameSave.SlotClients)
+						{
+							if (kv.Value.Bot != null)
+							{
+								var bot = new Session.Client()
+								{
+									Index = ChooseFreePlayerIndex(),
+									State = Session.ClientState.NotReady,
+									BotControllerClientIndex = adminClientIndex
+								};
+
+								kv.Value.ApplyTo(bot);
+								LobbyInfo.Clients.Add(bot);
+							}
+							else
+							{
+								// This will throw if the server doesn't have enough human clients to fill all player slots
+								// See TODO above - this isn't a problem in practice because MP saves won't use this
+								var client = LobbyInfo.Clients.First(c => c.Slot == null);
+								kv.Value.ApplyTo(client);
+							}
+						}
+
+						SyncLobbyInfo();
+						SyncLobbyClients();
 						SyncClientPing();
 
 						break;
@@ -810,6 +933,12 @@ namespace OpenRA.Server
 			if (LobbyInfo.NonBotClients.Count() == 1)
 				LobbyInfo.GlobalSettings.OrderLatency = 1;
 
+			// Enable game saves for singleplayer missions only
+			// TODO: Enable for skirmish once the AI supports state-restoration
+			// TODO: Enable for multiplayer (non-dedicated servers only) once the lobby UI has been created
+			LobbyInfo.GlobalSettings.GameSavesEnabled = !Dedicated && Map.Visibility == MapVisibility.MissionSelector &&
+			                                           LobbyInfo.NonBotClients.Count() == 1;
+
 			SyncLobbyInfo();
 			State = ServerState.GameStarted;
 
@@ -817,11 +946,37 @@ namespace OpenRA.Server
 				foreach (var d in Conns)
 					DispatchOrdersToClient(c, d.PlayerIndex, 0x7FFFFFFF, new byte[] { 0xBF });
 
+			if (GameSave == null && LobbyInfo.GlobalSettings.GameSavesEnabled)
+				GameSave = new GameSave();
+
+			var startGameData = "";
+			if (GameSave != null)
+			{
+				GameSave.StartGame(LobbyInfo, Map);
+				if (GameSave.LastOrdersFrame >= 0)
+				{
+					startGameData = new List<MiniYamlNode>()
+					{
+						new MiniYamlNode("SaveLastOrdersFrame", GameSave.LastOrdersFrame.ToString()),
+						new MiniYamlNode("SaveSyncFrame", GameSave.LastSyncFrame.ToString())
+					}.WriteToString();
+				}
+			}
+
 			DispatchOrders(null, 0,
-				new ServerOrder("StartGame", "").Serialize());
+				new ServerOrder("StartGame", startGameData).Serialize());
 
 			foreach (var t in serverTraits.WithInterface<IStartGame>())
 				t.GameStarted(this);
+
+			if (GameSave != null && GameSave.LastOrdersFrame >= 0)
+			{
+				GameSave.ParseOrders(LobbyInfo, (frame, client, data) =>
+				{
+					foreach (var c in Conns)
+						DispatchOrdersToClient(c, client, frame, data);
+				});
+			}
 		}
 	}
 }
