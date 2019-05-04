@@ -20,9 +20,9 @@ using OpenRA.Traits;
 namespace OpenRA.Mods.AS.Traits.Render
 {
 	[Desc("Plays an idle overlay on the ground position under the actor (regardless of it's actual height).")]
-	public class WithIdleOverlayOnGroundInfo : WithIdleOverlayInfo
+	public class WithIdleOverlayASOnGroundInfo : WithIdleOverlayASInfo
 	{
-		public override object Create(ActorInitializer init) { return new WithIdleOverlayOnGround(init.Self, this); }
+		public override object Create(ActorInitializer init) { return new WithIdleOverlayASOnGround(init.Self, this); }
 
 		public new IEnumerable<IActorPreview> RenderPreviewSprites(ActorPreviewInitializer init, RenderSpritesInfo rs, string image, int facings, PaletteReference p)
 		{
@@ -32,6 +32,7 @@ namespace OpenRA.Mods.AS.Traits.Render
 			if (Palette != null)
 				p = init.WorldRenderer.Palette(Palette);
 
+			var idleImage = !string.IsNullOrEmpty(Image) ? Image : image;
 			Func<int> facing;
 			if (init.Contains<DynamicFacingInit>())
 				facing = init.Get<DynamicFacingInit, Func<int>>();
@@ -41,7 +42,7 @@ namespace OpenRA.Mods.AS.Traits.Render
 				facing = () => f;
 			}
 
-			var anim = new Animation(init.World, image, facing);
+			var anim = new Animation(init.World, idleImage, facing);
 			anim.PlayRepeating(RenderSprites.NormalizeSequence(anim, init.GetDamageState(), Sequence));
 
 			var body = init.Actor.TraitInfo<BodyOrientationInfo>();
@@ -57,17 +58,19 @@ namespace OpenRA.Mods.AS.Traits.Render
 		}
 	}
 
-	public class WithIdleOverlayOnGround : PausableConditionalTrait<WithIdleOverlayOnGroundInfo>, INotifyDamageStateChanged
+	public class WithIdleOverlayASOnGround : PausableConditionalTrait<WithIdleOverlayASOnGroundInfo>, INotifyDamageStateChanged
 	{
 		readonly Animation overlay;
 
-		public WithIdleOverlayOnGround(Actor self, WithIdleOverlayOnGroundInfo info)
+		public WithIdleOverlayASOnGround(Actor self, WithIdleOverlayASOnGroundInfo info)
 			: base(info)
 		{
 			var rs = self.Trait<RenderSprites>();
 			var body = self.Trait<BodyOrientation>();
 
-			overlay = new Animation(self.World, rs.GetImage(self), () => IsTraitPaused);
+			var image = !string.IsNullOrEmpty(info.Image) ? info.Image : rs.GetImage(self);
+
+			overlay = new Animation(self.World, image, () => IsTraitPaused);
 			if (info.StartSequence != null)
 				overlay.PlayThen(RenderSprites.NormalizeSequence(overlay, self.GetDamageState(), info.StartSequence),
 					() => overlay.PlayRepeating(RenderSprites.NormalizeSequence(overlay, self.GetDamageState(), info.Sequence)));
