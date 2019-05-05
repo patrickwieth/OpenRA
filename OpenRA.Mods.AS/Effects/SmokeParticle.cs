@@ -17,7 +17,7 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.AS.Effects
 {
-	class SmokeParticle : IEffect
+	class SmokeParticle : IEffect, ISync
 	{
 		readonly Actor invoker;
 		readonly World world;
