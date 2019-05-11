@@ -3,7 +3,7 @@
 ###############################################################
 ########################## FUNCTIONS ##########################
 ###############################################################
-function All-Command 
+function All-Command
 {
 	if (CheckForDotnet -eq 1)
 	{
@@ -23,7 +23,7 @@ function All-Command
 	}
 }
 
-function Clean-Command 
+function Clean-Command
 {
 	if (CheckForDotnet -eq 1)
 	{
@@ -46,7 +46,7 @@ function Clean-Command
 	echo "Clean complete."
 }
 
-function Version-Command 
+function Version-Command
 {
 	if ($command.Length -gt 1)
 	{
@@ -69,10 +69,10 @@ function Version-Command
 		}
 	}
 	else
-	{	
+	{
 		echo "Unable to locate Git. The version will remain unchanged."
 	}
-	
+
 	if ($version -ne $null)
 	{
 		$version | out-file ".\VERSION"
@@ -198,7 +198,7 @@ function CheckForUtility
 
 function CheckForDotnet
 {
-	if ((Get-Command "dotnet" -ErrorAction SilentlyContinue) -eq $null) 
+	if ((Get-Command "dotnet" -ErrorAction SilentlyContinue) -eq $null)
 	{
 		echo "The 'dotnet' tool is required to compile OpenRA. Please install the .NET Core SDK or Visual studio and try again."
 		return 1
@@ -271,7 +271,7 @@ switch ($execute)
 	Default { echo ("Invalid command '{0}'" -f $command) }
 }
 
-#In case the script was called without any parameters we keep the window open 
+#In case the script was called without any parameters we keep the window open
 if ($args.Length -eq 0)
 {
 	WaitForInput
