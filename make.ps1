@@ -5,52 +5,45 @@
 ###############################################################
 function All-Command 
 {
-	Dependencies-Command 
-	$msBuild = FindMSBuild
-	$msBuildArguments = "/t:Rebuild /nr:false"
-	if ($msBuild -eq $null)
+	if (CheckForDotnet -eq 1)
 	{
-		echo "Unable to locate an appropriate version of MSBuild."
+		return
+	}
+
+	Dependencies-Command
+
+	dotnet build /p:Configuration=Release /nologo
+	if ($lastexitcode -ne 0)
+	{
+		echo "Build failed. If just the development tools failed to build, try installing Visual Studio. You may also still be able to run the game."
 	}
 	else
 	{
-		$proc = Start-Process $msBuild $msBuildArguments -NoNewWindow -PassThru -Wait
-		if ($proc.ExitCode -ne 0)
-		{
-			echo "Build failed. If just the development tools failed to build, try installing Visual Studio. You may also still be able to run the game."
-		}
-		else
-		{
-			echo "Build succeeded."
-		}
+		echo "Build succeeded."
 	}
 }
 
 function Clean-Command 
 {
-	$msBuild = FindMSBuild
-	$msBuildArguments = "/t:Clean /nr:false"
-	if ($msBuild -eq $null)
+	if (CheckForDotnet -eq 1)
 	{
-		echo "Unable to locate an appropriate version of MSBuild."
+		return
 	}
-	else
+
+	dotnet clean /nologo
+	rm *.dll
+	rm mods/*/*.dll
+	rm *.config
+	rm *.pdb
+	rm mods/*/*.pdb
+	rm *.exe
+	rm ./*/bin -r
+	rm ./*/obj -r
+	if (Test-Path thirdparty/download/)
 	{
-		$proc = Start-Process $msBuild $msBuildArguments -NoNewWindow -PassThru -Wait
-		rm *.dll
-		rm mods/*/*.dll
-		Get-ChildItem *.dll.config -exclude OpenRA.Platforms.Default.dll.config | Remove-Item
-		rm *.pdb
-		rm mods/*/*.pdb
-		rm *.exe
-		rm ./*/bin -r
-		rm ./*/obj -r
-		if (Test-Path thirdparty/download/)
-		{
-			rmdir thirdparty/download -Recurse -Force
-		}
-		echo "Clean complete."
+		rmdir thirdparty/download -Recurse -Force
 	}
+	echo "Clean complete."
 }
 
 function Version-Command 
@@ -110,37 +103,43 @@ function Dependencies-Command
 	cp download/windows/*.dll ..
 	cd ..
 	echo "Dependencies copied."
+
+	if (CheckForDotnet -eq 1)
+	{
+		return
+	}
+
+	dotnet restore /nologo
+	if ($lastexitcode -ne 0)
+	{
+		echo "Project restoration failed."
+	}
 }
 
 function Test-Command
 {
-	if (Test-Path OpenRA.Utility.exe)
+	if (CheckForUtility -eq 1)
 	{
-		echo "Testing mods..."
-		echo "Testing Tiberian Sun mod MiniYAML..."
-		./OpenRA.Utility.exe ts --check-yaml
-		echo "Testing Dune 2000 mod MiniYAML..."
-		./OpenRA.Utility.exe d2k --check-yaml
-		echo "Testing Tiberian Dawn mod MiniYAML..."
-		./OpenRA.Utility.exe cnc --check-yaml
-		echo "Testing Red Alert mod MiniYAML..."
-		./OpenRA.Utility.exe ra --check-yaml
+		return
 	}
-	else
-	{
-		UtilityNotFound
-	}
+
+	echo "Testing mods..."
+	echo "Testing Tiberian Sun mod MiniYAML..."
+	./OpenRA.Utility.exe ts --check-yaml
+	echo "Testing Dune 2000 mod MiniYAML..."
+	./OpenRA.Utility.exe d2k --check-yaml
+	echo "Testing Tiberian Dawn mod MiniYAML..."
+	./OpenRA.Utility.exe cnc --check-yaml
+	echo "Testing Red Alert mod MiniYAML..."
+	./OpenRA.Utility.exe ra --check-yaml
 }
 
-function Check-Command {
-	if (Test-Path OpenRA.Utility.exe)
+function Check-Command
+{
+	if (CheckForUtility -eq 0)
 	{
 		echo "Checking for explicit interface violations..."
 		./OpenRA.Utility.exe all --check-explicit-interfaces
-	}
-	else
-	{
-		UtilityNotFound
 	}
 
 	if (Test-Path OpenRA.StyleCheck.exe)
@@ -191,41 +190,38 @@ function Check-Scripts-Command
 
 function Docs-Command
 {
+	if (CheckForUtility -eq 1)
+	{
+		return
+	}
+
+	./make.ps1 version
+	./OpenRA.Utility.exe all --docs | Out-File -Encoding "UTF8" DOCUMENTATION.md
+	./OpenRA.Utility.exe all --weapon-docs | Out-File -Encoding "UTF8" WEAPONS.md
+	./OpenRA.Utility.exe all --lua-docs | Out-File -Encoding "UTF8" Lua-API.md
+	./OpenRA.Utility.exe all --settings-docs | Out-File -Encoding "UTF8" Settings.md
+}
+
+function CheckForUtility
+{
 	if (Test-Path OpenRA.Utility.exe)
 	{
-		./make.ps1 version
-		./OpenRA.Utility.exe all --docs | Out-File -Encoding "UTF8" DOCUMENTATION.md
-		./OpenRA.Utility.exe all --weapon-docs | Out-File -Encoding "UTF8" WEAPONS.md
-		./OpenRA.Utility.exe all --lua-docs | Out-File -Encoding "UTF8" Lua-API.md
-		./OpenRA.Utility.exe all --settings-docs | Out-File -Encoding "UTF8" Settings.md
-	}
-	else
-	{
-		UtilityNotFound
-	}
-}
-
-function FindMSBuild
-{
-	$key = "HKLM:\SOFTWARE\Microsoft\MSBuild\ToolsVersions\4.0"
-	$property = Get-ItemProperty $key -ErrorAction SilentlyContinue
-	if ($property -eq $null -or $property.MSBuildToolsPath -eq $null)
-	{
-		return $null
+		return 0
 	}
 
-	$path = Join-Path $property.MSBuildToolsPath -ChildPath "MSBuild.exe"
-	if (Test-Path $path)
-	{
-		return $path
-	}
-
-	return $null
-}
-
-function UtilityNotFound
-{
 	echo "OpenRA.Utility.exe could not be found. Build the project first using the `"all`" command."
+	return 1
+}
+
+function CheckForDotnet
+{
+	if ((Get-Command "dotnet" -ErrorAction SilentlyContinue) -eq $null) 
+	{
+		echo "The 'dotnet' tool is required to compile OpenRA. Please install the .NET Core SDK or Visual studio and try again."
+		return 1
+	}
+
+	return 0
 }
 
 function WaitForInput
