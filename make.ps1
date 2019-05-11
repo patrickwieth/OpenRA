@@ -3,17 +3,18 @@
 ###############################################################
 ########################## FUNCTIONS ##########################
 ###############################################################
-function All-Command 
+function All-Command
 {
-	if (CheckForDotnet -eq 1)
+	Dependencies-Command
+
+	if (!(Test-Path "C:\Program Files\dotnet\dotnet.exe"))
 	{
+		DotnetNotFound
 		return
 	}
 
-	Dependencies-Command
-
-	dotnet build /p:Configuration=Release /nologo
-	if ($lastexitcode -ne 0)
+	$proc = Start-Process "C:\Program Files\dotnet\dotnet.exe" "build /nr:false" -NoNewWindow -PassThru -Wait
+	if ($proc.ExitCode -ne 0)
 	{
 		echo "Build failed. If just the development tools failed to build, try installing Visual Studio. You may also still be able to run the game."
 	}
@@ -23,14 +24,14 @@ function All-Command
 	}
 }
 
-function Clean-Command 
+function Clean-Command
 {
-	if (CheckForDotnet -eq 1)
+	if (!(Test-Path "C:\Program Files\dotnet\dotnet.exe"))
 	{
+		DotnetNotFound
 		return
 	}
-
-	dotnet clean /nologo
+	$proc = Start-Process "C:\Program Files\dotnet\dotnet.exe" "clean /nr:false" -NoNewWindow -PassThru -Wait
 	rm *.dll
 	rm mods/*/*.dll
 	rm *.config
@@ -46,7 +47,7 @@ function Clean-Command
 	echo "Clean complete."
 }
 
-function Version-Command 
+function Version-Command
 {
 	if ($command.Length -gt 1)
 	{
@@ -69,10 +70,10 @@ function Version-Command
 		}
 	}
 	else
-	{	
+	{
 		echo "Unable to locate Git. The version will remain unchanged."
 	}
-	
+
 	if ($version -ne $null)
 	{
 		$version | out-file ".\VERSION"
@@ -104,13 +105,14 @@ function Dependencies-Command
 	cd ..
 	echo "Dependencies copied."
 
-	if (CheckForDotnet -eq 1)
+	if (!(Test-Path "C:\Program Files\dotnet\dotnet.exe"))
 	{
+		DotnetNotFound
 		return
 	}
 
-	dotnet restore /nologo
-	if ($lastexitcode -ne 0)
+	$proc = Start-Process "C:\Program Files\dotnet\dotnet.exe" "restore /nr:false" -NoNewWindow -PassThru -Wait
+	if ($proc.ExitCode -ne 0)
 	{
 		echo "Project restoration failed."
 	}
@@ -118,28 +120,33 @@ function Dependencies-Command
 
 function Test-Command
 {
-	if (CheckForUtility -eq 1)
+	if (Test-Path OpenRA.Utility.exe)
 	{
-		return
+		echo "Testing mods..."
+		echo "Testing Tiberian Sun mod MiniYAML..."
+		./OpenRA.Utility.exe ts --check-yaml
+		echo "Testing Dune 2000 mod MiniYAML..."
+		./OpenRA.Utility.exe d2k --check-yaml
+		echo "Testing Tiberian Dawn mod MiniYAML..."
+		./OpenRA.Utility.exe cnc --check-yaml
+		echo "Testing Red Alert mod MiniYAML..."
+		./OpenRA.Utility.exe ra --check-yaml
 	}
-
-	echo "Testing mods..."
-	echo "Testing Tiberian Sun mod MiniYAML..."
-	./OpenRA.Utility.exe ts --check-yaml
-	echo "Testing Dune 2000 mod MiniYAML..."
-	./OpenRA.Utility.exe d2k --check-yaml
-	echo "Testing Tiberian Dawn mod MiniYAML..."
-	./OpenRA.Utility.exe cnc --check-yaml
-	echo "Testing Red Alert mod MiniYAML..."
-	./OpenRA.Utility.exe ra --check-yaml
+	else
+	{
+		UtilityNotFound
+	}
 }
 
-function Check-Command
-{
-	if (CheckForUtility -eq 0)
+function Check-Command {
+	if (Test-Path OpenRA.Utility.exe)
 	{
 		echo "Checking for explicit interface violations..."
 		./OpenRA.Utility.exe all --check-explicit-interfaces
+	}
+	else
+	{
+		UtilityNotFound
 	}
 
 	if (Test-Path OpenRA.StyleCheck.exe)
@@ -190,38 +197,28 @@ function Check-Scripts-Command
 
 function Docs-Command
 {
-	if (CheckForUtility -eq 1)
-	{
-		return
-	}
-
-	./make.ps1 version
-	./OpenRA.Utility.exe all --docs | Out-File -Encoding "UTF8" DOCUMENTATION.md
-	./OpenRA.Utility.exe all --weapon-docs | Out-File -Encoding "UTF8" WEAPONS.md
-	./OpenRA.Utility.exe all --lua-docs | Out-File -Encoding "UTF8" Lua-API.md
-	./OpenRA.Utility.exe all --settings-docs | Out-File -Encoding "UTF8" Settings.md
-}
-
-function CheckForUtility
-{
 	if (Test-Path OpenRA.Utility.exe)
 	{
-		return 0
+		./make.ps1 version
+		./OpenRA.Utility.exe all --docs | Out-File -Encoding "UTF8" DOCUMENTATION.md
+		./OpenRA.Utility.exe all --weapon-docs | Out-File -Encoding "UTF8" WEAPONS.md
+		./OpenRA.Utility.exe all --lua-docs | Out-File -Encoding "UTF8" Lua-API.md
+		./OpenRA.Utility.exe all --settings-docs | Out-File -Encoding "UTF8" Settings.md
 	}
-
-	echo "OpenRA.Utility.exe could not be found. Build the project first using the `"all`" command."
-	return 1
+	else
+	{
+		UtilityNotFound
+	}
 }
 
-function CheckForDotnet
+function UtilityNotFound
 {
-	if ((Get-Command "dotnet" -ErrorAction SilentlyContinue) -eq $null) 
-	{
-		echo "The 'dotnet' tool is required to compile OpenRA. Please install the .NET Core SDK or Visual studio and try again."
-		return 1
-	}
+	echo "OpenRA.Utility.exe could not be found. Build the project first using the `"all`" command."
+}
 
-	return 0
+function DotnetNotFound
+{
+	echo "The 'dotnet' tool is required to compile OpenRA. Please install the .NET Core SDK or Visual studio and try again."
 }
 
 function WaitForInput
@@ -288,7 +285,7 @@ switch ($execute)
 	Default { echo ("Invalid command '{0}'" -f $command) }
 }
 
-#In case the script was called without any parameters we keep the window open 
+#In case the script was called without any parameters we keep the window open
 if ($args.Length -eq 0)
 {
 	WaitForInput
