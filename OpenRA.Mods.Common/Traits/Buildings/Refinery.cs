@@ -52,11 +52,13 @@ namespace OpenRA.Mods.Common.Traits
 		public virtual object Create(ActorInitializer init) { return new Refinery(init.Self, this); }
 	}
 
-	public class Refinery : ITick, IAcceptResources, INotifySold, INotifyCapture, INotifyOwnerChanged, ISync, INotifyActorDisposing
+	public class Refinery : ITick, IAcceptResources, INotifySold, INotifyCapture, INotifyOwnerChanged, ISync, INotifyActorDisposing, INotifyCreated
 	{
 		readonly Actor self;
 		readonly RefineryInfo info;
 		PlayerResources playerResources;
+
+		IRefineryResourceDelivered[] refineryResourceDelivereds;
 
 		int currentDisplayTick = 0;
 		int currentDisplayValue = 0;
@@ -77,6 +79,11 @@ namespace OpenRA.Mods.Common.Traits
 			this.info = info;
 			playerResources = self.Owner.PlayerActor.Trait<PlayerResources>();
 			currentDisplayTick = info.TickRate;
+		}
+
+		void INotifyCreated.Created(Actor self)
+		{
+			refineryResourceDelivereds = self.TraitsImplementing<IRefineryResourceDelivered>().ToArray();
 		}
 
 		public virtual Activity DockSequence(Actor harv, Actor self)
@@ -104,11 +111,12 @@ namespace OpenRA.Mods.Common.Traits
 			else
 				amount = playerResources.ChangeCash(amount);
 
+			foreach (var rrd in refineryResourceDelivereds)
+				rrd.ResourceGiven(self, amount);
+
 			var purifiers = self.World.ActorsWithTrait<IResourcePurifier>().Where(x => x.Actor.Owner == self.Owner).Select(x => x.Trait);
 			foreach (var p in purifiers)
-			{
 				p.RefineAmount(amount);
-			}
 
 			if (info.ShowTicks)
 				currentDisplayValue += amount;
