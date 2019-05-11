@@ -10,7 +10,6 @@
 
 using System;
 using System.Collections.Generic;
-using OpenRA.Mods.AS.Activities;
 using OpenRA.Mods.AS.Effects;
 using OpenRA.Mods.Common;
 using OpenRA.Mods.Common.Activities;
@@ -171,7 +170,7 @@ namespace OpenRA.Mods.AS.Traits
 					a.QueueActivity(new RemoveSelf());
 
 					aircrafts.Add(a);
-				};
+				}
 
 				var effect = new AirstrikePowerASEffect(self.World, self.Owner, target, aircrafts, info);
 				self.World.Add(effect);

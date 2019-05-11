@@ -99,7 +99,7 @@ namespace OpenRA.Mods.AS.Warheads
 					}
 
 					a.QueueActivity(new RemoveSelf());
-				};
+				}
 			});
 		}
 	}

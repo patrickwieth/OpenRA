@@ -72,7 +72,7 @@ namespace OpenRA.Mods.AS.Traits
 
 					if (split.Count() == 4)
 					{
-					var alpha = int.Parse(split[3]);
+						var alpha = int.Parse(split[3]);
 						if (info.Premultiply)
 						{
 							colors[i] = (uint)Color.FromArgb(alpha, int.Parse(split[0]) * alpha / 255,

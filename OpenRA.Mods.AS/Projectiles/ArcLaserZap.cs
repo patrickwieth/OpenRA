@@ -109,7 +109,6 @@ namespace OpenRA.Mods.AS.Projectiles
 				info.Width, out blockedPos))
 				target = blockedPos;
 
-
 			if (!doneDamage)
 			{
 				if (hitanim != null)
