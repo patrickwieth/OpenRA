@@ -17,9 +17,11 @@
     <!-- Work around an issue where Rider does not detect files in the project root using the default glob -->
     <Compile Include="**/*.cs" Exclude="$(DefaultItemExcludes)"/>
   </ItemGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <Optimize>false</Optimize>
+  </PropertyGroup>
   <ItemGroup>
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
     <Reference Include="Eluant">
       <HintPath>..\thirdparty\download\Eluant.dll</HintPath>
       <Private>False</Private>
