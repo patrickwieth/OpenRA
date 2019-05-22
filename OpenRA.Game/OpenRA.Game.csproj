@@ -17,16 +17,17 @@
     <ExternalConsole>false</ExternalConsole>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <CodeAnalysisRuleSet>..\OpenRA.ruleset</CodeAnalysisRuleSet>
+    <Configurations>Release;Debug</Configurations>
   </PropertyGroup>
   <ItemGroup>
     <!-- Work around an issue where Rider does not detect files in the project root using the default glob -->
-    <Compile Include="**/*.cs" Exclude="$(DefaultItemExcludes)"/>
+    <Compile Include="**/*.cs" Exclude="$(DefaultItemExcludes)" />
   </ItemGroup>
-  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <Optimize>false</Optimize>
   </PropertyGroup>
-  <PropertyGroup Condition=" '$(RunConfiguration)' == 'Default' ">
+  <PropertyGroup Condition=" '$(RunConfiguration)' == 'Red Alert' ">
     <StartAction>Project</StartAction>
     <StartArguments>Game.Mod=ra</StartArguments>
   </PropertyGroup>
@@ -64,11 +65,12 @@
     <None Include="App.config" />
     <PackageReference Include="StyleCop.Analyzers" Version="1.1.118" /> 
     <AdditionalFiles Include="../stylecop.json" />
+    <AdditionalFiles Include="Properties/launchSettings.json" />
   </ItemGroup>
   <Target Name="DisableAnalyzers" BeforeTargets="CoreCompile" Condition="'$(Configuration)'=='Release'">
     <!-- Disable code style analysis on Release builds to improve compile-time performance -->
     <ItemGroup Condition="'$(Configuration)'=='Release'">
-      <Analyzer Remove="@(Analyzer)"/>
+      <Analyzer Remove="@(Analyzer)" />
     </ItemGroup>
   </Target>
   <Target Name="PostProcess" AfterTargets="Build" Inputs="$(TargetPath)" Outputs="$(IntermediateOutputPath)\$(TargetFileName).processed">

@@ -52,13 +52,13 @@ namespace OpenRA.Mods.Common.Traits
 		public virtual object Create(ActorInitializer init) { return new Refinery(init.Self, this); }
 	}
 
-	public class Refinery : ITick, IAcceptResources, INotifySold, INotifyCapture, INotifyOwnerChanged, ISync, INotifyActorDisposing, INotifyCreated
+	public class Refinery : INotifyCreated, ITick, IAcceptResources, INotifySold, INotifyCapture,
+		INotifyOwnerChanged, ISync, INotifyActorDisposing
 	{
 		readonly Actor self;
 		readonly RefineryInfo info;
 		PlayerResources playerResources;
-
-		IRefineryResourceDelivered[] refineryResourceDelivereds;
+		RefineryResourceMultiplier[] resourceMultipliers;
 
 		int currentDisplayTick = 0;
 		int currentDisplayValue = 0;
@@ -83,7 +83,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		void INotifyCreated.Created(Actor self)
 		{
-			refineryResourceDelivereds = self.TraitsImplementing<IRefineryResourceDelivered>().ToArray();
+			resourceMultipliers = self.TraitsImplementing<RefineryResourceMultiplier>().ToArray();
 		}
 
 		public virtual Activity DockSequence(Actor harv, Actor self)
@@ -101,6 +101,8 @@ namespace OpenRA.Mods.Common.Traits
 
 		public void GiveResource(int amount)
 		{
+			amount = Util.ApplyPercentageModifiers(amount, resourceMultipliers.Select(m => m.GetModifier()));
+
 			if (info.UseStorage)
 			{
 				if (info.DiscardExcessResources)
@@ -111,12 +113,13 @@ namespace OpenRA.Mods.Common.Traits
 			else
 				amount = playerResources.ChangeCash(amount);
 
-			foreach (var rrd in refineryResourceDelivereds)
-				rrd.ResourceGiven(self, amount);
+			foreach (var notify in self.World.ActorsWithTrait<INotifyResourceAccepted>())
+			{
+				if (notify.Actor.Owner != self.Owner)
+					continue;
 
-			var purifiers = self.World.ActorsWithTrait<IResourcePurifier>().Where(x => x.Actor.Owner == self.Owner).Select(x => x.Trait);
-			foreach (var p in purifiers)
-				p.RefineAmount(amount);
+				notify.Trait.OnResourceAccepted(notify.Actor, self, amount);
+			}
 
 			if (info.ShowTicks)
 				currentDisplayValue += amount;

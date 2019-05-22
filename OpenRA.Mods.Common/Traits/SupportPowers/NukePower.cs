@@ -9,7 +9,7 @@
  */
 #endregion
 
-using OpenRA.Effects;
+using System.Linq;
 using OpenRA.GameRules;
 using OpenRA.Mods.Common.Effects;
 using OpenRA.Traits;
@@ -52,7 +52,7 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly string TrailImage = null;
 
 		[Desc("Loop a randomly chosen sequence of TrailImage from this list while this projectile is moving.")]
-		[SequenceReference("TrailImage")] public readonly string[] TrailSequences = { "idle" };
+		[SequenceReference("TrailImage")] public readonly string[] TrailSequences = { };
 
 		[Desc("Interval in ticks between each spawned Trail animation.")]
 		public readonly int TrailInterval = 1;
@@ -101,6 +101,9 @@ namespace OpenRA.Mods.Common.Traits
 		public override object Create(ActorInitializer init) { return new NukePower(init.Self, this); }
 		public override void RulesetLoaded(Ruleset rules, ActorInfo ai)
 		{
+			if (!string.IsNullOrEmpty(TrailImage) && !TrailSequences.Any())
+				throw new YamlException("At least one entry in TrailSequences must be defined when TrailImage is defined.");
+
 			WeaponInfo weapon;
 			var weaponToLower = (MissileWeapon ?? string.Empty).ToLowerInvariant();
 			if (!rules.Weapons.TryGetValue(weaponToLower, out weapon))

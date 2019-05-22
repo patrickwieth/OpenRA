@@ -79,7 +79,6 @@ INSTALL_DATA = $(INSTALL) -m644
 MSBUILD = msbuild -verbosity:m -nologo
 
 # program targets
-CORE = pdefault game utility server
 VERSION     = $(shell git name-rev --name-only --tags --no-undefined HEAD 2>/dev/null || echo git-`git rev-parse --short HEAD`)
 
 # dependencies
@@ -193,9 +192,6 @@ version: VERSION mods/ra/mod.yaml mods/cnc/mod.yaml mods/d2k/mod.yaml mods/ts/mo
 		rm $${i}.tmp; \
 	done
 
-man-page: utility mods
-	@mono --debug OpenRA.Utility.exe all --man-page > openra.6
-
 install: dependencies core install-core
 
 install-linux-shortcuts: install-linux-scripts install-linux-icons install-linux-desktop
@@ -287,9 +283,11 @@ install-linux-appdata:
 	@$(INSTALL_DATA) packaging/linux/openra-d2k.appdata.xml "$(DESTDIR)$(datadir)/appdata/"
 	@-$(RM) packaging/linux/openra-ra.appdata.xml packaging/linux/openra-cnc.appdata.xml packaging/linux/openra-d2k.appdata.xml
 
-install-man-page: man-page
+install-man-page:
 	@$(INSTALL_DIR) "$(DESTDIR)$(mandir)/man6/"
+	@mono --debug OpenRA.Utility.exe all --man-page > openra.6
 	@$(INSTALL_DATA) openra.6 "$(DESTDIR)$(mandir)/man6/"
+	@-$(RM) openra.6
 
 install-linux-scripts:
 ifeq ($(DEBUG), $(filter $(DEBUG),false no n off 0))
@@ -377,4 +375,4 @@ help:
 
 .SUFFIXES:
 
-.PHONY: core package all mods clean distclean dependencies version nunit
+.PHONY: check-scripts check nunit test all core clean distclean cli-dependencies linux-dependencies linux-native-dependencies windows-dependencies osx-dependencies geoip-dependencies dependencies all-dependencies version install install-linux-shortcuts install-engine install-common-mod-files install-default-mods install-core install-linux-icons install-linux-desktop install-linux-mime install-linux-appdata install-man-page install-linux-scripts uninstall help
