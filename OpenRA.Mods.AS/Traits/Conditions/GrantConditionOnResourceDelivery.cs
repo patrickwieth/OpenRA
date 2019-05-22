@@ -46,7 +46,7 @@ namespace OpenRA.Mods.AS.Traits
 			manager = self.Trait<ConditionManager>();
 		}
 
-		void IRefineryResourceDelivered.ResourceGiven(Actor self, int amount)
+		void IRefineryResourceDelivered.ResourceDelivered(Actor self, int amount)
 		{
 			if (IsTraitDisabled)
 				return;

@@ -81,18 +81,18 @@ namespace OpenRA.Mods.AS.Warheads
 					if (plane)
 					{
 						if (Mode == AirstrikeTarget.Target)
-							a.QueueActivity(new FlyAttack(a, target));
+							a.QueueActivity(new FlyAttack(a, target, true));
 						else
-							a.QueueActivity(new FlyAttack(a, Target.FromPos(target.CenterPosition + spawnOffset)));
+							a.QueueActivity(new FlyAttack(a, Target.FromPos(target.CenterPosition + spawnOffset), true));
 
 						a.QueueActivity(new FlyOffMap(a));
 					}
 					else
 					{
 						if (Mode == AirstrikeTarget.Target)
-							a.QueueActivity(new HeliAttack(a, target));
+							a.QueueActivity(new HeliAttack(a, target, true));
 						else
-							a.QueueActivity(new HeliAttack(a, Target.FromPos(target.CenterPosition + spawnOffset)));
+							a.QueueActivity(new HeliAttack(a, Target.FromPos(target.CenterPosition + spawnOffset), true));
 
 						var finishPos = target.CenterPosition + altitude + (firedBy.World.Map.DistanceToEdge(target.CenterPosition, delta) + Cordon).Length * delta / 1024;
 						a.QueueActivity(new HeliFly(a, Target.FromPos(finishPos + spawnOffset)));

@@ -14,12 +14,6 @@ using OpenRA.Traits;
 namespace OpenRA.Mods.Common.Traits
 {
 	[RequireExplicitImplementation]
-	public interface IResourcePurifier
-	{
-		void RefineAmount(int amount);
-	}
-
-	[RequireExplicitImplementation]
 	public interface IResourceLogicLayer
 	{
 		void UpdatePosition(CPos cell, ResourceType type, int density);
@@ -28,6 +22,6 @@ namespace OpenRA.Mods.Common.Traits
 	[RequireExplicitImplementation]
 	public interface IRefineryResourceDelivered
 	{
-		void ResourceGiven(Actor self, int amount);
+		void ResourceDelivered(Actor self, int amount);
 	}
 }

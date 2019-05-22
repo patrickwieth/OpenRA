@@ -26,7 +26,7 @@ namespace OpenRA.Mods.AS.Traits
 		public override object Create(ActorInitializer init) { return new GrantConditionOnResourcePurify(init.Self, this); }
 	}
 
-	public class GrantConditionOnResourcePurify : PausableConditionalTrait<GrantConditionOnResourcePurifyInfo>, ITick, INotifyCreated, IResourcePurifier
+	public class GrantConditionOnResourcePurify : PausableConditionalTrait<GrantConditionOnResourcePurifyInfo>, ITick, INotifyCreated, INotifyResourceAccepted
 	{
 		readonly Actor self;
 		readonly GrantConditionOnResourcePurifyInfo info;
@@ -48,7 +48,7 @@ namespace OpenRA.Mods.AS.Traits
 			manager = self.Trait<ConditionManager>();
 		}
 
-		void IResourcePurifier.RefineAmount(int amount)
+		void INotifyResourceAccepted.OnResourceAccepted(Actor self, Actor refinery, int amount)
 		{
 			if (IsTraitDisabled)
 				return;
