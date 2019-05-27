@@ -26,6 +26,9 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("What kind of production will be added (e.g. Building, Infantry, Vehicle, ...)")]
 		public readonly string Type = null;
 
+		[Desc("The value used when ordering this for display (e.g. in the Spectator UI).")]
+		public readonly int DisplayOrder = 0;
+
 		[Desc("Group queues from separate buildings together into the same tab.")]
 		public readonly string Group = null;
 
@@ -115,10 +118,13 @@ namespace OpenRA.Mods.Common.Traits
 
 		public Actor Actor { get { return self; } }
 
-		[Sync] public bool Enabled { get; protected set; }
+		[Sync]
+		public bool Enabled { get; protected set; }
 
 		public string Faction { get; private set; }
-		[Sync] public bool IsValidFaction { get; private set; }
+
+		[Sync]
+		public bool IsValidFaction { get; private set; }
 
 		public ProductionQueue(ActorInitializer init, Actor playerActor, ProductionQueueInfo info)
 		{
@@ -614,6 +620,7 @@ namespace OpenRA.Mods.Common.Traits
 		public bool Started { get; private set; }
 		public int Slowdown { get; private set; }
 		public bool Infinite { get; set; }
+		public int BuildPaletteOrder { get; private set; }
 
 		readonly ActorInfo ai;
 		readonly BuildableInfo bi;
@@ -629,6 +636,7 @@ namespace OpenRA.Mods.Common.Traits
 			this.pm = pm;
 			ai = Queue.Actor.World.Map.Rules.Actors[Item];
 			bi = ai.TraitInfo<BuildableInfo>();
+			BuildPaletteOrder = bi.BuildPaletteOrder;
 			Infinite = false;
 		}
 
