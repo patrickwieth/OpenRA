@@ -20,7 +20,8 @@ namespace OpenRA.Mods.AS.Traits
 		public readonly int Interval = 5;
 
 		[Desc("Voice to use when killing something.")]
-		[VoiceReference] public readonly string Voice = "Kill";
+		[VoiceReference]
+		public readonly string Voice = "Kill";
 
 		[Desc("Should the voice be played for the owner alone?")]
 		public readonly bool OnlyToOwner = false;

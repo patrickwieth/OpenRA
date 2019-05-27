@@ -110,16 +110,21 @@ namespace OpenRA.Mods.AS.Projectiles
 		readonly BulletASInfo info;
 		readonly ProjectileArgs args;
 		readonly Animation anim;
-		[Sync] readonly WAngle angle;
-		[Sync] readonly WDist speed;
-		[Sync] readonly int facing;
+
+		[Sync]
+		readonly WAngle angle;
+		[Sync]
+		readonly WDist speed;
+		[Sync]
+		readonly int facing;
 
 		readonly string trailPalette;
 		readonly string palette;
 
 		ContrailRenderable contrail;
 
-		[Sync] WPos pos, target, source;
+		[Sync]
+		WPos pos, target, source;
 		int length;
 		int ticks, smokeTicks;
 		int remainingBounces;

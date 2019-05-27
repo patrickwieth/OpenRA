@@ -28,7 +28,8 @@ namespace OpenRA.Mods.AS.Traits
 	[Desc("Grants a condition when a selected event occurs.")]
 	public class GrantPeriodicConditionOnEventInfo : PausableConditionalTraitInfo
 	{
-		[GrantedConditionReference, FieldLoader.Require]
+		[GrantedConditionReference]
+		[FieldLoader.Require]
 		[Desc("The condition to grant.")]
 		public readonly string Condition = null;
 
@@ -58,7 +59,10 @@ namespace OpenRA.Mods.AS.Traits
 		readonly GrantPeriodicConditionOnEventInfo info;
 
 		ConditionManager manager;
-		[Sync] int ticks;
+
+		[Sync]
+		int ticks;
+
 		int cooldown, active;
 		int token = ConditionManager.InvalidConditionToken;
 		WPos? lastPos;

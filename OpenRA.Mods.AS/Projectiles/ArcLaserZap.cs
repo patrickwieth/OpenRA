@@ -72,11 +72,16 @@ namespace OpenRA.Mods.AS.Projectiles
 		readonly ArcLaserZapInfo info;
 		readonly Animation hitanim;
 		readonly Color color;
-		[Sync] readonly WPos source;
+
+		[Sync]
+		readonly WPos source;
+
 		int ticks = 0;
 		bool doneDamage;
 		bool animationComplete;
-		[Sync] WPos target;
+
+		[Sync]
+		WPos target;
 
 		public ArcLaserZap(ArcLaserZapInfo info, ProjectileArgs args, Color color)
 		{

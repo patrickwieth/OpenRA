@@ -16,7 +16,8 @@ namespace OpenRA.Mods.AS.Traits
 	[Desc("Grants a condition above a certain altitude.")]
 	public class GrantConditionAboveAltitudeInfo : ITraitInfo
 	{
-		[GrantedConditionReference, FieldLoader.Require]
+		[GrantedConditionReference]
+		[FieldLoader.Require]
 		[Desc("The condition to grant.")]
 		public readonly string Condition = null;
 

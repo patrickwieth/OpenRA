@@ -18,7 +18,8 @@ namespace OpenRA.Mods.AS.Traits
 	[Desc("Grants a condition periodically.")]
 	public class GrantPeriodicConditionInfo : PausableConditionalTraitInfo
 	{
-		[GrantedConditionReference, FieldLoader.Require]
+		[GrantedConditionReference]
+		[FieldLoader.Require]
 		[Desc("The condition to grant.")]
 		public readonly string Condition = null;
 
@@ -43,7 +44,10 @@ namespace OpenRA.Mods.AS.Traits
 		readonly GrantPeriodicConditionInfo info;
 
 		ConditionManager manager;
-		[Sync] int ticks;
+
+		[Sync]
+		int ticks;
+
 		int cooldown, active;
 		bool isSuspended;
 		int token = ConditionManager.InvalidConditionToken;

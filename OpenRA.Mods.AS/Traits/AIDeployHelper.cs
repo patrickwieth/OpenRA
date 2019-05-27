@@ -48,7 +48,9 @@ namespace OpenRA.Mods.AS.Traits
 	{
 		readonly AIDeployHelperInfo info;
 
-		[Sync] int undeployTicks = -1, deployTicks;
+		[Sync]
+		int undeployTicks = -1, deployTicks;
+
 		bool undeployable, deployed;
 		IIssueDeployOrder[] deployTraits;
 

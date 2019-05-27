@@ -16,7 +16,8 @@ namespace OpenRA.Mods.AS.Traits
 	[Desc("Grants a condition when a refinery receives resources.")]
 	public class GrantConditionOnResourcePurifyInfo : PausableConditionalTraitInfo
 	{
-		[GrantedConditionReference, FieldLoader.Require]
+		[GrantedConditionReference]
+		[FieldLoader.Require]
 		[Desc("The condition to grant.")]
 		public readonly string Condition = null;
 

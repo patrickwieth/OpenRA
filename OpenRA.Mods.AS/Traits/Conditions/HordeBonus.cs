@@ -32,7 +32,8 @@ namespace OpenRA.Mods.AS.Traits
 		[Desc("Specifies the eligible GrantHordeBonus trait type.")]
 		public readonly string HordeType = "horde";
 
-		[GrantedConditionReference, FieldLoader.Require]
+		[GrantedConditionReference]
+		[FieldLoader.Require]
 		[Desc("The condition to grant.")]
 		public readonly string Condition = null;
 

@@ -19,7 +19,8 @@ namespace OpenRA.Mods.AS.Traits
 	[Desc("Spawns survivors when an actor is destroyed or sold.")]
 	public class SpawnSurvivorsInfo : ConditionalTraitInfo
 	{
-		[ActorReference, FieldLoader.Require]
+		[ActorReference]
+		[FieldLoader.Require]
 		[Desc("The actors spawned.")]
 		public readonly string[] Actors = { };
 

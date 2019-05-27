@@ -19,7 +19,8 @@ namespace OpenRA.Mods.AS.Traits
 	[Desc("Create a map-wide weapon storm.")]
 	class WeaponStormInfo : ITraitInfo, IRulesetLoaded
 	{
-		[WeaponReference, FieldLoader.Require]
+		[WeaponReference]
+		[FieldLoader.Require]
 		[Desc("Has to be defined in weapons.yaml as well.")]
 		public readonly string Weapon = null;
 
@@ -69,7 +70,8 @@ namespace OpenRA.Mods.AS.Traits
 
 		readonly uint ar, ag, ab;
 
-		[Sync] int ticks;
+		[Sync]
+		int ticks;
 		bool isEnabled;
 
 		World world;

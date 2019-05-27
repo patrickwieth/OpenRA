@@ -20,7 +20,8 @@ namespace OpenRA.Mods.AS.Warheads
 	[Desc("Fires a defined amount of weapons with their maximum range in a wave pattern.")]
 	public class FireRadiusWarhead : WarheadAS, IRulesetLoaded<WeaponInfo>
 	{
-		[WeaponReference, FieldLoader.Require]
+		[WeaponReference]
+		[FieldLoader.Require]
 		[Desc("Has to be defined in weapons.yaml as well.")]
 		public readonly string Weapon = null;
 

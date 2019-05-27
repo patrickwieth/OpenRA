@@ -74,8 +74,12 @@ namespace OpenRA.Mods.AS.Projectiles
 		readonly Animation anim, parachute;
 		readonly ProjectileArgs args;
 		readonly WVec acceleration;
-		[Sync] WVec velocity;
-		[Sync] WPos pos;
+
+		[Sync]
+		WVec velocity;
+		[Sync]
+		WPos pos;
+
 		bool exploded;
 
 		public ParaBomb(ParaBombInfo info, ProjectileArgs args)

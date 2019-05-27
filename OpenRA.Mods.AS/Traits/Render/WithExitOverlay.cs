@@ -20,13 +20,15 @@ namespace OpenRA.Mods.AS.Traits
 	public class WithExitOverlayInfo : ConditionalTraitInfo, Requires<RenderSpritesInfo>, Requires<BodyOrientationInfo>
 	{
 		[Desc("Sequence name to use")]
-		[SequenceReference] public readonly string Sequence = "exit-overlay";
+		[SequenceReference]
+		public readonly string Sequence = "exit-overlay";
 
 		[Desc("Position relative to body")]
 		public readonly WVec Offset = WVec.Zero;
 
 		[Desc("Custom palette name")]
-		[PaletteReference("IsPlayerPalette")] public readonly string Palette = null;
+		[PaletteReference("IsPlayerPalette")]
+		public readonly string Palette = null;
 
 		[Desc("Custom palette is a player palette BaseName")]
 		public readonly bool IsPlayerPalette = false;

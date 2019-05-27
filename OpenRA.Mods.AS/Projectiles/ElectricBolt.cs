@@ -72,7 +72,10 @@ namespace OpenRA.Mods.AS.Projectiles
 		readonly WVec upVector;
 		readonly MersenneTwister random;
 		readonly bool hasLaunchEffect;
-		[Sync] readonly WPos target, source;
+
+		[Sync]
+		readonly WPos target, source;
+
 		int ticks = 0;
 
 		HashSet<Pair<Color, WPos[]>> zaps;

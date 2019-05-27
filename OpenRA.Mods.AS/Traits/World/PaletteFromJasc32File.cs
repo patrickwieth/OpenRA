@@ -23,7 +23,8 @@ namespace OpenRA.Mods.AS.Traits
 		+ "For background transparency, please set your intended background color with an alpha value of 0.")]
 	class PaletteFromJasc32FileInfo : ITraitInfo
 	{
-		[FieldLoader.Require, PaletteDefinition]
+		[FieldLoader.Require]
+		[PaletteDefinition]
 		[Desc("Internal palette name.")]
 		public readonly string Name = null;
 
