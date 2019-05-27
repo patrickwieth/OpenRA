@@ -34,10 +34,10 @@ namespace OpenRA.Mods.Common.Traits
 		readonly HashSet<PPos> footprint;
 
 		[Sync]
-		CPos cachedLocation;
+		protected CPos cachedLocation;
 
 		[Sync]
-		WDist cachedRange;
+		protected WDist cachedRange;
 
 		[Sync]
 		protected bool cachedTraitDisabled;

@@ -23,6 +23,14 @@ namespace OpenRA.Mods.AS.Warheads
 		"These warheads check for the Air TargetType when detonated inair!")]
 	public abstract class WarheadAS : Warhead
 	{
+		public enum ImpactType
+		{
+			None,
+			Ground,
+			Air,
+			TargetHit
+		}
+
 		public ImpactType GetImpactType(World world, CPos cell, WPos pos, Actor firedBy)
 		{
 			// Missiles need a margin because they sometimes explode a little above ground
