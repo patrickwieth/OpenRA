@@ -317,6 +317,12 @@
 		BuildSounds: place2.aud
 		TerrainTypes: Clear, Rough, Road, DirtRoad, Green, Sand, Pavement
 		UndeploySounds: cashturn.aud
+	ActorPreviewPlaceBuildingPreview:
+		Palette: placefootprint
+		LineBuildSegmentPalette: placelinesegment
+		OverridePalette: placebuilding
+		FootprintUnderPreview: Valid, LineBuild, Invalid
+		FootprintOverPreview: None
 	RequiresBuildableArea:
 		AreaTypes: building
 		Adjacent: 4
@@ -466,6 +472,9 @@
 		BuildSounds: place2.aud
 		TerrainTypes: Clear, Rough, Road, DirtRoad, Green, Sand, Pavement
 		UndeploySounds: cashturn.aud
+	FootprintPlaceBuildingPreview:
+		Palette: placefootprint
+		LineBuildSegmentPalette: placelinesegment
 	RequiresBuildableArea:
 		AreaTypes: building
 		Adjacent: 7
@@ -513,6 +522,10 @@
 	Building:
 		BuildSounds: place2.aud
 		UndeploySounds: cashturn.aud
+	SequencePlaceBuildingPreview:
+		Sequence: place
+		SequencePalette: placebuilding
+		Palette: placefootprint
 	KillsSelf:
 		RemoveInstead: true
 	RenderSprites:
@@ -884,6 +897,8 @@
 		VTOL: true
 	Hovers@CRUISING:
 		RequiresCondition: cruising
+		BobDistance: -64
+		InitialHeight: 64
 
 ^AircraftHusk:
 	RenderVoxels:
