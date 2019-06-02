@@ -155,7 +155,7 @@ namespace OpenRA.Mods.AS.Warheads
 						{
 							w.Add(unit);
 							if (Paradrop)
-								unit.QueueActivity(new Parachute(unit, pos));
+								unit.QueueActivity(new Parachute(unit, unit));
 							else
 								unit.QueueActivity(new FallDown(unit, pos, FallRate));
 
