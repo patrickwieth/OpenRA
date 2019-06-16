@@ -24,6 +24,9 @@ namespace OpenRA.Mods.AS.Traits
 		[Desc("The sound played when the mindcontrol is revoked.")]
 		public readonly string[] RevokeControlSounds = { };
 
+		[Desc("Map player to transfer this actor to if the owner lost the game.")]
+		public readonly string FallbackOwner = "Creeps";
+
 		public override object Create(ActorInitializer init) { return new MindControllable(init.Self, this); }
 	}
 
@@ -103,7 +106,7 @@ namespace OpenRA.Mods.AS.Traits
 			if (creatorOwner.WinState == WinState.Lost)
 				self.ChangeOwner(self.World.WorldActor.Owner);
 			else
-				self.ChangeOwner(creatorOwner);
+				self.ChangeOwner(self.World.Players.First(p => p.InternalName == info.FallbackOwner));
 
 			UnlinkMaster(self, master);
 
