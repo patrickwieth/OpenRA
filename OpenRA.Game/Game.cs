@@ -197,7 +197,12 @@ namespace OpenRA
 			var replay = OrderManager.Connection as ReplayConnection;
 			var replayName = replay != null ? replay.Filename : null;
 			var lobbyInfo = OrderManager.LobbyInfo;
-			var orders = new[] {
+
+			// Reseed the RNG so this isn't an exact repeat of the last game
+			lobbyInfo.GlobalSettings.RandomSeed = CosmeticRandom.Next();
+
+			var orders = new[]
+			{
 					Order.Command("sync_lobby {0}".F(lobbyInfo.Serialize())),
 					Order.Command("startgame")
 			};

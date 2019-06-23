@@ -20,11 +20,23 @@ FACT:
 	Production:
 		Produces: Building.GDI, Building.Nod, Defence.GDI, Defence.Nod
 	Transforms:
-		RequiresCondition: factundeploy && !build-incomplete
-		PauseOnCondition: being-demolished
+		RequiresCondition: factundeploy
+		PauseOnCondition: being-demolished || build-incomplete
 		IntoActor: mcv
 		Offset: 1,1
 		Facing: 108
+	TransformsIntoMobile:
+		RequiresCondition: factundeploy
+		Locomotor: heavywheeled
+		RequiresForceMove: true
+	TransformsIntoPassenger:
+		RequiresCondition: factundeploy
+		CargoType: Vehicle
+		RequiresForceMove: true
+	TransformsIntoRepairable:
+		RequiresCondition: factundeploy
+		RepairActors: fix
+		RequiresForceMove: true
 	GrantConditionOnPrerequisite@GLOBALFACTUNDEPLOY:
 		Condition: factundeploy
 		Prerequisites: global-factundeploy
@@ -645,6 +657,7 @@ HQ:
 		UseDirectionalTarget: True
 		TargetPlaceholderCursorAnimation: airstriketarget
 		DirectionArrowAnimation: airstrikedirection
+		SupportPowerPaletteOrder: 10
 	SupportPowerChargeBar:
 	Power:
 		Amount: -50
@@ -745,6 +758,7 @@ EYE:
 		OnFireSound: ion1.aud
 		DisplayRadarPing: True
 		CameraActor: camera.small
+		SupportPowerPaletteOrder: 20
 	SupportPowerChargeBar:
 	Power:
 		Amount: -200
@@ -808,6 +822,7 @@ TMPL:
 		ArrowSequence: arrow
 		ClockSequence: clock
 		CircleSequence: circles
+		SupportPowerPaletteOrder: 30
 	WithBuildingBib:
 	WithNukeLaunchAnimation:
 		RequiresCondition: !build-incomplete
