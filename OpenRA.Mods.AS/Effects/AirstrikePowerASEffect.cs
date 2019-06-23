@@ -35,7 +35,7 @@ namespace OpenRA.Mods.AS.Effects
 		{
 			this.info = info;
 			this.world = world;
-			this.owner = p;
+			owner = p;
 			this.pos = pos;
 			this.planes = planes;
 

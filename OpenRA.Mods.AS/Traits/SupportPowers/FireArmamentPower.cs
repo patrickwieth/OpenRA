@@ -192,7 +192,8 @@ namespace OpenRA.Mods.AS.Traits
 				}
 			}
 
-			foreach (var a in activeArmaments) {
+			foreach (var a in activeArmaments)
+			{
 				a.CheckFire(self, facing, target);
 			}
 
@@ -253,6 +254,7 @@ namespace OpenRA.Mods.AS.Traits
 					.Where(x => x.Actor.Owner == self.Owner
 						&& x.Trait.FireArmamentPowerInfo.OrderName.Contains(power.FireArmamentPowerInfo.OrderName)
 						&& x.Trait.IsActive(x.Actor));
+
 				foreach (var a in actorswithpower)
 				{
 					yield return Tuple.Create(a.Trait,

@@ -175,6 +175,7 @@ namespace OpenRA.Mods.AS.Warheads
 							if (sound != null)
 								Game.Sound.Play(SoundType.World, sound, pos);
 							}
+
 						placed = true;
 						break;
 						}

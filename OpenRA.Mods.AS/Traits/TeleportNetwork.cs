@@ -75,7 +75,7 @@ namespace OpenRA.Mods.AS.Traits
 
 		public void AddedToWorld(Actor self)
 		{
-			tnm = self.Owner.PlayerActor.TraitsImplementing<TeleportNetworkManager>().First(x => x.Type == this.Info.Type);
+			tnm = self.Owner.PlayerActor.TraitsImplementing<TeleportNetworkManager>().First(x => x.Type == Info.Type);
 			IncreaseTeleportNetworkCount(self, self.Owner);
 		}
 

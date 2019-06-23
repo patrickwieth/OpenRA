@@ -45,7 +45,7 @@ namespace OpenRA.Mods.AS.Traits
 		public AttackLeapAS(Actor self, AttackLeapASInfo info)
 			: base(self, info)
 		{
-			this.LeapInfo = info;
+			LeapInfo = info;
 			barrel = new Barrel { Offset = WVec.Zero, Yaw = WAngle.Zero };
 		}
 

@@ -40,7 +40,7 @@ namespace OpenRA.Mods.AS.Traits
 
 		public GrantExternalConditionToKiller(Actor self, GrantExternalConditionToKillerInfo info)
 		{
-			this.Info = info;
+			Info = info;
 		}
 
 		void INotifyKilled.Killed(Actor self, AttackInfo e)

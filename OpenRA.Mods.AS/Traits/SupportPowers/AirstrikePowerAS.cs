@@ -132,41 +132,20 @@ namespace OpenRA.Mods.AS.Traits
 						new FacingInit(attackFacing),
 					});
 
-					var plane = !a.Trait<Aircraft>().Info.CanHover;
 					delta = new WVec(WDist.Zero, info.BeaconDistanceOffset, WDist.Zero).Rotate(attackRotation);
 
-					if (plane)
+					if (info.Mission == AirstrikeMission.Attack)
 					{
-						if (info.Mission == AirstrikeMission.Attack)
-						{
-							var height = self.World.Map.DistanceAboveTerrain(target + spawnOffset);
-							a.QueueActivity(new FlyAttack(a, Target.FromPos(target + spawnOffset - new WVec(WDist.Zero, WDist.Zero, height)), true));
-						}
-						else
-						{
-							a.QueueActivity(new Fly(a, Target.FromPos(target + spawnOffset)));
-							a.QueueActivity(new AttackMoveActivity(a, () => new FlyCircle(a, info.GuardDuration)));
-						}
-
-						a.QueueActivity(new FlyOffMap(a));
+						var height = self.World.Map.DistanceAboveTerrain(target + spawnOffset);
+						a.QueueActivity(new FlyAttack(a, Target.FromPos(target + spawnOffset - new WVec(WDist.Zero, WDist.Zero, height)), true));
 					}
 					else
 					{
-						if (info.Mission == AirstrikeMission.Attack)
-						{
-							var height = self.World.Map.DistanceAboveTerrain(target + spawnOffset);
-							a.QueueActivity(new HeliAttack(a, Target.FromPos(target + spawnOffset - new WVec(WDist.Zero, WDist.Zero, height)), true));
-						}
-						else
-						{
-							a.QueueActivity(new HeliFly(a, Target.FromPos(target + spawnOffset)));
-							a.QueueActivity(new AttackMoveActivity(a, () => new FlyCircle(a, info.GuardDuration)));
-						}
-
-						var finishPos = target + (self.World.Map.DistanceToEdge(target, delta) + info.Cordon).Length * delta / 1024;
-						a.QueueActivity(new HeliFly(a, Target.FromPos(finishPos + spawnOffset)));
+						a.QueueActivity(new Fly(a, Target.FromPos(target + spawnOffset)));
+						a.QueueActivity(new AttackMoveActivity(a, () => new FlyCircle(a, info.GuardDuration)));
 					}
 
+					a.QueueActivity(new FlyOffMap(a));
 					a.QueueActivity(new RemoveSelf());
 
 					aircrafts.Add(a);

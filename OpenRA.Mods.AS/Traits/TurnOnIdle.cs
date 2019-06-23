@@ -29,7 +29,8 @@ namespace OpenRA.Mods.AS.Traits
 		int targetFacing;
 		Mobile mobile;
 
-		public TurnOnIdle(ActorInitializer init, TurnOnIdleInfo info) : base(info)
+		public TurnOnIdle(ActorInitializer init, TurnOnIdleInfo info)
+			: base(info)
 		{
 			currDelay = init.World.SharedRandom.Next(Info.MinDelay, Info.MaxDelay);
 			mobile = init.Self.Trait<Mobile>();
