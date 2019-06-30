@@ -96,6 +96,9 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Altitude at which the aircraft considers itself landed.")]
 		public readonly WDist LandAltitude = WDist.Zero;
 
+		[Desc("Range to search for an alternative landing location if the ordered cell is blocked.")]
+		public readonly WDist LandRange = WDist.FromCells(5);
+
 		[Desc("How fast this actor ascends or descends during horizontal movement.")]
 		public readonly WAngle MaximumPitch = WAngle.FromDegrees(10);
 
@@ -184,10 +187,12 @@ namespace OpenRA.Mods.Common.Traits
 
 		Repairable repairable;
 		Rearmable rearmable;
+		IAircraftCenterPositionOffset[] positionOffsets;
 		ConditionManager conditionManager;
 		IDisposable reservation;
 		IEnumerable<int> speedModifiers;
 		INotifyMoving[] notifyMoving;
+		IOverrideAircraftLanding overrideAircraftLanding;
 
 		[Sync]
 		public int Facing { get; set; }
@@ -200,15 +205,15 @@ namespace OpenRA.Mods.Common.Traits
 		public Actor ReservedActor { get; private set; }
 		public bool MayYieldReservation { get; private set; }
 		public bool ForceLanding { get; private set; }
-		CPos? landingCell;
+		IEnumerable<CPos> landingCells = Enumerable.Empty<CPos>();
 		bool requireForceMove;
-
-		public WDist LandAltitude { get; private set; }
 
 		public static WPos GroundPosition(Actor self)
 		{
 			return self.CenterPosition - new WVec(WDist.Zero, WDist.Zero, self.World.Map.DistanceAboveTerrain(self.CenterPosition));
 		}
+
+		public bool AtLandAltitude { get { return self.World.Map.DistanceAboveTerrain(GetPosition()) == LandAltitude; } }
 
 		bool airborne;
 		bool cruising;
@@ -233,17 +238,27 @@ namespace OpenRA.Mods.Common.Traits
 				SetPosition(self, init.Get<CenterPositionInit, WPos>());
 
 			Facing = init.Contains<FacingInit>() ? init.Get<FacingInit, int>() : Info.InitialFacing;
-			LandAltitude = info.LandAltitude;
 		}
 
-		public void AddLandingOffset(int offset)
+		public WDist LandAltitude
 		{
-			LandAltitude += new WDist(offset);
+			get
+			{
+				var alt = Info.LandAltitude;
+				foreach (var offset in positionOffsets)
+					alt -= new WDist(offset.PositionOffset.Z);
+
+				return alt;
+			}
 		}
 
-		public void SubtractLandingOffset(int offset)
+		public WPos GetPosition()
 		{
-			LandAltitude -= new WDist(offset);
+			var pos = self.CenterPosition;
+			foreach (var offset in positionOffsets)
+				pos += offset.PositionOffset;
+
+			return pos;
 		}
 
 		public virtual IEnumerable<VariableObserver> GetVariableObservers()
@@ -278,6 +293,8 @@ namespace OpenRA.Mods.Common.Traits
 			speedModifiers = self.TraitsImplementing<ISpeedModifier>().ToArray().Select(sm => sm.GetSpeedModifier());
 			cachedPosition = self.CenterPosition;
 			notifyMoving = self.TraitsImplementing<INotifyMoving>().ToArray();
+			positionOffsets = self.TraitsImplementing<IAircraftCenterPositionOffset>().ToArray();
+			overrideAircraftLanding = self.TraitOrDefault<IOverrideAircraftLanding>();
 		}
 
 		void INotifyAddedToWorld.AddedToWorld(Actor self)
@@ -336,12 +353,7 @@ namespace OpenRA.Mods.Common.Traits
 				&& !((self.CurrentActivity is Land) || self.CurrentActivity is Turn))
 			{
 				self.CancelActivity();
-
-				if (Info.VTOL && Info.TurnToLand)
-					self.QueueActivity(new Turn(self, Info.InitialFacing));
-
 				self.QueueActivity(new Land(self));
-
 				ForceLanding = true;
 			}
 
@@ -515,7 +527,7 @@ namespace OpenRA.Mods.Common.Traits
 			return AircraftCanEnter(a);
 		}
 
-		public bool AircraftCanEnter(Actor a)
+		bool AircraftCanEnter(Actor a)
 		{
 			if (self.AppearsHostileTo(a))
 				return false;
@@ -532,12 +544,7 @@ namespace OpenRA.Mods.Common.Traits
 		public Pair<CPos, SubCell>[] OccupiedCells()
 		{
 			if (!self.IsAtGroundLevel())
-			{
-				if (landingCell.HasValue)
-					return new[] { Pair.New(landingCell.Value, SubCell.FullCell) };
-
-				return NoCells;
-			}
+				return landingCells.Select(c => Pair.New(c, SubCell.FullCell)).ToArray();
 
 			return new[] { Pair.New(TopLeft, SubCell.FullCell) };
 		}
@@ -553,27 +560,63 @@ namespace OpenRA.Mods.Common.Traits
 			return speed * dir / 1024;
 		}
 
-		public bool CanLand(CPos cell, Actor ignoreActor = null)
+		public CPos? FindLandingLocation(CPos targetCell, WDist maxSearchDistance)
+		{
+			// The easy case
+			if (CanLand(targetCell, blockedByMobile: false))
+				return targetCell;
+
+			var cellRange = (maxSearchDistance.Length + 1023) / 1024;
+			var centerPosition = self.World.Map.CenterOfCell(targetCell);
+			foreach (var c in self.World.Map.FindTilesInCircle(targetCell, cellRange))
+			{
+				if (!CanLand(c, blockedByMobile: false))
+					continue;
+
+				var delta = self.World.Map.CenterOfCell(c) - centerPosition;
+				if (delta.LengthSquared < maxSearchDistance.LengthSquared)
+					return c;
+			}
+
+			return null;
+		}
+
+		public bool CanLand(IEnumerable<CPos> cells, Actor dockingActor = null, bool blockedByMobile = true)
+		{
+			foreach (var c in cells)
+				if (!CanLand(c, dockingActor, blockedByMobile))
+					return false;
+
+			return true;
+		}
+
+		public bool CanLand(CPos cell, Actor dockingActor = null, bool blockedByMobile = true)
 		{
 			if (!self.World.Map.Contains(cell))
 				return false;
 
 			foreach (var otherActor in self.World.ActorMap.GetActorsAt(cell))
-				if (IsBlockedBy(self, otherActor, ignoreActor))
+				if (IsBlockedBy(self, otherActor, dockingActor, blockedByMobile))
 					return false;
 
-			foreach (var otherActor in self.World.ActorMap.GetActorsAt(cell))
-				if (AircraftCanEnter(otherActor))
-					return true;
+			// Terrain type is ignored when docking with an actor
+			if (dockingActor != null)
+				return true;
 
-			var type = self.World.Map.GetTerrainInfo(cell).Type;
-			return Info.LandableTerrainTypes.Contains(type);
+			var landableTerrain = overrideAircraftLanding != null ? overrideAircraftLanding.LandableTerrainTypes : Info.LandableTerrainTypes;
+			return landableTerrain.Contains(self.World.Map.GetTerrainInfo(cell).Type);
 		}
 
-		bool IsBlockedBy(Actor self, Actor otherActor, Actor ignoreActor)
+		bool IsBlockedBy(Actor self, Actor otherActor, Actor ignoreActor, bool blockedByMobile = true)
 		{
 			// We are not blocked by the actor we are ignoring.
 			if (otherActor == self || otherActor == ignoreActor)
+				return false;
+
+			// We are not blocked by actors we can nudge out of the way
+			// TODO: Generalize blocker checks and handling here and in Locomotor
+			if (!blockedByMobile && self.Owner.Stances[otherActor.Owner] == Stance.Ally &&
+				otherActor.TraitOrDefault<Mobile>() != null && otherActor.CurrentActivity == null)
 				return false;
 
 			// PERF: Only perform ITemporaryBlocker trait look-up if mod/map rules contain any actors that are temporary blockers
@@ -621,7 +664,8 @@ namespace OpenRA.Mods.Common.Traits
 
 		protected virtual void OnBecomingIdle(Actor self)
 		{
-			var atLandAltitude = self.World.Map.DistanceAboveTerrain(CenterPosition) == LandAltitude;
+			var altitude = self.World.Map.DistanceAboveTerrain(CenterPosition);
+			var atLandAltitude = altitude == LandAltitude;
 
 			// Work-around to prevent players from accidentally canceling resupply by pressing 'Stop',
 			// by re-queueing Resupply as long as resupply hasn't finished and aircraft is still on resupplier.
@@ -637,13 +681,8 @@ namespace OpenRA.Mods.Common.Traits
 				}
 			}
 
-			if (!atLandAltitude && Info.LandWhenIdle)
-			{
-				if (Info.VTOL && Info.TurnToLand)
-					self.QueueActivity(new Turn(self, Info.InitialFacing));
-
+			if (!atLandAltitude && Info.LandWhenIdle && Info.LandableTerrainTypes.Count > 0)
 				self.QueueActivity(new Land(self));
-			}
 			else if (!Info.CanHover && !atLandAltitude)
 				self.QueueActivity(new FlyCircle(self, -1, Info.IdleTurnSpeed > -1 ? Info.IdleTurnSpeed : TurnSpeed));
 			else if (atLandAltitude && !CanLand(self.Location) && ReservedActor == null)
@@ -654,6 +693,8 @@ namespace OpenRA.Mods.Common.Traits
 				// Will go away soon (in a separate PR) with the arrival of ActionsWhenIdle.
 				self.QueueActivity(new FlyCircle(self, -1, Info.IdleTurnSpeed > -1 ? Info.IdleTurnSpeed : TurnSpeed));
 			}
+			else if (!atLandAltitude && altitude != Info.CruiseAltitude && !Info.LandWhenIdle)
+				self.QueueActivity(new TakeOff(self));
 		}
 
 		#region Implement IPositionable
@@ -741,9 +782,16 @@ namespace OpenRA.Mods.Common.Traits
 				notifyCrushed.Trait.WarnCrush(notifyCrushed.Actor, self, Info.Crushes);
 		}
 
+		public void AddInfluence(IEnumerable<CPos> landingCells)
+		{
+			this.landingCells = landingCells;
+			if (self.IsInWorld)
+				self.World.ActorMap.AddInfluence(self, this);
+		}
+
 		public void AddInfluence(CPos landingCell)
 		{
-			this.landingCell = landingCell;
+			landingCells = new List<CPos> { landingCell };
 			if (self.IsInWorld)
 				self.World.ActorMap.AddInfluence(self, this);
 		}
@@ -753,7 +801,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (self.IsInWorld)
 				self.World.ActorMap.RemoveInfluence(self, this);
 
-			landingCell = null;
+			landingCells = Enumerable.Empty<CPos>();
 		}
 
 		#endregion
@@ -860,6 +908,10 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			get
 			{
+				yield return new EnterAlliedActorTargeter<BuildingInfo>("ForceEnter", 6,
+					(target, modifiers) => AircraftCanEnter(target) && modifiers.HasModifier(TargetModifiers.ForceMove),
+					target => Reservable.IsAvailableFor(target, self));
+
 				yield return new EnterAlliedActorTargeter<BuildingInfo>("Enter", 5,
 					AircraftCanEnter, target => Reservable.IsAvailableFor(target, self));
 
@@ -869,7 +921,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		public Order IssueOrder(Actor self, IOrderTargeter order, Target target, bool queued)
 		{
-			if (order.OrderID == "Enter" || order.OrderID == "Move")
+			if (order.OrderID == "Enter" || order.OrderID == "Move" || order.OrderID == "Land" || order.OrderID == "ForceEnter")
 				return new Order(order.OrderID, self, target, queued);
 
 			return null;
@@ -889,6 +941,7 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			switch (order.OrderString)
 			{
+				case "Land":
 				case "Move":
 					if (!Info.MoveIntoShroud && order.Target.Type != TargetType.Invalid)
 					{
@@ -899,6 +952,7 @@ namespace OpenRA.Mods.Common.Traits
 
 					return Info.Voice;
 				case "Enter":
+				case "ForceEnter":
 				case "Stop":
 				case "Scatter":
 					return Info.Voice;
@@ -910,7 +964,8 @@ namespace OpenRA.Mods.Common.Traits
 
 		public void ResolveOrder(Actor self, Order order)
 		{
-			if (order.OrderString == "Move")
+			var orderString = order.OrderString;
+			if (orderString == "Move")
 			{
 				var cell = self.World.Map.Clamp(self.World.Map.CellContaining(order.Target.CenterPosition));
 				if (!Info.MoveIntoShroud && !self.Owner.Shroud.IsExplored(cell))
@@ -923,9 +978,23 @@ namespace OpenRA.Mods.Common.Traits
 				self.SetTargetLine(target, Color.Green);
 				self.QueueActivity(order.Queued, new Fly(self, target));
 			}
-			else if (order.OrderString == "Enter" || order.OrderString == "Repair")
+			else if (orderString == "Land")
 			{
-				// Enter and Repair orders are only valid for own/allied actors,
+				var cell = self.World.Map.Clamp(self.World.Map.CellContaining(order.Target.CenterPosition));
+				if (!Info.MoveIntoShroud && !self.Owner.Shroud.IsExplored(cell))
+					return;
+
+				if (!order.Queued)
+					UnReserve();
+
+				var target = Target.FromCell(self.World, cell);
+
+				self.SetTargetLine(target, Color.Green);
+				self.QueueActivity(order.Queued, new Land(self, target));
+			}
+			else if (orderString == "Enter" || orderString == "ForceEnter" || orderString == "Repair")
+			{
+				// Enter, ForceEnter and Repair orders are only valid for own/allied actors,
 				// which are guaranteed to never be frozen.
 				if (order.Target.Type != TargetType.Actor)
 					return;
@@ -939,9 +1008,13 @@ namespace OpenRA.Mods.Common.Traits
 				if (Reservable.IsAvailableFor(targetActor, self))
 					self.SetTargetLine(Target.FromActor(targetActor), Color.Green);
 
-				self.QueueActivity(order.Queued, new ReturnToBase(self, Info.AbortOnResupply, targetActor));
+				// Aircraft with TakeOffOnResupply would immediately take off again, so there's no point in automatically forcing
+				// them to land on a resupplier. For aircraft without it, it makes more sense to land than to idle above a
+				// free resupplier.
+				var forceLand = orderString == "ForceEnter" || !Info.TakeOffOnResupply;
+				self.QueueActivity(order.Queued, new ReturnToBase(self, Info.AbortOnResupply, targetActor, forceLand));
 			}
-			else if (order.OrderString == "Stop")
+			else if (orderString == "Stop")
 			{
 				self.CancelActivity();
 
@@ -952,7 +1025,7 @@ namespace OpenRA.Mods.Common.Traits
 
 				UnReserve();
 			}
-			else if (order.OrderString == "ReturnToBase" && rearmable != null && rearmable.Info.RearmActors.Any())
+			else if (orderString == "ReturnToBase" && rearmable != null && rearmable.Info.RearmActors.Any())
 			{
 				// Don't restart activity every time deploy hotkey is triggered
 				if (self.CurrentActivity is ReturnToBase || GetActorBelow() != null)
@@ -962,10 +1035,10 @@ namespace OpenRA.Mods.Common.Traits
 					UnReserve();
 
 				// Aircraft with TakeOffOnResupply would immediately take off again, so there's no point in forcing them to land
-				// on a resupplier. For aircraft without it, it makes more sense to land than to idle above a free resupplier, though.
+				// on a resupplier. For aircraft without it, it makes more sense to land than to idle above a free resupplier.
 				self.QueueActivity(order.Queued, new ReturnToBase(self, Info.AbortOnResupply, null, !Info.TakeOffOnResupply));
 			}
-			else if (order.OrderString == "Scatter")
+			else if (orderString == "Scatter")
 				Nudge(self);
 		}
 
@@ -1050,13 +1123,14 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			readonly Aircraft aircraft;
 
-			public string OrderID { get { return "Move"; } }
+			public string OrderID { get; protected set; }
 			public int OrderPriority { get { return 4; } }
 			public bool IsQueued { get; protected set; }
 
 			public AircraftMoveOrderTargeter(Aircraft aircraft)
 			{
 				this.aircraft = aircraft;
+				OrderID = "Move";
 			}
 
 			public bool TargetOverridesSelection(TargetModifiers modifiers)
@@ -1068,6 +1142,9 @@ namespace OpenRA.Mods.Common.Traits
 			{
 				if (target.Type != TargetType.Terrain || (aircraft.requireForceMove && !modifiers.HasModifier(TargetModifiers.ForceMove)))
 					return false;
+
+				if (modifiers.HasModifier(TargetModifiers.ForceMove))
+					OrderID = "Land";
 
 				var location = self.World.Map.CellContaining(target.CenterPosition);
 				var explored = self.Owner.Shroud.IsExplored(location);

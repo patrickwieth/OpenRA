@@ -179,6 +179,14 @@
 	AttackMove:
 		AssaultMoveCondition: assault-move
 
+^FlatSelectionMode:
+	Selectable:
+		PriorityModifiers: Ctrl
+
+^LowPrioritySelectionMode:
+	Selectable:
+		PriorityModifiers: Ctrl, Alt
+
 ^2x1Shape:
 	HitShape:
 		Type: Rectangle
@@ -536,6 +544,7 @@
 	Inherits@3: ^SpriteActor
 	Inherits@4: ^Cloakable
 	Inherits@CRATESTATS: ^CrateStatModifiers
+	Inherits@SELECTION_MODE: ^FlatSelectionMode
 	Huntable:
 	OwnerLostAction:
 		Action: Kill
@@ -738,6 +747,7 @@
 	Inherits@4: ^Cloakable
 	Inherits@5: ^DamagedByVeins
 	Inherits@CRATESTATS: ^CrateStatModifiers
+	Inherits@SELECTION_MODE: ^FlatSelectionMode
 	Huntable:
 	OwnerLostAction:
 		Action: Kill
@@ -839,6 +849,7 @@
 ^Aircraft:
 	Inherits@2: ^ExistsInWorld
 	Inherits@3: ^Cloakable
+	Inherits@SELECTION_MODE: ^FlatSelectionMode
 	Huntable:
 	OwnerLostAction:
 		Action: Kill
@@ -864,6 +875,8 @@
 		Voice: Move
 		IdealSeparation: 853
 		MaximumPitch: 120
+		LandableTerrainTypes: Clear, Road, Rail, DirtRoad, Rough, Tiberium, BlueTiberium, Veins
+		Crushes: crate, infantry
 	Voiced:
 		VoiceSet: Heli
 	HiddenUnderFog:
@@ -931,6 +944,7 @@
 	Inherits@1: ^ExistsInWorld
 	Inherits@2: ^SpriteActor
 	Inherits@3: ^HealsOnTiberium
+	Inherits@SELECTION_MODE: ^FlatSelectionMode
 	Huntable:
 	DrawLineToTarget:
 	Health:
@@ -1082,6 +1096,7 @@
 	Inherits@1: ^EmpDisable
 	Inherits@2: ^ExistsInWorld
 	Inherits@3: ^Cloakable
+	Inherits@SELECTION_MODE: ^FlatSelectionMode
 	Huntable:
 	RenderVoxels:
 	RenderSprites:

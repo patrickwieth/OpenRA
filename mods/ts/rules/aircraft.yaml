@@ -10,8 +10,6 @@ DPOD:
 		TurnSpeed: 5
 		Speed: 149
 		InitialFacing: 0
-		LandableTerrainTypes: Clear,Road,Rail,DirtRoad,Rough,Tiberium,BlueTiberium,Veins
-		Crushes: crate, infantry
 	Health:
 		HP: 6000
 	Armor:
@@ -46,8 +44,6 @@ DSHP:
 		TurnSpeed: 5
 		Speed: 168
 		InitialFacing: 0
-		LandableTerrainTypes: Clear,Road,Rail,DirtRoad,Rough,Tiberium,BlueTiberium,Veins
-		Crushes: crate, infantry
 		TakeoffSounds: dropup1.aud
 		LandingSounds: dropdwn1.aud
 		IdealSeparation: 1275
@@ -194,12 +190,10 @@ ORCATRAN:
 		Prerequisites: ~disabled
 	RenderSprites:
 	Aircraft:
-		LandWhenIdle: true
+		LandWhenIdle: false
 		TurnSpeed: 5
 		Speed: 84
 		InitialFacing: 0
-		LandableTerrainTypes: Clear,Road,Rail,DirtRoad,Rough,Tiberium,BlueTiberium,Veins
-		Crushes: crate, infantry
 		TakeoffSounds: orcaup1.aud
 		LandingSounds: orcadwn1.aud
 		IdealSeparation: 1275
@@ -216,6 +210,7 @@ ORCATRAN:
 		PipCount: 5
 		UnloadVoice: Move
 		EjectOnDeath: true
+		AfterUnloadDelay: 40
 	SpawnActorOnDeath:
 		Actor: ORCATRAN.Husk
 
@@ -233,18 +228,17 @@ TRNSPORT:
 		Prerequisites: ~gahpad, gadept
 		Description: VTOL aircraft capable of lifting\nand transporting vehicles.\n  Unarmed
 	Aircraft:
-		LandWhenIdle: true
 		TurnSpeed: 5
 		Speed: 149
 		InitialFacing: 0
-		LandableTerrainTypes: Clear,Road,Rail,DirtRoad,Rough,Tiberium,BlueTiberium,Veins
-		Crushes: crate, infantry
 		TakeoffSounds: dropup1.aud
 		LandingSounds: dropdwn1.aud
 		MoveIntoShroud: false
 	Carryall:
 		Voice: Move
 		LocalOffset: 0,0,-317
+		BeforeLoadDelay: 10
+		BeforeUnloadDelay: 10
 	Health:
 		HP: 17500
 	Armor:
