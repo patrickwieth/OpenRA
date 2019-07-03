@@ -44,22 +44,10 @@ namespace OpenRA.Mods.Common.Activities
 			if (assignTargetOnFirstRun)
 				destination = Target.FromCell(self.World, self.Location);
 
-			QueueChild(self, new Land(self, destination, deliverRange), true);
-			QueueChild(self, new Wait(carryall.Info.BeforeUnloadDelay, false), true);
-			QueueChild(self, new ReleaseUnit(self));
-			QueueChild(self, new TakeOff(self));
-		}
-
-		public override Activity Tick(Actor self)
-		{
-			if (ChildActivity != null)
-			{
-				ChildActivity = ActivityUtils.RunActivity(self, ChildActivity);
-				if (ChildActivity != null)
-					return this;
-			}
-
-			return NextActivity;
+			QueueChild(new Land(self, destination, deliverRange));
+			QueueChild(new Wait(carryall.Info.BeforeUnloadDelay, false));
+			QueueChild(new ReleaseUnit(self));
+			QueueChild(new TakeOff(self));
 		}
 
 		class ReleaseUnit : Activity
@@ -103,11 +91,6 @@ namespace OpenRA.Mods.Common.Activities
 					carryable.UnReserve(cargo);
 					carryable.Detached(cargo);
 				});
-			}
-
-			public override Activity Tick(Actor self)
-			{
-				return NextActivity;
 			}
 		}
 	}

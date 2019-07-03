@@ -71,15 +71,8 @@ namespace OpenRA.Mods.Common.Activities
 				target = Target.FromCell(self.World, self.Location);
 		}
 
-		public override Activity Tick(Actor self)
+		public override bool Tick(Actor self)
 		{
-			if (ChildActivity != null)
-			{
-				ChildActivity = ActivityUtils.RunActivity(self, ChildActivity);
-				if (ChildActivity != null)
-					return this;
-			}
-
 			if (IsCanceling || target.Type == TargetType.Invalid)
 			{
 				if (landingInitiated)
@@ -94,16 +87,16 @@ namespace OpenRA.Mods.Common.Activities
 						var dat = self.World.Map.DistanceAboveTerrain(aircraft.CenterPosition);
 						if (dat > aircraft.LandAltitude && dat < aircraft.Info.CruiseAltitude)
 						{
-							QueueChild(self, new TakeOff(self), true);
-							return this;
+							QueueChild(new TakeOff(self));
+							return false;
 						}
 
 						aircraft.RemoveInfluence();
-						return NextActivity;
+						return true;
 					}
 				}
 				else
-					return NextActivity;
+					return true;
 			}
 
 			var pos = aircraft.GetPosition();
@@ -114,7 +107,7 @@ namespace OpenRA.Mods.Common.Activities
 
 			// We are already at the landing location.
 			if ((targetPosition - pos).LengthSquared == 0)
-				return NextActivity;
+				return true;
 
 			// Look for free landing cell
 			if (target.Type == TargetType.Terrain && !landingInitiated)
@@ -124,9 +117,8 @@ namespace OpenRA.Mods.Common.Activities
 				// Cannot land so fly towards the last target location instead.
 				if (!newLocation.HasValue)
 				{
-					Cancel(self, true);
-					QueueChild(self, aircraft.MoveTo(landingCell, 0), true);
-					return this;
+					QueueChild(aircraft.MoveTo(landingCell, 0));
+					return true;
 				}
 
 				if (newLocation.Value != landingCell)
@@ -140,12 +132,12 @@ namespace OpenRA.Mods.Common.Activities
 			// Move towards landing location
 			if (aircraft.Info.VTOL && (pos - targetPosition).HorizontalLengthSquared != 0)
 			{
-				QueueChild(self, new Fly(self, Target.FromPos(targetPosition)), true);
+				QueueChild(new Fly(self, Target.FromPos(targetPosition)));
 
 				if (desiredFacing != -1)
-					QueueChild(self, new Turn(self, desiredFacing));
+					QueueChild(new Turn(self, desiredFacing));
 
-				return this;
+				return false;
 			}
 
 			if (!aircraft.Info.VTOL && !finishedApproach)
@@ -199,13 +191,13 @@ namespace OpenRA.Mods.Common.Activities
 				turnRadius = Fly.CalculateTurnRadius(aircraft.Info.Speed, aircraft.Info.TurnSpeed);
 
 				// Move along approach trajectory.
-				QueueChild(self, new Fly(self, Target.FromPos(w1), WDist.Zero, new WDist(turnRadius * 3)), true);
-				QueueChild(self, new Fly(self, Target.FromPos(w2)), true);
+				QueueChild(new Fly(self, Target.FromPos(w1), WDist.Zero, new WDist(turnRadius * 3)));
+				QueueChild(new Fly(self, Target.FromPos(w2)));
 
 				// Fix a problem when the airplane is sent to land near the landing cell
-				QueueChild(self, new Fly(self, Target.FromPos(w3), WDist.Zero, new WDist(turnRadius / 2)), true);
+				QueueChild(new Fly(self, Target.FromPos(w3), WDist.Zero, new WDist(turnRadius / 2)));
 				finishedApproach = true;
-				return this;
+				return false;
 			}
 
 			if (!landingInitiated)
@@ -216,13 +208,13 @@ namespace OpenRA.Mods.Common.Activities
 				{
 					// Maintain holding pattern.
 					if (aircraft.Info.CanHover)
-						QueueChild(self, new Wait(25), true);
+						QueueChild(new Wait(25));
 					else
-						QueueChild(self, new FlyCircle(self, 25), true);
+						QueueChild(new FlyCircle(self, 25));
 
 					self.NotifyBlocker(blockingCells);
 					finishedApproach = false;
-					return this;
+					return false;
 				}
 
 				if (aircraft.Info.LandingSounds.Length > 0)
@@ -238,9 +230,9 @@ namespace OpenRA.Mods.Common.Activities
 			{
 				var landAltitude = self.World.Map.DistanceAboveTerrain(targetPosition) + aircraft.LandAltitude;
 				if (Fly.VerticalTakeOffOrLandTick(self, aircraft, aircraft.Facing, landAltitude))
-					return this;
+					return false;
 
-				return NextActivity;
+				return true;
 			}
 
 			var d = targetPosition - pos;
@@ -251,13 +243,13 @@ namespace OpenRA.Mods.Common.Activities
 			{
 				var landingAltVec = new WVec(WDist.Zero, WDist.Zero, aircraft.LandAltitude);
 				aircraft.SetPosition(self, targetPosition + landingAltVec);
-				return NextActivity;
+				return true;
 			}
 
 			var landingAlt = self.World.Map.DistanceAboveTerrain(targetPosition) + aircraft.LandAltitude;
 			Fly.FlyTick(self, aircraft, d.Yaw.Facing, landingAlt);
 
-			return this;
+			return false;
 		}
 	}
 }

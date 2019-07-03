@@ -54,67 +54,60 @@ namespace OpenRA.Mods.Common.Activities
 			carryall.ReserveCarryable(self, cargo);
 		}
 
-		public override Activity Tick(Actor self)
+		public override bool Tick(Actor self)
 		{
-			if (ChildActivity != null)
-			{
-				ChildActivity = ActivityUtils.RunActivity(self, ChildActivity);
-				if (ChildActivity != null)
-					return this;
-			}
-
 			if (cargo != carryall.Carryable)
-				return NextActivity;
+				return true;
 
 			if (IsCanceling)
 			{
 				if (carryall.State == Carryall.CarryallState.Reserved)
 					carryall.UnreserveCarryable(self);
 
-				return NextActivity;
+				return true;
 			}
 
 			if (cargo.IsDead || carryable.IsTraitDisabled || !cargo.AppearsFriendlyTo(self))
 			{
 				carryall.UnreserveCarryable(self);
-				return NextActivity;
+				return true;
 			}
 
 			if (carryall.State != Carryall.CarryallState.Reserved)
-				return NextActivity;
+				return true;
 
 			switch (state)
 			{
 				case PickupState.Intercept:
-					QueueChild(self, movement.MoveWithinRange(Target.FromActor(cargo), WDist.FromCells(4), targetLineColor: Color.Yellow), true);
+					QueueChild(movement.MoveWithinRange(Target.FromActor(cargo), WDist.FromCells(4), targetLineColor: Color.Yellow));
 					state = PickupState.LockCarryable;
-					return this;
+					return false;
 
 				case PickupState.LockCarryable:
 					if (!carryable.LockForPickup(cargo, self))
 						Cancel(self);
 
 					state = PickupState.Pickup;
-					return this;
+					return false;
 
 				case PickupState.Pickup:
 				{
 					// Land at the target location
 					var localOffset = carryall.OffsetForCarryable(self, cargo).Rotate(carryableBody.QuantizeOrientation(self, cargo.Orientation));
-					QueueChild(self, new Land(self, Target.FromActor(cargo), -carryableBody.LocalToWorld(localOffset), carryableFacing.Facing), true);
+					QueueChild(new Land(self, Target.FromActor(cargo), -carryableBody.LocalToWorld(localOffset), carryableFacing.Facing));
 
 					// Pause briefly before attachment for visual effect
 					if (delay > 0)
-						QueueChild(self, new Wait(delay, false));
+						QueueChild(new Wait(delay, false));
 
 					// Remove our carryable from world
-					QueueChild(self, new CallFunc(() => Attach(self)));
-					QueueChild(self, new TakeOff(self));
-					return this;
+					QueueChild(new CallFunc(() => Attach(self)));
+					QueueChild(new TakeOff(self));
+					return false;
 				}
 			}
 
-			return NextActivity;
+			return true;
 		}
 
 		void Attach(Actor self)

@@ -63,15 +63,8 @@ namespace OpenRA.Mods.Common.Activities
 			}
 		}
 
-		public override Activity Tick(Actor self)
+		public override bool Tick(Actor self)
 		{
-			if (ChildActivity != null)
-			{
-				ChildActivity = ActivityUtils.RunActivity(self, ChildActivity);
-				if (ChildActivity != null)
-					return this;
-			}
-
 			// Refuse to take off if it would land immediately again.
 			if (aircraft.ForceLanding)
 				Cancel(self);
@@ -80,16 +73,16 @@ namespace OpenRA.Mods.Common.Activities
 			{
 				// Cancel the requested target, but keep firing on it while in range
 				attackAircraft.ClearRequestedTarget();
-				return NextActivity;
+				return true;
 			}
 
 			// Check that AttackFollow hasn't cancelled the target by modifying attack.Target
 			// Having both this and AttackFollow modify that field is a horrible hack.
 			if (hasTicked && attackAircraft.RequestedTarget.Type == TargetType.Invalid)
-				return NextActivity;
+				return true;
 
 			if (attackAircraft.IsTraitPaused)
-				return this;
+				return false;
 
 			bool targetIsHiddenActor;
 			target = target.Recalculate(self.Owner, out targetIsHiddenActor);
@@ -115,14 +108,14 @@ namespace OpenRA.Mods.Common.Activities
 			if (useLastVisibleTarget && !lastVisibleTarget.IsValidFor(self))
 			{
 				attackAircraft.ClearRequestedTarget();
-				return NextActivity;
+				return true;
 			}
 
 			// If all valid weapons have depleted their ammo and Rearmable trait exists, return to RearmActor to reload and then resume the activity
 			if (rearmable != null && !useLastVisibleTarget && attackAircraft.Armaments.All(x => x.IsTraitPaused || !x.Weapon.IsValidAgainst(target, self.World, self)))
 			{
-				QueueChild(self, new ReturnToBase(self, aircraft.Info.AbortOnResupply), true);
-				return this;
+				QueueChild(new ReturnToBase(self));
+				return aircraft.Info.AbortOnResupply;
 			}
 
 			if (attackAircraft.IsTraitDisabled)
@@ -138,12 +131,12 @@ namespace OpenRA.Mods.Common.Activities
 				if (checkTarget.IsInRange(pos, lastVisibleMaximumRange))
 				{
 					attackAircraft.ClearRequestedTarget();
-					return NextActivity;
+					return true;
 				}
 
 				// Fly towards the last known position
-				QueueChild(self, new Fly(self, target, WDist.Zero, lastVisibleMaximumRange, checkTarget.CenterPosition, Color.Red), true);
-				return this;
+				QueueChild(new Fly(self, target, WDist.Zero, lastVisibleMaximumRange, checkTarget.CenterPosition, Color.Red));
+				return false;
 			}
 
 			var delta = attackAircraft.GetTargetPosition(pos, target) - pos;
@@ -151,26 +144,26 @@ namespace OpenRA.Mods.Common.Activities
 			var isAirborne = self.World.Map.DistanceAboveTerrain(pos).Length >= aircraft.Info.MinAirborneAltitude;
 
 			if (!isAirborne)
-				QueueChild(self, new TakeOff(self), true);
+				QueueChild(new TakeOff(self));
 
 			if (attackAircraft.Info.AttackType == AirAttackType.Strafe)
 			{
 				if (target.IsInRange(pos, attackAircraft.GetMinimumRange()))
-					QueueChild(self, new FlyTimed(ticksUntilTurn, self), true);
+					QueueChild(new FlyTimed(ticksUntilTurn, self));
 
-				QueueChild(self, new Fly(self, target, target.CenterPosition, Color.Red), true);
-				QueueChild(self, new FlyTimed(ticksUntilTurn, self));
+				QueueChild(new Fly(self, target, target.CenterPosition, Color.Red));
+				QueueChild(new FlyTimed(ticksUntilTurn, self));
 			}
 			else
 			{
 				var minimumRange = attackAircraft.GetMinimumRangeVersusTarget(target);
 				if (!target.IsInRange(pos, lastVisibleMaximumRange) || target.IsInRange(pos, minimumRange))
-					QueueChild(self, new Fly(self, target, minimumRange, lastVisibleMaximumRange, target.CenterPosition, Color.Red), true);
+					QueueChild(new Fly(self, target, minimumRange, lastVisibleMaximumRange, target.CenterPosition, Color.Red));
 				else if (isAirborne) // Don't use 'else' to avoid conflict with TakeOff
 					Fly.VerticalTakeOffOrLandTick(self, aircraft, desiredFacing, aircraft.Info.CruiseAltitude);
 			}
 
-			return this;
+			return false;
 		}
 
 		void IActivityNotifyStanceChanged.StanceChanged(Actor self, AutoTarget autoTarget, UnitStance oldStance, UnitStance newStance)

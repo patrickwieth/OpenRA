@@ -25,16 +25,13 @@ namespace OpenRA.Mods.Common.Activities
 		readonly RepairableInfo repairableInfo;
 		readonly Rearmable rearmable;
 		readonly bool alwaysLand;
-		readonly bool abortOnResupply;
-		bool resupplied;
 		Actor dest;
 		int facing = -1;
 
-		public ReturnToBase(Actor self, bool abortOnResupply, Actor dest = null, bool alwaysLand = true)
+		public ReturnToBase(Actor self, Actor dest = null, bool alwaysLand = true)
 		{
 			this.dest = dest;
 			this.alwaysLand = alwaysLand;
-			this.abortOnResupply = abortOnResupply;
 			aircraft = self.Trait<Aircraft>();
 			repairableInfo = self.Info.TraitInfoOrDefault<RepairableInfo>();
 			rearmable = self.TraitOrDefault<Rearmable>();
@@ -66,32 +63,15 @@ namespace OpenRA.Mods.Common.Activities
 					&& rearmable.RearmableAmmoPools.Any(p => !p.FullAmmo());
 		}
 
-		public override Activity Tick(Actor self)
+		public override bool Tick(Actor self)
 		{
-			if (ChildActivity != null)
-			{
-				ChildActivity = ActivityUtils.RunActivity(self, ChildActivity);
-				if (ChildActivity != null)
-					return this;
-			}
-
 			// Refuse to take off if it would land immediately again.
 			// Special case: Don't kill other deploy hotkey activities.
 			if (aircraft.ForceLanding)
-				return NextActivity;
+				return true;
 
-			// If a Cancel was triggered at this point, it's unlikely that previously queued child activities finished,
-			// so 'resupplied' needs to be set to false, else it + abortOnResupply might cause another Cancel
-			// that would cancel any other activities that were queued after the first Cancel was triggered.
-			// TODO: This is a mess, we need to somehow make the activity cancelling a bit less tricky.
-			if (resupplied && IsCanceling)
-				resupplied = false;
-
-			if (resupplied && abortOnResupply)
-				self.CancelActivity();
-
-			if (resupplied || IsCanceling || self.IsDead)
-				return NextActivity;
+			if (IsCanceling || self.IsDead)
+				return true;
 
 			if (dest == null || dest.IsDead || !Reservable.IsAvailableFor(dest, self))
 				dest = ChooseResupplier(self, true);
@@ -113,21 +93,20 @@ namespace OpenRA.Mods.Common.Activities
 							var randomPosition = WVec.FromPDF(self.World.SharedRandom, 2) * distanceLength / 1024;
 							var target = Target.FromPos(nearestResupplier.CenterPosition + randomPosition);
 
-							QueueChild(self, new Fly(self, target, WDist.Zero, aircraft.Info.WaitDistanceFromResupplyBase, targetLineColor: Color.Green), true);
+							QueueChild(new Fly(self, target, WDist.Zero, aircraft.Info.WaitDistanceFromResupplyBase, targetLineColor: Color.Green));
 						}
 
-						return this;
+						return false;
 					}
 
-					QueueChild(self, new Fly(self, Target.FromActor(nearestResupplier), WDist.Zero, aircraft.Info.WaitDistanceFromResupplyBase, targetLineColor: Color.Green),
-							true);
-					QueueChild(self, new FlyCircle(self, aircraft.Info.NumberOfTicksToVerifyAvailableAirport), true);
-					return this;
+					QueueChild(new Fly(self, Target.FromActor(nearestResupplier), WDist.Zero, aircraft.Info.WaitDistanceFromResupplyBase, targetLineColor: Color.Green));
+					QueueChild(new FlyCircle(self, aircraft.Info.NumberOfTicksToVerifyAvailableAirport));
+					return false;
 				}
 
 				// Prevent an infinite loop in case we'd return to the activity that called ReturnToBase in the first place. Go idle instead.
 				self.CancelActivity();
-				return NextActivity;
+				return true;
 			}
 
 			if (ShouldLandAtBuilding(self, dest))
@@ -140,16 +119,16 @@ namespace OpenRA.Mods.Common.Activities
 					facing = 192;
 
 				aircraft.MakeReservation(dest);
-				QueueChild(self, new Land(self, Target.FromActor(dest), offset, facing), true);
-				QueueChild(self, new Resupply(self, dest, WDist.Zero), true);
+				QueueChild(new Land(self, Target.FromActor(dest), offset, facing));
+				QueueChild(new Resupply(self, dest, WDist.Zero));
 				if (aircraft.Info.TakeOffOnResupply && !alwaysLand)
-					QueueChild(self, new TakeOff(self));
-			}
-			else
-				QueueChild(self, new Fly(self, Target.FromActor(dest)), true);
+					QueueChild(new TakeOff(self));
 
-			resupplied = true;
-			return this;
+				return true;
+			}
+
+			QueueChild(new Fly(self, Target.FromActor(dest)));
+			return false;
 		}
 	}
 }

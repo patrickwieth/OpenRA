@@ -29,6 +29,7 @@ namespace OpenRA.Mods.Common.Activities
 		readonly WDist unloadRange;
 
 		Target destination;
+		bool takeOffAfterUnload;
 
 		public UnloadCargo(Actor self, WDist unloadRange, bool unloadAll = true)
 			: this(self, Target.Invalid, unloadRange, unloadAll)
@@ -74,27 +75,24 @@ namespace OpenRA.Mods.Common.Activities
 
 			// Move to the target destination
 			if (aircraft != null)
-				QueueChild(self, new Land(self, destination, unloadRange));
+			{
+				// Queue the activity even if already landed in case self.Location != destination
+				QueueChild(new Land(self, destination, unloadRange));
+				takeOffAfterUnload = !aircraft.AtLandAltitude;
+			}
 			else
 			{
 				var cell = self.World.Map.Clamp(this.self.World.Map.CellContaining(destination.CenterPosition));
-				QueueChild(self, new Move(self, cell, unloadRange));
+				QueueChild(new Move(self, cell, unloadRange));
 			}
 
-			QueueChild(self, new Wait(cargo.Info.BeforeUnloadDelay));
+			QueueChild(new Wait(cargo.Info.BeforeUnloadDelay));
 		}
 
-		public override Activity Tick(Actor self)
+		public override bool Tick(Actor self)
 		{
-			if (ChildActivity != null)
-			{
-				ChildActivity = ActivityUtils.RunActivity(self, ChildActivity);
-				if (ChildActivity != null)
-					return this;
-			}
-
 			if (IsCanceling || cargo.IsEmpty(self))
-				return NextActivity;
+				return true;
 
 			if (cargo.CanUnload())
 			{
@@ -108,8 +106,8 @@ namespace OpenRA.Mods.Common.Activities
 				if (exitSubCell == null)
 				{
 					self.NotifyBlocker(BlockedExitCells(actor));
-					QueueChild(self, new Wait(10), true);
-					return this;
+					QueueChild(new Wait(10));
+					return false;
 				}
 
 				cargo.Unload(self);
@@ -131,15 +129,16 @@ namespace OpenRA.Mods.Common.Activities
 
 			if (!unloadAll || !cargo.CanUnload())
 			{
-				Cancel(self, true);
 				if (cargo.Info.AfterUnloadDelay > 0)
-					QueueChild(self, new Wait(cargo.Info.AfterUnloadDelay, false), true);
+					QueueChild(new Wait(cargo.Info.AfterUnloadDelay, false));
 
-				if (aircraft != null && !aircraft.Info.LandWhenIdle)
-					QueueChild(self, new TakeOff(self), true);
+				if (takeOffAfterUnload)
+					QueueChild(new TakeOff(self));
+
+				return true;
 			}
 
-			return this;
+			return false;
 		}
 	}
 }
