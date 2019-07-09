@@ -60,7 +60,7 @@ namespace OpenRA.Mods.AS.Traits
 			this.info = info;
 		}
 
-		public void Tick(Actor self)
+		void ITick.Tick(Actor self)
 		{
 			if (destination == null)
 				return;
