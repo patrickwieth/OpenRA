@@ -77,6 +77,8 @@ namespace OpenRA.Mods.AS.Traits
 		protected override void Created(Actor self)
 		{
 			ammoPool = self.TraitsImplementing<AmmoPool>().FirstOrDefault(la => la.Info.Name == Info.AmmoPoolName);
+
+			base.Created(self);
 		}
 
 		void ITick.Tick(Actor self)
