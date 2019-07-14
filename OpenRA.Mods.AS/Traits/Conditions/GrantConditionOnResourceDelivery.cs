@@ -42,9 +42,11 @@ namespace OpenRA.Mods.AS.Traits
 			this.info = info;
 		}
 
-		void INotifyCreated.Created(Actor self)
+		protected override void Created(Actor self)
 		{
 			manager = self.Trait<ConditionManager>();
+
+			base.Created(self);
 		}
 
 		void IRefineryResourceDelivered.ResourceDelivered(Actor self, int amount)
