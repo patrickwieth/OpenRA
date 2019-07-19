@@ -83,6 +83,9 @@ namespace OpenRA.Mods.AS.Traits
 		{
 			CancelUnbuildableItems();
 
+			if (allProductionPaused)
+				return;
+
 			var item = Queue.FirstOrDefault(i => !i.Paused);
 			if (item == null)
 				return;
