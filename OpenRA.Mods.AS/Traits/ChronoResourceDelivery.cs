@@ -8,11 +8,7 @@
  */
 #endregion
 
-using System;
-using System.Linq;
-using OpenRA.Activities;
 using OpenRA.Mods.AS.Activities;
-using OpenRA.Mods.Common.Activities;
 using OpenRA.Mods.Common.Traits;
 using OpenRA.Traits;
 
@@ -81,12 +77,12 @@ namespace OpenRA.Mods.AS.Traits
 				ticksTillCheck--;
 		}
 
-		public void MovingToResources(Actor self, CPos targetCell, Activity next)
+		public void MovingToResources(Actor self, CPos targetCell)
 		{
 			Reset();
 		}
 
-		public void MovingToRefinery(Actor self, Actor refineryActor, Activity next)
+		public void MovingToRefinery(Actor self, Actor refineryActor)
 		{
 			var deliverypos = refineryActor.Location + refineryActor.Trait<IAcceptResources>().DeliveryOffset;
 
