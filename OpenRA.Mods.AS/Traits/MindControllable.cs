@@ -33,15 +33,13 @@ namespace OpenRA.Mods.AS.Traits
 	public class MindControllable : PausableConditionalTrait<MindControllableInfo>, INotifyKilled, INotifyActorDisposing, INotifyOwnerChanged
 	{
 		readonly MindControllableInfo info;
-
-		Actor master;
 		Player creatorOwner;
 		bool controlChanging;
 
 		ConditionManager conditionManager;
 		int token = ConditionManager.InvalidConditionToken;
 
-		public Actor Master { get { return master; } }
+		public Actor Master { get; private set; }
 
 		public MindControllable(Actor self, MindControllableInfo info)
 			: base(info)
@@ -60,7 +58,7 @@ namespace OpenRA.Mods.AS.Traits
 		{
 			self.CancelActivity();
 
-			if (this.master == null)
+			if (Master == null)
 				creatorOwner = self.Owner;
 
 			controlChanging = true;
@@ -68,8 +66,8 @@ namespace OpenRA.Mods.AS.Traits
 			var oldOwner = self.Owner;
 			self.ChangeOwner(master.Owner);
 
-			UnlinkMaster(self, this.master);
-			this.master = master;
+			UnlinkMaster(self, Master);
+			Master = master;
 
 			if (conditionManager != null && token == ConditionManager.InvalidConditionToken && !string.IsNullOrEmpty(Info.Condition))
 				token = conditionManager.GrantCondition(self, Info.Condition);
@@ -93,7 +91,7 @@ namespace OpenRA.Mods.AS.Traits
 					master.Trait<MindController>().UnlinkSlave(master, self);
 				});
 
-			this.master = null;
+			Master = null;
 
 			if (conditionManager != null && token != ConditionManager.InvalidConditionToken)
 				token = conditionManager.RevokeCondition(self, token);
@@ -106,11 +104,11 @@ namespace OpenRA.Mods.AS.Traits
 			controlChanging = true;
 
 			if (creatorOwner.WinState == WinState.Lost)
-				self.ChangeOwner(self.World.WorldActor.Owner);
-			else
 				self.ChangeOwner(self.World.Players.First(p => p.InternalName == info.FallbackOwner));
+			else
+				self.ChangeOwner(creatorOwner);
 
-			UnlinkMaster(self, master);
+			UnlinkMaster(self, Master);
 
 			if (info.RevokeControlSounds.Any())
 				Game.Sound.Play(SoundType.World, info.RevokeControlSounds.Random(self.World.SharedRandom), self.CenterPosition);
@@ -120,23 +118,23 @@ namespace OpenRA.Mods.AS.Traits
 
 		void INotifyKilled.Killed(Actor self, AttackInfo e)
 		{
-			UnlinkMaster(self, master);
+			UnlinkMaster(self, Master);
 		}
 
 		void INotifyActorDisposing.Disposing(Actor self)
 		{
-			UnlinkMaster(self, master);
+			UnlinkMaster(self, Master);
 		}
 
 		void INotifyOwnerChanged.OnOwnerChanged(Actor self, Player oldOwner, Player newOwner)
 		{
 			if (!controlChanging)
-				UnlinkMaster(self, master);
+				UnlinkMaster(self, Master);
 		}
 
 		protected override void TraitDisabled(Actor self)
 		{
-			if (master != null)
+			if (Master != null)
 				RevokeMindControl(self);
 		}
 	}
