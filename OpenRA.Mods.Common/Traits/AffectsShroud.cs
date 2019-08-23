@@ -98,7 +98,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (Info.MoveRecalculationThreshold.Length > 0 && (pos - cachedPos).LengthSquared > Info.MoveRecalculationThreshold.LengthSquared)
 				dirty = true;
 
-			if (!dirty && cachedLocation == projectedLocation && cachedRange == range && traitDisabled == CachedTraitDisabled)
+			if (!dirty && cachedLocation == projectedLocation && cachedRange == range && traitDisabled == cachedTraitDisabled)
 				return;
 
 			cachedRange = range;
