@@ -60,7 +60,7 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly int SearchFromProcRadius = 24;
 
 		[Desc("Search radius (in cells) from the last harvest order location to find more resources.")]
-		public readonly int SearchFromOrderRadius = 12;
+		public readonly int SearchFromHarvesterRadius = 12;
 
 		[Desc("Interval to wait between searches when there are no resources nearby.")]
 		public readonly int WaitDuration = 25;
@@ -70,6 +70,9 @@ namespace OpenRA.Mods.Common.Traits
 
 		[Desc("The pathfinding cost penalty applied for each harvester waiting to unload at a refinery.")]
 		public readonly int UnloadQueueCostModifier = 12;
+
+		[Desc("The pathfinding cost penalty applied for cells directly away from the refinery.")]
+		public readonly int ResourceRefineryDirectionPenalty = 200;
 
 		[Desc("Does the unit queue harvesting runs instead of individual harvest actions?")]
 		public readonly bool QueueFullLoad = false;
@@ -149,24 +152,9 @@ namespace OpenRA.Mods.Common.Traits
 				self.World.AddFrameEndTask(w => self.QueueActivity(new FindAndDeliverResources(self)));
 		}
 
-		public void SetProcLines(Actor proc)
-		{
-			if (proc == null || proc.IsDead)
-				return;
-
-			var linkedHarvs = proc.World.ActorsHavingTrait<Harvester>(h => h.LinkedProc == proc)
-				.Select(a => Target.FromActor(a))
-				.ToList();
-
-			proc.SetTargetLines(linkedHarvs, Color.Gold);
-		}
-
 		public void LinkProc(Actor self, Actor proc)
 		{
-			var oldProc = LinkedProc;
 			LinkedProc = proc;
-			SetProcLines(oldProc);
-			SetProcLines(proc);
 		}
 
 		public void UnlinkProc(Actor self, Actor proc)
@@ -201,8 +189,8 @@ namespace OpenRA.Mods.Common.Traits
 
 			// Start a search from each refinery's delivery location:
 			List<CPos> path;
-			var li = self.Info.TraitInfo<MobileInfo>().LocomotorInfo;
-			using (var search = PathSearch.FromPoints(self.World, li, self, refs.Values.Select(r => r.Location), self.Location, false)
+
+			using (var search = PathSearch.FromPoints(self.World, mobile.Locomotor, self, refs.Values.Select(r => r.Location), self.Location, false)
 				.WithCustomCost(loc =>
 				{
 					if (!refs.ContainsKey(loc))
@@ -345,10 +333,9 @@ namespace OpenRA.Mods.Common.Traits
 					loc = self.Location;
 				}
 
-				self.SetTargetLine(Target.FromCell(self.World, loc), Color.Red);
-
 				// FindResources takes care of calling INotifyHarvesterAction
 				self.QueueActivity(order.Queued, new FindAndDeliverResources(self, loc));
+				self.ShowTargetLines();
 			}
 			else if (order.OrderString == "Deliver")
 			{
@@ -362,13 +349,8 @@ namespace OpenRA.Mods.Common.Traits
 				if (iao == null || !iao.AllowDocking || !IsAcceptableProcType(targetActor))
 					return;
 
-				self.SetTargetLine(order.Target, Color.Green);
 				self.QueueActivity(order.Queued, new FindAndDeliverResources(self, targetActor));
-			}
-			else if (order.OrderString == "Stop" || order.OrderString == "Move")
-			{
-				foreach (var n in notifyHarvesterAction)
-					n.MovementCancelled(self);
+				self.ShowTargetLines();
 			}
 		}
 

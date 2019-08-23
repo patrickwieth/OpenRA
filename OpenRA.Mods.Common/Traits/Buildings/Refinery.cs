@@ -136,10 +136,6 @@ namespace OpenRA.Mods.Common.Traits
 		void CancelDock(Actor self)
 		{
 			preventDock = true;
-
-			// Cancel the dock sequence
-			if (dockedHarv != null && !dockedHarv.IsDead)
-				dockedHarv.CancelActivity();
 		}
 
 		void ITick.Tick(Actor self)

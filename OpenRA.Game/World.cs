@@ -43,6 +43,8 @@ namespace OpenRA
 		public readonly MersenneTwister SharedRandom;
 		public readonly MersenneTwister LocalRandom;
 		public readonly IModelCache ModelCache;
+		public LongBitSet<PlayerBitMask> AllPlayersMask = default(LongBitSet<PlayerBitMask>);
+		public readonly LongBitSet<PlayerBitMask> NoPlayersMask = default(LongBitSet<PlayerBitMask>);
 
 		public Player[] Players = new Player[0];
 
@@ -196,15 +198,27 @@ namespace OpenRA
 			ScreenMap = WorldActor.Trait<ScreenMap>();
 			Selection = WorldActor.Trait<ISelection>();
 
+			// Reset mask
+			LongBitSet<PlayerBitMask>.Reset();
+
 			// Add players
 			foreach (var cmp in WorldActor.TraitsImplementing<ICreatePlayers>())
 				cmp.CreatePlayers(this);
 
 			// Set defaults for any unset stances
 			foreach (var p in Players)
+			{
+				if (!p.Spectating)
+					AllPlayersMask = AllPlayersMask.Union(p.PlayerMask);
+
 				foreach (var q in Players)
+				{
+					SetUpPlayerMask(p, q);
+
 					if (!p.Stances.ContainsKey(q))
 						p.Stances[q] = Stance.Neutral;
+				}
+			}
 
 			Game.Sound.SoundVolumeModifier = 1.0f;
 
@@ -218,6 +232,25 @@ namespace OpenRA
 			};
 
 			RulesContainTemporaryBlocker = map.Rules.Actors.Any(a => a.Value.HasTraitInfo<ITemporaryBlockerInfo>());
+		}
+
+		void SetUpPlayerMask(Player p, Player q)
+		{
+			if (q.Spectating)
+				return;
+
+			var bitSet = q.PlayerMask;
+
+			switch (p.Stances[q])
+			{
+				case Stance.Enemy:
+				case Stance.Neutral:
+					p.EnemyPlayersMask = p.EnemyPlayersMask.Union(bitSet);
+					break;
+				case Stance.Ally:
+					p.AlliedPlayersMask = p.AlliedPlayersMask.Union(bitSet);
+					break;
+			}
 		}
 
 		public void AddToMaps(Actor self, IOccupySpace ios)

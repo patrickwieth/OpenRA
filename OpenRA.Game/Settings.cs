@@ -21,6 +21,7 @@ namespace OpenRA
 {
 	public enum MouseScrollType { Disabled, Standard, Inverted, Joystick }
 	public enum StatusBarsType { Standard, DamageShow, AlwaysShow }
+	public enum TargetLinesType { Disabled, Manual, Automatic }
 
 	[Flags]
 	public enum MPGameFilters
@@ -77,7 +78,8 @@ namespace OpenRA
 		[Desc("Enable client-side report generation to help debug desync errors.")]
 		public bool EnableSyncReports = false;
 
-		public string TimestampFormat = "s";
+		[Desc("Sets the timestamp format. Defaults to the ISO 8601 standard.")]
+		public string TimestampFormat = "yyyy-MM-ddTHH:mm:ss";
 
 		public ServerSettings Clone()
 		{
@@ -207,8 +209,8 @@ namespace OpenRA
 
 		public bool UseClassicMouseStyle = false;
 		public StatusBarsType StatusBars = StatusBarsType.Standard;
+		public TargetLinesType TargetLines = TargetLinesType.Manual;
 		public bool UsePlayerStanceColors = false;
-		public bool DrawTargetLine = true;
 
 		public bool AllowDownloading = true;
 

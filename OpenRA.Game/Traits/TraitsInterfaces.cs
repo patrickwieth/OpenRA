@@ -259,6 +259,8 @@ namespace OpenRA.Traits
 
 		WDist LargestActorRadius { get; }
 		WDist LargestBlockingActorRadius { get; }
+
+		event Action<CPos> CellUpdated;
 	}
 
 	[RequireExplicitImplementation]

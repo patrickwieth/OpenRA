@@ -131,6 +131,9 @@ namespace OpenRA.Mods.Common.UpdateRules
 				new AddAirAttackTypes(),
 				new RenameCarryallDelays(),
 				new AddCanSlide(),
+				new AddAircraftIdleBehavior(),
+				new RenameSearchRadius(),
+				new RemoveMoveIntoWorldFromExit(),
 			})
 		};
 

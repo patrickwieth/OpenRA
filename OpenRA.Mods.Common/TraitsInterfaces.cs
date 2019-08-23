@@ -90,6 +90,7 @@ namespace OpenRA.Mods.Common.Traits
 	public interface ICrushable
 	{
 		bool CrushableBy(Actor self, Actor crusher, BitSet<CrushClass> crushClasses);
+		LongBitSet<PlayerBitMask> CrushableBy(Actor self, BitSet<CrushClass> crushClasses);
 	}
 
 	[RequireExplicitImplementation]
@@ -144,7 +145,7 @@ namespace OpenRA.Mods.Common.Traits
 
 	[RequireExplicitImplementation]
 	public interface INotifyResourceAccepted { void OnResourceAccepted(Actor self, Actor refinery, int amount); }
-	public interface INotifyParachute { void OnParachute(Actor self); void OnLanded(Actor self, Actor ignore); }
+	public interface INotifyParachute { void OnParachute(Actor self); void OnLanded(Actor self); }
 
 	[RequireExplicitImplementation]
 	public interface INotifyCapture { void OnCapture(Actor self, Actor captor, Player oldOwner, Player newOwner, BitSet<CaptureType> captureTypes); }
@@ -424,8 +425,8 @@ namespace OpenRA.Mods.Common.Traits
 
 	public interface IMove
 	{
-		Activity MoveTo(CPos cell, int nearEnough);
-		Activity MoveTo(CPos cell, Actor ignoreActor);
+		Activity MoveTo(CPos cell, int nearEnough, Color? targetLineColor = null);
+		Activity MoveTo(CPos cell, Actor ignoreActor, Color? targetLineColor = null);
 		Activity MoveWithinRange(Target target, WDist range,
 			WPos? initialTargetPosition = null, Color? targetLineColor = null);
 		Activity MoveWithinRange(Target target, WDist minRange, WDist maxRange,
@@ -434,7 +435,7 @@ namespace OpenRA.Mods.Common.Traits
 			WPos? initialTargetPosition = null, Color? targetLineColor = null);
 		Activity MoveToTarget(Actor self, Target target,
 			WPos? initialTargetPosition = null, Color? targetLineColor = null);
-		Activity MoveIntoWorld(Actor self, CPos cell, SubCell subCell = SubCell.Any);
+		Activity MoveIntoWorld(Actor self, int delay = 0);
 		Activity MoveIntoTarget(Actor self, Target target);
 		Activity VisualMove(Actor self, WPos fromPos, WPos toPos);
 		int EstimatedMoveDuration(Actor self, WPos fromPos, WPos toPos);

@@ -13,6 +13,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Activities;
+using OpenRA.Mods.Common.Activities;
 using OpenRA.Mods.Common.Warheads;
 using OpenRA.Primitives;
 using OpenRA.Support;
@@ -28,6 +29,9 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly string Cursor = null;
 
 		public readonly string OutsideRangeCursor = null;
+
+		[Desc("Color to use for the target line.")]
+		public readonly Color TargetLineColor = Color.Crimson;
 
 		[Desc("Does the attack type require the attacker to enter the target's cell?")]
 		public readonly bool AttackRequiresEnteringCell = false;
@@ -195,8 +199,8 @@ namespace OpenRA.Mods.Common.Traits
 				if (!order.Target.IsValidFor(self))
 					return;
 
-				self.SetTargetLine(order.Target, Color.Red);
-				AttackTarget(order.Target, order.Queued, true, forceAttack);
+				AttackTarget(order.Target, order.Queued, true, forceAttack, Info.TargetLineColor);
+				self.ShowTargetLines();
 			}
 
 			if (order.OrderString == "Stop")
@@ -206,6 +210,12 @@ namespace OpenRA.Mods.Common.Traits
 		// Some 3rd-party mods rely on this being public
 		public virtual void OnStopOrder(Actor self)
 		{
+			// We don't want Stop orders from traits other than Mobile or Aircraft to cancel Resupply activity.
+			// Resupply is always either the main activity or a child of ReturnToBase.
+			// TODO: This should generally only cancel activities queued by this trait.
+			if (self.CurrentActivity == null || self.CurrentActivity is Resupply || self.CurrentActivity is ReturnToBase)
+				return;
+
 			self.CancelActivity();
 		}
 
@@ -214,7 +224,7 @@ namespace OpenRA.Mods.Common.Traits
 			return order.OrderString == attackOrderName || order.OrderString == forceAttackOrderName ? Info.Voice : null;
 		}
 
-		public abstract Activity GetAttackActivity(Actor self, Target newTarget, bool allowMove, bool forceAttack);
+		public abstract Activity GetAttackActivity(Actor self, Target newTarget, bool allowMove, bool forceAttack, Color? targetLineColor = null);
 
 		public bool HasAnyValidWeapons(Target t, bool checkForCenterTargetingWeapons = false)
 		{
@@ -381,7 +391,7 @@ namespace OpenRA.Mods.Common.Traits
 				&& a.Weapon.IsValidAgainst(t, self.World, self));
 		}
 
-		public void AttackTarget(Target target, bool queued, bool allowMove, bool forceAttack = false)
+		public void AttackTarget(Target target, bool queued, bool allowMove, bool forceAttack = false, Color? targetLineColor = null)
 		{
 			if (IsTraitDisabled)
 				return;
@@ -389,15 +399,12 @@ namespace OpenRA.Mods.Common.Traits
 			if (!target.IsValidFor(self))
 				return;
 
-			if (!queued)
-				self.CancelActivity();
-
-			var activity = GetAttackActivity(self, target, allowMove, forceAttack);
-			self.QueueActivity(activity);
-			OnQueueAttackActivity(self, activity, target, allowMove, forceAttack);
+			var activity = GetAttackActivity(self, target, allowMove, forceAttack, targetLineColor);
+			self.QueueActivity(queued, activity);
+			OnResolveAttackOrder(self, activity, target, queued, forceAttack);
 		}
 
-		public virtual void OnQueueAttackActivity(Actor self, Activity activity, Target target, bool allowMove, bool forceAttack) { }
+		public virtual void OnResolveAttackOrder(Actor self, Activity activity, Target target, bool queued, bool forceAttack) { }
 
 		public bool IsReachableTarget(Target target, bool allowMove)
 		{

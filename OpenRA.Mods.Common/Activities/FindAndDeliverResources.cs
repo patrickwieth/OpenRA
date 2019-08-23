@@ -9,6 +9,7 @@
  */
 #endregion
 
+using System;
 using System.Collections.Generic;
 using OpenRA.Activities;
 using OpenRA.Mods.Common.Pathfinder;
@@ -27,8 +28,8 @@ namespace OpenRA.Mods.Common.Activities
 		readonly ResourceClaimLayer claimLayer;
 		readonly IPathFinder pathFinder;
 		readonly DomainIndex domainIndex;
-		readonly Actor deliverActor;
 
+		Actor deliverActor;
 		CPos? orderLocation;
 		CPos? lastHarvestedCell;
 		bool hasDeliveredLoad;
@@ -73,6 +74,7 @@ namespace OpenRA.Mods.Common.Activities
 			{
 				QueueChild(new DeliverResources(self, deliverActor));
 				hasDeliveredLoad = true;
+				deliverActor = null;
 			}
 		}
 
@@ -139,7 +141,6 @@ namespace OpenRA.Mods.Common.Activities
 					{
 						var unblockCell = deliveryLoc + harv.Info.UnblockCell;
 						var moveTo = mobile.NearestMoveableCell(unblockCell, 1, 5);
-						self.SetTargetLine(Target.FromCell(self.World, moveTo), Color.Green, false);
 						QueueChild(mobile.MoveTo(moveTo, 1));
 					}
 				}
@@ -175,22 +176,52 @@ namespace OpenRA.Mods.Common.Activities
 			}
 
 			// Determine where to search from and how far to search:
-			var searchFromLoc = lastHarvestedCell ?? GetSearchFromLocation(self);
-			var searchRadius = lastHarvestedCell.HasValue ? harvInfo.SearchFromOrderRadius : harvInfo.SearchFromProcRadius;
+			var procLoc = GetSearchFromProcLocation(self);
+			var searchFromLoc = lastHarvestedCell ?? procLoc;
+			var searchRadius = lastHarvestedCell.HasValue ? harvInfo.SearchFromHarvesterRadius : harvInfo.SearchFromProcRadius;
+			if (!searchFromLoc.HasValue)
+			{
+				searchFromLoc = self.Location;
+				searchRadius = harvInfo.SearchFromHarvesterRadius;
+			}
+
 			var searchRadiusSquared = searchRadius * searchRadius;
+
+			var procPos = procLoc.HasValue ? (WPos?)self.World.Map.CenterOfCell(procLoc.Value) : null;
+			var harvPos = self.CenterPosition;
 
 			// Find any harvestable resources:
 			List<CPos> path;
-			using (var search = PathSearch.Search(self.World, locomotorInfo, self, true, loc =>
+			using (var search = PathSearch.Search(self.World, mobile.Locomotor, self, true, loc =>
 					domainIndex.IsPassable(self.Location, loc, locomotorInfo) && harv.CanHarvestCell(self, loc) && claimLayer.CanClaimCell(self, loc))
 				.WithCustomCost(loc =>
 				{
-					if ((loc - searchFromLoc).LengthSquared > searchRadiusSquared)
+					if ((loc - searchFromLoc.Value).LengthSquared > searchRadiusSquared)
 						return int.MaxValue;
+
+					// Add a cost modifier to harvestable cells to prefer resources that are closer to the refinery.
+					// This reduces the tendancy for harvesters to move in straight lines
+					if (procPos.HasValue && harvInfo.ResourceRefineryDirectionPenalty > 0 && harv.CanHarvestCell(self, loc))
+					{
+						var pos = self.World.Map.CenterOfCell(loc);
+
+						// Calculate harv-cell-refinery angle (cosine rule)
+						var a = harvPos - procPos.Value;
+						var b = pos - procPos.Value;
+						var c = pos - harvPos;
+
+						if (b != WVec.Zero && c != WVec.Zero)
+						{
+							var cosA = (int)(1024 * (b.LengthSquared + c.LengthSquared - a.LengthSquared) / (2 * b.Length * c.Length));
+
+							// Cost modifier varies between 0 and ResourceRefineryDirectionPenalty
+							return Math.Abs(harvInfo.ResourceRefineryDirectionPenalty / 2) + harvInfo.ResourceRefineryDirectionPenalty * cosA / 2048;
+						}
+					}
 
 					return 0;
 				})
-				.FromPoint(searchFromLoc)
+				.FromPoint(searchFromLoc.Value)
 				.FromPoint(self.Location))
 				path = pathFinder.FindPath(search);
 
@@ -205,7 +236,19 @@ namespace OpenRA.Mods.Common.Activities
 			yield return Target.FromCell(self.World, self.Location);
 		}
 
-		CPos GetSearchFromLocation(Actor self)
+		public override IEnumerable<TargetLineNode> TargetLineNodes(Actor self)
+		{
+			if (ChildActivity != null)
+				foreach (var n in ChildActivity.TargetLineNodes(self))
+					yield return n;
+
+			if (orderLocation != null)
+				yield return new TargetLineNode(Target.FromCell(self.World, orderLocation.Value), Color.Green);
+			else if (deliverActor != null)
+				yield return new TargetLineNode(Target.FromActor(deliverActor), Color.Green);
+		}
+
+		CPos? GetSearchFromProcLocation(Actor self)
 		{
 			if (harv.LastLinkedProc != null && !harv.LastLinkedProc.IsDead && harv.LastLinkedProc.IsInWorld)
 				return harv.LastLinkedProc.Location + harv.LastLinkedProc.Trait<IAcceptResources>().DeliveryOffset;
@@ -213,7 +256,7 @@ namespace OpenRA.Mods.Common.Activities
 			if (harv.LinkedProc != null && !harv.LinkedProc.IsDead && harv.LinkedProc.IsInWorld)
 				return harv.LinkedProc.Location + harv.LinkedProc.Trait<IAcceptResources>().DeliveryOffset;
 
-			return self.Location;
+			return null;
 		}
 	}
 }
