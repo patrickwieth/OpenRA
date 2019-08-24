@@ -21,6 +21,7 @@ The plugin is maintained by
    > Berserkable
    > TintedCells (former radioactivity)
    > FallsToEarthAS
+   > PointDefense logic
 
  * Holloweye
    > SmokeParticle(Emitter) basic implementation
