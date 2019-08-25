@@ -104,12 +104,6 @@ namespace OpenRA.Mods.Common.Traits
 		HarvesterResourceMultiplier[] resourceMultipliers;
 
 		[Sync]
-		public bool LastSearchFailed;
-
-		[Sync]
-		public Actor OwnerLinkedProc = null;
-
-		[Sync]
 		public Actor LastLinkedProc = null;
 
 		[Sync]
@@ -318,7 +312,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (order.OrderString == "Harvest")
 			{
 				// NOTE: An explicit harvest order allows the harvester to decide which refinery to deliver to.
-				LinkProc(self, OwnerLinkedProc = null);
+				LinkProc(self, null);
 
 				CPos loc;
 				if (order.Target.Type != TargetType.Invalid)
