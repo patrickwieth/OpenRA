@@ -52,7 +52,7 @@ namespace OpenRA.Mods.AS.Projectiles
 		public IProjectile Create(ProjectileArgs args) { return new KKNDLaser(args, this); }
 	}
 
-	public class KKNDLaser : IProjectile
+	public class KKNDLaser : IProjectile, ISync
 	{
 		private readonly KKNDLaserInfo info;
 		private readonly Color[] colors;
