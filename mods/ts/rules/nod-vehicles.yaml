@@ -335,8 +335,10 @@ REPAIR:
 		Voice: Attack
 		PauseOnCondition: empdisable
 	AutoTarget:
+		ScanRadius: 8
+		InitialStance: AttackAnything
 	AutoTargetPriority@DEFAULT:
-		ValidTargets: Vehicles
+		ValidTargets: Vehicle
 
 WEED:
 	Inherits: ^Tank
@@ -356,8 +358,8 @@ WEED:
 		Resources: Veins
 		BaleUnloadDelay: 20
 		BaleLoadDelay: 40
-		SearchFromProcRadius: 30
-		SearchFromHarvesterRadius: 16
+		SearchFromProcRadius: 72
+		SearchFromHarvesterRadius: 36
 		HarvestVoice: Attack
 		DeliverVoice: Move
 	Mobile:
