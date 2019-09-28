@@ -14,7 +14,6 @@ The plugin is maintained by
    > RadBeam implementation
    > ProvidesAIPrerequisite
    > initial AIDeployHelper
-   > GrantStackableConditionOnFire aka Gattling
    > ArcRenderable
    > Nydus tunnel logic
    > mind control traits
@@ -22,6 +21,7 @@ The plugin is maintained by
    > TintedCells (former radioactivity)
    > FallsToEarthAS
    > PointDefense logic
+   > FlickeringPaletteEffect
 
  * Holloweye
    > SmokeParticle(Emitter) basic implementation
