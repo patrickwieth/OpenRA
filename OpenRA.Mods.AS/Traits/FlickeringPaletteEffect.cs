@@ -39,9 +39,10 @@ namespace OpenRA.Mods.AS.Traits
 
 	public class FlickeringPaletteEffect : IPaletteModifier, ITick
 	{
+		readonly FlickeringPaletteEffectInfo info;
+		readonly int offset;
+
 		int t;
-		FlickeringPaletteEffectInfo info;
-		int offset;
 
 		public FlickeringPaletteEffect(FlickeringPaletteEffectInfo info)
 		{
