@@ -41,10 +41,11 @@ namespace OpenRA.Mods.AS.Traits
 	{
 		readonly World world;
 		readonly Player player;
+		readonly Dictionary<SupportPowerInstance, int> waitingPowers = new Dictionary<SupportPowerInstance, int>();
+		readonly Dictionary<string, SupportPowerDecisionAS> powerDecisions = new Dictionary<string, SupportPowerDecisionAS>();
+		readonly List<SupportPowerInstance> stalePowers = new List<SupportPowerInstance>();
 		PlayerResources playerResource;
 		SupportPowerManager supportPowerManager;
-		Dictionary<SupportPowerInstance, int> waitingPowers = new Dictionary<SupportPowerInstance, int>();
-		Dictionary<string, SupportPowerDecisionAS> powerDecisions = new Dictionary<string, SupportPowerDecisionAS>();
 
 		public SupportPowerBotASModule(Actor self, SupportPowerBotASModuleInfo info)
 			: base(info)
@@ -112,6 +113,13 @@ namespace OpenRA.Mods.AS.Traits
 					bot.QueueOrder(new Order(sp.Key, supportPowerManager.Self, Target.FromCell(world, attackLocation.Value), false) { SuppressVisualFeedback = true });
 				}
 			}
+
+			// Remove stale powers
+			stalePowers.AddRange(waitingPowers.Keys.Where(wp => !supportPowerManager.Powers.ContainsKey(wp.Key)));
+			foreach (var p in stalePowers)
+				waitingPowers.Remove(p);
+
+			stalePowers.Clear();
 		}
 
 		/// <summary>Detail scans an area, evaluating positions.</summary>
@@ -169,8 +177,14 @@ namespace OpenRA.Mods.AS.Traits
 
 			var waitingPowersNode = data.FirstOrDefault(n => n.Key == "WaitingPowers");
 			if (waitingPowersNode != null)
+			{
 				foreach (var n in waitingPowersNode.Value.Nodes)
-					waitingPowers[supportPowerManager.Powers[n.Key]] = FieldLoader.GetValue<int>("WaitingPowers", n.Value.Value);
+				{
+					SupportPowerInstance instance;
+					if (supportPowerManager.Powers.TryGetValue(n.Key, out instance))
+						waitingPowers[instance] = FieldLoader.GetValue<int>("WaitingPowers", n.Value.Value);
+				}
+			}
 		}
 	}
 }
