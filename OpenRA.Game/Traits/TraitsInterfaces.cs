@@ -12,6 +12,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using OpenRA.Activities;
 using OpenRA.FileSystem;
 using OpenRA.Graphics;
 using OpenRA.Network;
@@ -270,6 +271,7 @@ namespace OpenRA.Traits
 		WDist LargestActorRadius { get; }
 		WDist LargestBlockingActorRadius { get; }
 
+		void UpdateOccupiedCells(IOccupySpace ios);
 		event Action<CPos> CellUpdated;
 	}
 
@@ -537,4 +539,7 @@ namespace OpenRA.Traits
 
 	[RequireExplicitImplementation]
 	public interface IUnlocksRenderPlayer { bool RenderPlayerUnlocked { get; } }
+
+	[RequireExplicitImplementation]
+	public interface ICreationActivity { Activity GetCreationActivity(); }
 }
