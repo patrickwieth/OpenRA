@@ -269,7 +269,8 @@ namespace OpenRA.Mods.AS.UtilityCommands
 		{
 			{ "tibtre02", "tibtre01" },
 			{ "tibtre03", "tibtre01" },
-			{ "amradr", "gaairc" }
+			{ "amradr", "gaairc" },
+			{ "wwlf", "mumy" }
 		};
 
 		[Desc("FILENAME", "Convert an Attacque Supérior map to the OpenRA format.")]
