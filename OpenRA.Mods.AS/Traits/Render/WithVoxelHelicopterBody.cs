@@ -22,7 +22,7 @@ using OpenRA.Traits;
 namespace OpenRA.Mods.AS.Traits
 {
 	[Desc("Render an animated voxel based upon the voxel being inair.")]
-	public class WithVoxelHelicopterBodyInfo : ConditionalTraitInfo, IRenderActorPreviewVoxelsInfo,  Requires<RenderVoxelsInfo>
+	public class WithVoxelHelicopterBodyInfo : PausableConditionalTraitInfo, IRenderActorPreviewVoxelsInfo,  Requires<RenderVoxelsInfo>
 	{
 		public readonly string Sequence = "idle";
 
@@ -47,7 +47,7 @@ namespace OpenRA.Mods.AS.Traits
 		}
 	}
 
-	public class WithVoxelHelicopterBody : ConditionalTrait<WithVoxelHelicopterBodyInfo>, IAutoMouseBounds, ITick, IActorPreviewInitModifier
+	public class WithVoxelHelicopterBody : PausableConditionalTrait<WithVoxelHelicopterBodyInfo>, IAutoMouseBounds, ITick, IActorPreviewInitModifier
 	{
 		readonly WithVoxelHelicopterBodyInfo info;
 		readonly RenderVoxels rv;
@@ -73,7 +73,7 @@ namespace OpenRA.Mods.AS.Traits
 
 		void ITick.Tick(Actor self)
 		{
-			if (IsTraitDisabled)
+			if (IsTraitDisabled || IsTraitPaused)
 				return;
 
 			if (self.World.Map.DistanceAboveTerrain(self.CenterPosition) > WDist.Zero)

@@ -23,7 +23,7 @@ using OpenRA.Traits;
 namespace OpenRA.Mods.AS.Traits
 {
 	[Desc("Render an animated voxel.")]
-	public class WithVoxelAnimatedBodyInfo : ConditionalTraitInfo, IRenderActorPreviewVoxelsInfo, Requires<RenderVoxelsInfo>
+	public class WithVoxelAnimatedBodyInfo : PausableConditionalTraitInfo, IRenderActorPreviewVoxelsInfo, Requires<RenderVoxelsInfo>
 	{
 		public readonly string Sequence = "idle";
 
@@ -48,7 +48,7 @@ namespace OpenRA.Mods.AS.Traits
 		}
 	}
 
-	public class WithVoxelAnimatedBody : ConditionalTrait<WithVoxelAnimatedBodyInfo>, ITick, IAutoMouseBounds, IActorPreviewInitModifier
+	public class WithVoxelAnimatedBody : PausableConditionalTrait<WithVoxelAnimatedBodyInfo>, ITick, IAutoMouseBounds, IActorPreviewInitModifier
 	{
 		readonly WithVoxelAnimatedBodyInfo info;
 		readonly RenderVoxels rv;
@@ -74,7 +74,7 @@ namespace OpenRA.Mods.AS.Traits
 
 		void ITick.Tick(Actor self)
 		{
-			if (IsTraitDisabled)
+			if (IsTraitDisabled || IsTraitPaused)
 				return;
 
 			tick++;
