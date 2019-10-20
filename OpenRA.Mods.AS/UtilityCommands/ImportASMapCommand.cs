@@ -268,7 +268,8 @@ namespace OpenRA.Mods.AS.UtilityCommands
 		static readonly Dictionary<string, string> ReplaceActors = new Dictionary<string, string>()
 		{
 			{ "tibtre02", "tibtre01" },
-			{ "tibtre03", "tibtre01" }
+			{ "tibtre03", "tibtre01" },
+			{ "amradr", "gaairc" }
 		};
 
 		[Desc("FILENAME", "Convert an Attacque Supérior map to the OpenRA format.")]
