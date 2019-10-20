@@ -45,6 +45,9 @@ namespace OpenRA.Mods.AS.Projectiles
 		[Desc("Distortion offset.")]
 		public readonly int Distortion = 128;
 
+		[Desc("The maximum angle of the arc of the bolt.")]
+		public readonly WAngle Angle = WAngle.FromDegrees(90);
+
 		[Desc("Maximum length per segment.")]
 		public readonly WDist SegmentLength = new WDist(320);
 
@@ -92,6 +95,7 @@ namespace OpenRA.Mods.AS.Projectiles
 
 			target = args.PassiveTarget;
 			source = args.Source;
+			random = args.SourceActor.World.SharedRandom;
 
 			hasLaunchEffect = !string.IsNullOrEmpty(info.LaunchEffectImage) && !string.IsNullOrEmpty(info.LaunchEffectSequence);
 
@@ -109,8 +113,6 @@ namespace OpenRA.Mods.AS.Projectiles
 					direction.X * direction.X + direction.Y * direction.Y);
 				if (upVector.Length != 0)
 					upVector = 1024 * upVector / upVector.Length;
-
-				random = args.SourceActor.World.SharedRandom;
 			}
 
 			zaps = new HashSet<Pair<Color, WPos[]>>();
@@ -121,11 +123,10 @@ namespace OpenRA.Mods.AS.Projectiles
 				offsets[0] = args.Source;
 				offsets[offsets.Length - 1] = args.PassiveTarget;
 
+				var angle = new WAngle((-info.Angle.Angle / 2) + random.Next(info.Angle.Angle));
+
 				for (var i = 1; i < numSegments; i++)
-				{
-					var segmentStart = direction / numSegments * i;
-					offsets[i] = args.Source + segmentStart;
-				}
+					offsets[i] = WPos.LerpQuadratic(source, target, angle, i, numSegments);
 
 				zaps.Add(Pair.New(c, offsets));
 			}
