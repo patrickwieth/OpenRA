@@ -238,10 +238,12 @@ namespace OpenRA.Mods.AS.Projectiles
 			leftVector = 1024 * leftVector / leftVector.Length;
 
 			// Vector that is pointing upwards from the ground
-			upVector = new WVec(
-				-forwardStep.X * forwardStep.Z,
-				-forwardStep.Z * forwardStep.Y,
-				forwardStep.X * forwardStep.X + forwardStep.Y * forwardStep.Y);
+			upVector = leftVector.Length != 0
+					? new WVec(
+					-forwardStep.X * forwardStep.Z,
+					-forwardStep.Z * forwardStep.Y,
+					forwardStep.X * forwardStep.X + forwardStep.Y * forwardStep.Y)
+					: new WVec(forwardStep.Z, forwardStep.Z, 0);
 			upVector = 1024 * upVector / upVector.Length;
 
 			//// LeftVector and UpVector are unit vectors of size 1024.

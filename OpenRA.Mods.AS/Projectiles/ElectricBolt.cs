@@ -107,10 +107,12 @@ namespace OpenRA.Mods.AS.Projectiles
 				if (leftVector.Length != 0)
 					leftVector = 1024 * leftVector / leftVector.Length;
 
-				upVector = new WVec(
+				upVector = leftVector.Length != 0
+					? new WVec(
 					-direction.X * direction.Z,
 					-direction.Z * direction.Y,
-					direction.X * direction.X + direction.Y * direction.Y);
+					direction.X * direction.X + direction.Y * direction.Y)
+					: new WVec(direction.Z, direction.Z, 0);
 				if (upVector.Length != 0)
 					upVector = 1024 * upVector / upVector.Length;
 			}
