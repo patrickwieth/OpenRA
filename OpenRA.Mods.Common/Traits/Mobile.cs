@@ -53,6 +53,10 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Boolean expression defining the condition under which the regular (non-force) move cursor is disabled.")]
 		public readonly BooleanExpression RequireForceMoveCondition = null;
 
+		[ConsumedConditionReference]
+		[Desc("Boolean expression defining the condition under which this actor cannot be nudged by other actors.")]
+		public readonly BooleanExpression ImmovableCondition = null;
+
 		IEnumerable<object> IActorPreviewInitInfo.ActorPreviewInits(ActorInfo ai, ActorPreviewType type)
 		{
 			yield return new FacingInit(PreviewFacing);
@@ -181,6 +185,8 @@ namespace OpenRA.Mods.Common.Traits
 		INotifyFinishedMoving[] notifyFinishedMoving;
 		IWrapMove[] moveWrappers;
 		bool requireForceMove;
+
+		public bool IsImmovable { get; private set; }
 		public bool TurnToMove;
 		public bool IsBlocking { get; private set; }
 
@@ -247,13 +253,14 @@ namespace OpenRA.Mods.Common.Traits
 				SetVisualPosition(self, init.World.Map.CenterOfSubCell(FromCell, FromSubCell));
 			}
 
-			Facing = init.Contains<FacingInit>() ? init.Get<FacingInit, int>() : info.InitialFacing;
+			Facing = oldFacing = init.Contains<FacingInit>() ? init.Get<FacingInit, int>() : info.InitialFacing;
 
 			// Sets the initial visual position
 			// Unit will move into the cell grid (defined by LocationInit) as its initial activity
 			if (init.Contains<CenterPositionInit>())
 			{
-				SetVisualPosition(self, init.Get<CenterPositionInit, WPos>());
+				oldPos = init.Get<CenterPositionInit, WPos>();
+				SetVisualPosition(self, oldPos);
 				returnToCellOnCreation = true;
 			}
 
@@ -307,60 +314,77 @@ namespace OpenRA.Mods.Common.Traits
 			self.World.RemoveFromMaps(self, this);
 		}
 
+		protected override void TraitEnabled(Actor self)
+		{
+			self.World.ActorMap.UpdateOccupiedCells(self.OccupiesSpace);
+		}
+
+		protected override void TraitDisabled(Actor self)
+		{
+			self.World.ActorMap.UpdateOccupiedCells(self.OccupiesSpace);
+		}
+
+		protected override void TraitResumed(Actor self)
+		{
+			self.World.ActorMap.UpdateOccupiedCells(self.OccupiesSpace);
+		}
+
+		protected override void TraitPaused(Actor self)
+		{
+			self.World.ActorMap.UpdateOccupiedCells(self.OccupiesSpace);
+		}
+
 		#region Local misc stuff
 
-		public void Nudge(Actor self, Actor nudger, bool force)
+		public void Nudge(Actor nudger)
 		{
-			if (IsTraitDisabled || IsTraitPaused || requireForceMove)
+			if (IsTraitDisabled || IsTraitPaused || IsImmovable)
 				return;
 
-			// Pick an adjacent available cell.
+			var cell = GetAdjacentCell(nudger.Location);
+			if (cell != null)
+				self.QueueActivity(false, MoveTo(cell.Value, 0));
+		}
+
+		public CPos? GetAdjacentCell(CPos nextCell)
+		{
 			var availCells = new List<CPos>();
 			var notStupidCells = new List<CPos>();
-
-			for (var i = -1; i < 2; i++)
-				for (var j = -1; j < 2; j++)
-				{
-					var p = ToCell + new CVec(i, j);
-					if (CanEnterCell(p))
-						availCells.Add(p);
-					else if (p != nudger.Location && p != ToCell)
-						notStupidCells.Add(p);
-				}
-
-			var moveTo = availCells.Any() ? availCells.Random(self.World.SharedRandom) : (CPos?)null;
-
-			if (moveTo.HasValue)
+			foreach (CVec direction in CVec.Directions)
 			{
-				self.QueueActivity(false, new Move(self, moveTo.Value, WDist.Zero));
-				self.ShowTargetLines();
-
-				Log.Write("debug", "OnNudge #{0} from {1} to {2}",
-					self.ActorID, self.Location, moveTo.Value);
+				var p = ToCell + direction;
+				if (CanEnterCell(p))
+					availCells.Add(p);
+				else if (p != nextCell && p != ToCell)
+					notStupidCells.Add(p);
 			}
+
+			CPos? newCell = null;
+			if (availCells.Count > 0)
+				newCell = availCells.Random(self.World.SharedRandom);
 			else
 			{
 				var cellInfo = notStupidCells
-					.SelectMany(c => self.World.ActorMap.GetActorsAt(c)
-						.Where(a => a.IsIdle && a.Info.HasTraitInfo<MobileInfo>()),
+					.SelectMany(c => self.World.ActorMap.GetActorsAt(c).Where(IsMovable),
 						(c, a) => new { Cell = c, Actor = a })
 					.RandomOrDefault(self.World.SharedRandom);
-
 				if (cellInfo != null)
-				{
-					self.QueueActivity(false, new CallFunc(() => self.NotifyBlocker(cellInfo.Cell)));
-					self.QueueActivity(new WaitFor(() => CanEnterCell(cellInfo.Cell)));
-					self.QueueActivity(new Move(self, cellInfo.Cell));
-
-					Log.Write("debug", "OnNudge (notify next blocking actor, wait and move) #{0} from {1} to {2}",
-						self.ActorID, self.Location, cellInfo.Cell);
-				}
-				else
-				{
-					Log.Write("debug", "OnNudge #{0} refuses at {1}",
-						self.ActorID, self.Location);
-				}
+					newCell = cellInfo.Cell;
 			}
+
+			return newCell;
+		}
+
+		static bool IsMovable(Actor otherActor)
+		{
+			if (!otherActor.IsIdle)
+				return false;
+
+			var mobile = otherActor.TraitOrDefault<Mobile>();
+			if (mobile == null || mobile.IsTraitDisabled || mobile.IsTraitPaused || mobile.IsImmovable)
+				return false;
+
+			return true;
 		}
 
 		public bool IsLeaving()
@@ -825,7 +849,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			if (self.IsIdle)
 			{
-				Nudge(self, blocking, true);
+				Nudge(blocking);
 				return;
 			}
 
@@ -839,11 +863,22 @@ namespace OpenRA.Mods.Common.Traits
 
 			if (Info.RequireForceMoveCondition != null)
 				yield return new VariableObserver(RequireForceMoveConditionChanged, Info.RequireForceMoveCondition.Variables);
+
+			if (Info.ImmovableCondition != null)
+				yield return new VariableObserver(ImmovableConditionChanged, Info.ImmovableCondition.Variables);
 		}
 
 		void RequireForceMoveConditionChanged(Actor self, IReadOnlyDictionary<string, int> conditions)
 		{
 			requireForceMove = Info.RequireForceMoveCondition.Evaluate(conditions);
+		}
+
+		void ImmovableConditionChanged(Actor self, IReadOnlyDictionary<string, int> conditions)
+		{
+			var wasImmovable = IsImmovable;
+			IsImmovable = Info.ImmovableCondition.Evaluate(conditions);
+			if (wasImmovable != IsImmovable)
+				self.World.ActorMap.UpdateOccupiedCells(self.OccupiesSpace);
 		}
 
 		IEnumerable<IOrderTargeter> IIssueOrder.Orders
@@ -884,7 +919,7 @@ namespace OpenRA.Mods.Common.Traits
 				self.CancelActivity();
 
 			if (order.OrderString == "Scatter")
-				Nudge(self, self, true);
+				Nudge(self);
 		}
 
 		string IOrderVoice.VoicePhraseForOrder(Actor self, Order order)
@@ -921,8 +956,12 @@ namespace OpenRA.Mods.Common.Traits
 			readonly Mobile mobile;
 			readonly LocomotorInfo locomotorInfo;
 			readonly bool rejectMove;
-			public bool TargetOverridesSelection(TargetModifiers modifiers)
+			public bool TargetOverridesSelection(Actor self, Target target, List<Actor> actorsAt, CPos xy, TargetModifiers modifiers)
 			{
+				// Always prioritise orders over selecting other peoples actors or own actors that are already selected
+				if (target.Type == TargetType.Actor && (target.Actor.Owner != self.Owner || self.World.Selection.Contains(target.Actor)))
+					return true;
+
 				return modifiers.HasModifier(TargetModifiers.ForceMove);
 			}
 

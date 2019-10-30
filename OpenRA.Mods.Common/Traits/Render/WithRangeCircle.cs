@@ -41,11 +41,11 @@ namespace OpenRA.Mods.Common.Traits.Render
 		[Desc("Range of the circle")]
 		public readonly WDist Range = WDist.Zero;
 
-		public IEnumerable<IRenderable> Render(WorldRenderer wr, World w, ActorInfo ai, WPos centerPosition)
+		public IEnumerable<IRenderable> RenderAnnotations(WorldRenderer wr, World w, ActorInfo ai, WPos centerPosition)
 		{
 			if (EnabledByDefault)
 			{
-				yield return new RangeCircleRenderable(
+				yield return new RangeCircleAnnotationRenderable(
 					centerPosition,
 					Range,
 					0,
@@ -62,7 +62,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 		public override object Create(ActorInitializer init) { return new WithRangeCircle(init.Self, this); }
 	}
 
-	class WithRangeCircle : ConditionalTrait<WithRangeCircleInfo>, IRenderAboveShroudWhenSelected, IRenderAboveShroud
+	class WithRangeCircle : ConditionalTrait<WithRangeCircleInfo>, IRenderAnnotationsWhenSelected, IRenderAboveShroud
 	{
 		readonly Actor self;
 
@@ -87,7 +87,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 		public IEnumerable<IRenderable> RenderRangeCircle(Actor self, WorldRenderer wr, RangeCircleVisibility visibility)
 		{
 			if (Info.Visible == visibility && Visible)
-				yield return new RangeCircleRenderable(
+				yield return new RangeCircleAnnotationRenderable(
 					self.CenterPosition,
 					Info.Range,
 					0,
@@ -95,12 +95,12 @@ namespace OpenRA.Mods.Common.Traits.Render
 					Color.FromArgb(96, Color.Black));
 		}
 
-		IEnumerable<IRenderable> IRenderAboveShroudWhenSelected.RenderAboveShroud(Actor self, WorldRenderer wr)
+		IEnumerable<IRenderable> IRenderAnnotationsWhenSelected.RenderAnnotations(Actor self, WorldRenderer wr)
 		{
 			return RenderRangeCircle(self, wr, RangeCircleVisibility.WhenSelected);
 		}
 
-		bool IRenderAboveShroudWhenSelected.SpatiallyPartitionable { get { return false; } }
+		bool IRenderAnnotationsWhenSelected.SpatiallyPartitionable { get { return false; } }
 
 		IEnumerable<IRenderable> IRenderAboveShroud.RenderAboveShroud(Actor self, WorldRenderer wr)
 		{

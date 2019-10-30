@@ -159,7 +159,7 @@ namespace OpenRA.Mods.Cnc.Traits
 		public string OrderID { get { return "PortableChronoTeleport"; } }
 		public int OrderPriority { get { return 5; } }
 		public bool IsQueued { get; protected set; }
-		public bool TargetOverridesSelection(TargetModifiers modifiers) { return true; }
+		public bool TargetOverridesSelection(Actor self, Target target, List<Actor> actorsAt, CPos xy, TargetModifiers modifiers) { return true; }
 
 		public bool CanTarget(Actor self, Target target, List<Actor> othersAtTarget, ref TargetModifiers modifiers, ref string cursor)
 		{
@@ -215,12 +215,11 @@ namespace OpenRA.Mods.Cnc.Traits
 				world.CancelInputMode();
 		}
 
-		protected override IEnumerable<IRenderable> Render(WorldRenderer wr, World world)
-		{
-			yield break;
-		}
+		protected override IEnumerable<IRenderable> Render(WorldRenderer wr, World world) { yield break; }
 
-		protected override IEnumerable<IRenderable> RenderAboveShroud(WorldRenderer wr, World world)
+		protected override IEnumerable<IRenderable> RenderAboveShroud(WorldRenderer wr, World world) { yield break; }
+
+		protected override IEnumerable<IRenderable> RenderAnnotations(WorldRenderer wr, World world)
 		{
 			if (!self.IsInWorld || self.Owner != self.World.LocalPlayer)
 				yield break;
@@ -228,7 +227,7 @@ namespace OpenRA.Mods.Cnc.Traits
 			if (!self.Trait<PortableChrono>().Info.HasDistanceLimit)
 				yield break;
 
-			yield return new RangeCircleRenderable(
+			yield return new RangeCircleAnnotationRenderable(
 				self.CenterPosition,
 				WDist.FromCells(self.Trait<PortableChrono>().Info.MaxDistance),
 				0,

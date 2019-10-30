@@ -222,6 +222,8 @@ namespace OpenRA.Mods.Cnc.Traits
 				}
 			}
 
+			protected override IEnumerable<IRenderable> RenderAnnotations(WorldRenderer wr, World world) { yield break; }
+
 			protected override string GetCursor(World world, CPos cell, int2 worldPixel, MouseInput mi)
 			{
 				return "ability";
@@ -232,7 +234,7 @@ namespace OpenRA.Mods.Cnc.Traits
 		{
 			public string OrderID { get { return "BeginMinefield"; } }
 			public int OrderPriority { get { return 5; } }
-			public bool TargetOverridesSelection(TargetModifiers modifiers) { return true; }
+			public bool TargetOverridesSelection(Actor self, Target target, List<Actor> actorsAt, CPos xy, TargetModifiers modifiers) { return true; }
 
 			public bool CanTarget(Actor self, Target target, List<Actor> othersAtTarget, ref TargetModifiers modifiers, ref string cursor)
 			{

@@ -25,7 +25,7 @@ namespace OpenRA.Mods.Common.Traits
 		public object Create(ActorInitializer init) { return new CustomTerrainDebugOverlay(init.Self, this); }
 	}
 
-	class CustomTerrainDebugOverlay : IWorldLoaded, IChatCommand, IRenderAboveShroud
+	class CustomTerrainDebugOverlay : IWorldLoaded, IChatCommand, IRenderAnnotations
 	{
 		const string CommandName = "debugcustomterrain";
 		const string CommandDesc = "toggles the custom terrain debug overlay.";
@@ -57,7 +57,7 @@ namespace OpenRA.Mods.Common.Traits
 				Enabled ^= true;
 		}
 
-		IEnumerable<IRenderable> IRenderAboveShroud.RenderAboveShroud(Actor self, WorldRenderer wr)
+		IEnumerable<IRenderable> IRenderAnnotations.RenderAnnotations(Actor self, WorldRenderer wr)
 		{
 			if (!Enabled)
 				yield break;
@@ -74,10 +74,10 @@ namespace OpenRA.Mods.Common.Traits
 					continue;
 
 				var info = wr.World.Map.GetTerrainInfo(cell);
-				yield return new TextRenderable(font, center, 0, info.Color, info.Type);
+				yield return new TextAnnotationRenderable(font, center, 0, info.Color, info.Type);
 			}
 		}
 
-		bool IRenderAboveShroud.SpatiallyPartitionable { get { return false; } }
+		bool IRenderAnnotations.SpatiallyPartitionable { get { return false; } }
 	}
 }
