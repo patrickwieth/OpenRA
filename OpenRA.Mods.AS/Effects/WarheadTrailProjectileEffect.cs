@@ -135,7 +135,7 @@ namespace OpenRA.Mods.AS.Effects
 			{
 				var delayedPos = WPos.Lerp(source, targetpos, ticks - info.TrailDelay, estimatedlifespan);
 				world.AddFrameEndTask(w => w.Add(new SpriteEffect(delayedPos, w, info.TrailImage, info.TrailSequences.Random(world.SharedRandom),
-					trailPalette, false, false, GetEffectiveFacing())));
+					trailPalette, facing: GetEffectiveFacing())));
 
 				smokeTicks = info.TrailInterval;
 			}

@@ -75,7 +75,7 @@ namespace OpenRA.Mods.AS.Traits
 					var unit = w.CreateActor(true, actorType.ToLowerInvariant(), td);
 					var mobile = unit.TraitOrDefault<Mobile>();
 					if (mobile != null)
-						mobile.Nudge(unit, unit, true);
+						mobile.Nudge(unit);
 				}
 			});
 		}

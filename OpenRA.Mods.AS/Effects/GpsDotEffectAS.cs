@@ -18,7 +18,7 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.AS.Effects
 {
-	class GpsDotEffectAS : IEffect, IEffectAboveShroud
+	class GpsDotEffectAS : IEffect, IEffectAnnotation
 	{
 		readonly Actor actor;
 		readonly GpsDotAS trait;
@@ -100,7 +100,7 @@ namespace OpenRA.Mods.AS.Effects
 			return SpriteRenderable.None;
 		}
 
-		IEnumerable<IRenderable> IEffectAboveShroud.RenderAboveShroud(WorldRenderer wr)
+		IEnumerable<IRenderable> IEffectAnnotation.RenderAnnotation(WorldRenderer wr)
 		{
 			if (actor.World.RenderPlayer == null || !dotStates[actor.World.RenderPlayer].Visible)
 				return SpriteRenderable.None;

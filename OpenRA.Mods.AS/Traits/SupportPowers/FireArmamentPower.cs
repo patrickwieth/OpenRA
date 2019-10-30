@@ -303,20 +303,22 @@ namespace OpenRA.Mods.AS.Traits
 
 		protected override IEnumerable<IRenderable> Render(WorldRenderer wr, World world) { yield break; }
 
-		protected override IEnumerable<IRenderable> RenderAboveShroud(WorldRenderer wr, World world)
+		protected override IEnumerable<IRenderable> RenderAboveShroud(WorldRenderer wr, World world) { yield break; }
+
+		protected override IEnumerable<IRenderable> RenderAnnotations(WorldRenderer wr, World world)
 		{
 			foreach (var i in instances)
 			{
 				if (!i.Item1.IsTraitPaused && !i.Item1.IsTraitDisabled)
 				{
-					yield return new RangeCircleRenderable(
+					yield return new RangeCircleAnnotationRenderable(
 						i.Item1.Self.CenterPosition,
 						i.Item2,
 						0,
 						Color.Red,
 						Color.FromArgb(96, Color.Black));
 
-					yield return new RangeCircleRenderable(
+					yield return new RangeCircleAnnotationRenderable(
 						i.Item1.Self.CenterPosition,
 						i.Item3,
 						0,
@@ -332,7 +334,7 @@ namespace OpenRA.Mods.AS.Traits
 				var targetRangeColor = power.FireArmamentPowerInfo.TargetCircleUsePlayerColor
 					? power.Self.Owner.Color : power.FireArmamentPowerInfo.TargetCircleColor;
 
-				yield return new RangeCircleRenderable(
+				yield return new RangeCircleAnnotationRenderable(
 					world.Map.CenterOfCell(xy),
 					power.FireArmamentPowerInfo.TargetCircleRange,
 					0,
