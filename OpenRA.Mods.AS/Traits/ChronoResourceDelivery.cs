@@ -8,7 +8,7 @@
  */
 #endregion
 
-using OpenRA.Mods.AS.Activities;
+using OpenRA.Mods.Common.Effects;
 using OpenRA.Mods.Common.Traits;
 using OpenRA.Traits;
 
@@ -50,6 +50,10 @@ namespace OpenRA.Mods.AS.Traits
 		[Desc("Should parasites be teleported along?")]
 		public readonly bool ExposeInfectors = true;
 
+		[GrantedConditionReference]
+		[Desc("The condition to grant during teleport.")]
+		public readonly string Condition = null;
+
 		public override object Create(ActorInitializer init) { return new ChronoResourceDelivery(init.Self, this); }
 	}
 
@@ -58,9 +62,21 @@ namespace OpenRA.Mods.AS.Traits
 		CPos? destination = null;
 		CPos harvestedField;
 		int ticksTillCheck = 0;
+		int dockFacing;
+		IFacing facing;
+		ConditionManager manager;
+		int token = ConditionManager.InvalidConditionToken;
 
 		public ChronoResourceDelivery(Actor self, ChronoResourceDeliveryInfo info)
 			: base(info) { }
+
+		protected override void Created(Actor self)
+		{
+			facing = self.TraitOrDefault<IFacing>();
+			manager = self.Trait<ConditionManager>();
+
+			base.Created(self);
+		}
 
 		void ITick.Tick(Actor self)
 		{
@@ -79,7 +95,7 @@ namespace OpenRA.Mods.AS.Traits
 
 		public void MovingToResources(Actor self, CPos targetCell)
 		{
-			Reset();
+			Reset(self);
 		}
 
 		public void MovingToRefinery(Actor self, Actor refineryActor)
@@ -89,6 +105,8 @@ namespace OpenRA.Mods.AS.Traits
 			if (destination != null && destination.Value != deliverypos)
 				ticksTillCheck = 0;
 
+			dockFacing = refineryActor.Trait<IAcceptResources>().DeliveryAngle;
+
 			harvestedField = self.World.Map.CellContaining(self.CenterPosition);
 
 			destination = deliverypos;
@@ -96,7 +114,7 @@ namespace OpenRA.Mods.AS.Traits
 
 		public void MovementCancelled(Actor self)
 		{
-			Reset();
+			Reset(self);
 		}
 
 		public void Harvested(Actor self, ResourceType resource) { }
@@ -108,22 +126,61 @@ namespace OpenRA.Mods.AS.Traits
 			// We're already here; no need to interfere.
 			if (self.Location == destination.Value)
 			{
-				Reset();
+				Reset(self);
 				return;
 			}
+
+			if (token == ConditionManager.InvalidConditionToken && !string.IsNullOrWhiteSpace(Info.Condition))
+				token = manager.GrantCondition(self, Info.Condition);
 
 			var pos = self.Trait<IPositionable>();
 			if (pos.CanEnterCell(destination.Value))
 			{
-				self.QueueActivity(false, new ChronoResourceTeleport(destination.Value, Info, harvestedField));
-				Reset();
+				var image = Info.Image ?? self.Info.Name;
+
+				var sourcepos = self.CenterPosition;
+
+				if (Info.WarpInSequence != null)
+					self.World.AddFrameEndTask(w => w.Add(new SpriteEffect(sourcepos, w, image, Info.WarpInSequence, Info.Palette)));
+
+				if (Info.WarpInSound != null && (Info.AudibleThroughFog || !self.World.FogObscures(sourcepos)))
+					Game.Sound.Play(SoundType.World, Info.WarpInSound, self.CenterPosition, Info.SoundVolume);
+
+				if (Info.ExposeInfectors)
+					foreach (var i in self.TraitsImplementing<IRemoveInfector>())
+						i.RemoveInfector(self, false);
+
+				self.World.AddFrameEndTask(w =>
+				{
+					self.Trait<IPositionable>().SetPosition(self, destination.Value);
+					self.Generation++;
+
+					var destinationpos = self.CenterPosition;
+
+					if (facing != null)
+						facing.Facing = dockFacing;
+
+					if (Info.WarpOutSequence != null)
+						w.Add(new SpriteEffect(destinationpos, w, image, Info.WarpOutSequence, Info.Palette));
+
+					if (Info.WarpOutSound != null && (Info.AudibleThroughFog || !self.World.FogObscures(sourcepos)))
+						Game.Sound.Play(SoundType.World, Info.WarpOutSound, self.CenterPosition, Info.SoundVolume);
+
+					Reset(self);
+				});
 			}
 		}
 
-		void Reset()
+		void Reset(Actor self)
 		{
 			ticksTillCheck = 0;
 			destination = null;
+
+			self.World.AddFrameEndTask(w =>
+			{
+				if (token != ConditionManager.InvalidConditionToken)
+					token = manager.RevokeCondition(self, token);
+			});
 		}
 	}
 }
