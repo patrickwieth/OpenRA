@@ -48,7 +48,6 @@ namespace OpenRA.Mods.AS.Traits
 
 	public class MindController : PausableConditionalTrait<MindControllerInfo>, INotifyAttack, IPips, INotifyKilled, INotifyActorDisposing, INotifyCreated
 	{
-		readonly MindControllerInfo info;
 		readonly List<Actor> slaves = new List<Actor>();
 
 		Stack<int> controllingTokens = new Stack<int>();
@@ -57,10 +56,7 @@ namespace OpenRA.Mods.AS.Traits
 		public IEnumerable<Actor> Slaves { get { return slaves; } }
 
 		public MindController(Actor self, MindControllerInfo info)
-			: base(info)
-		{
-			this.info = info;
-		}
+			: base(info) { }
 
 		protected override void Created(Actor self)
 		{
@@ -91,26 +87,26 @@ namespace OpenRA.Mods.AS.Traits
 
 		public IEnumerable<PipType> GetPips(Actor self)
 		{
-			if (info.Capacity > 0)
+			if (Info.Capacity > 0)
 			{
 				for (int i = slaves.Count(); i > 0; i--)
-					yield return info.PipType;
+					yield return Info.PipType;
 
-				for (int i = info.Capacity - slaves.Count(); i > 0; i--)
-					yield return info.PipTypeEmpty;
+				for (int i = Info.Capacity - slaves.Count(); i > 0; i--)
+					yield return Info.PipTypeEmpty;
 			}
-			else if (slaves.Count() >= -info.Capacity)
+			else if (slaves.Count() >= -Info.Capacity)
 			{
-				for (int i = -info.Capacity; i > 0; i--)
-					yield return info.PipType;
+				for (int i = -Info.Capacity; i > 0; i--)
+					yield return Info.PipType;
 			}
 			else
 			{
 				for (int i = slaves.Count(); i > 0; i--)
-					yield return info.PipType;
+					yield return Info.PipType;
 
-				for (int i = -info.Capacity - slaves.Count(); i > 0; i--)
-					yield return info.PipTypeEmpty;
+				for (int i = -Info.Capacity - slaves.Count(); i > 0; i--)
+					yield return Info.PipTypeEmpty;
 			}
 		}
 
@@ -119,7 +115,7 @@ namespace OpenRA.Mods.AS.Traits
 			if (slaves.Contains(slave))
 			{
 				slaves.Remove(slave);
-				UnstackControllingCondition(self, info.ControllingCondition);
+				UnstackControllingCondition(self, Info.ControllingCondition);
 			}
 		}
 
@@ -130,7 +126,7 @@ namespace OpenRA.Mods.AS.Traits
 			if (IsTraitDisabled || IsTraitPaused)
 				return;
 
-			if (!info.ArmamentNames.Contains(a.Info.Name))
+			if (!Info.ArmamentNames.Contains(a.Info.Name))
 				return;
 
 			if (target.Actor == null || !target.IsValidFor(self))
@@ -151,17 +147,17 @@ namespace OpenRA.Mods.AS.Traits
 			if (mindControllable.IsTraitDisabled || mindControllable.IsTraitPaused)
 				return;
 
-			if (info.Capacity > 0 && !info.DiscardOldest && slaves.Count() >= info.Capacity)
+			if (Info.Capacity > 0 && !Info.DiscardOldest && slaves.Count() >= Info.Capacity)
 				return;
 
 			slaves.Add(target.Actor);
-			StackControllingCondition(self, info.ControllingCondition);
+			StackControllingCondition(self, Info.ControllingCondition);
 			mindControllable.LinkMaster(target.Actor, self);
 
-			if (info.Sounds.Any())
-				Game.Sound.Play(SoundType.World, info.Sounds.Random(self.World.SharedRandom), self.CenterPosition);
+			if (Info.Sounds.Any())
+				Game.Sound.Play(SoundType.World, Info.Sounds.Random(self.World.SharedRandom), self.CenterPosition);
 
-			if (info.Capacity > 0 && info.DiscardOldest && slaves.Count() > info.Capacity)
+			if (Info.Capacity > 0 && Info.DiscardOldest && slaves.Count() > Info.Capacity)
 				slaves[0].Trait<MindControllable>().RevokeMindControl(slaves[0]);
 		}
 
@@ -177,7 +173,7 @@ namespace OpenRA.Mods.AS.Traits
 
 			slaves.Clear();
 			while (controllingTokens.Any())
-				UnstackControllingCondition(self, info.ControllingCondition);
+				UnstackControllingCondition(self, Info.ControllingCondition);
 		}
 
 		void INotifyKilled.Killed(Actor self, AttackInfo e)
