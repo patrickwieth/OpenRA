@@ -18,6 +18,9 @@ namespace OpenRA.Mods.AS.Warheads
 {
 	public class SpawnSmokeParticleWarhead : WarheadAS, IRulesetLoaded<WeaponInfo>, ISmokeParticleInfo
 	{
+		[Desc("Amount of particles spawned. Two values mean actual amount will vary between them.")]
+		public readonly int[] Count = { 1 };
+
 		[FieldLoader.Require]
 		[Desc("The duration of an individual particle. Two values mean actual lifetime will vary between them.")]
 		public readonly int[] Duration;
@@ -109,10 +112,12 @@ namespace OpenRA.Mods.AS.Warheads
 			if (!IsValidImpact(target.CenterPosition, firedBy))
 				return;
 
-			if (Neutral || !firedBy.IsDead)
-			{
-				firedBy.World.AddFrameEndTask(w => w.Add(new SmokeParticle(!Neutral ? firedBy : firedBy.World.WorldActor, this, target.CenterPosition)));
-			}
+			var count = Count.Length == 2
+				? firedBy.World.SharedRandom.Next(Count[0], Count[1])
+				: Count[0];
+
+			for (int i = 0; i < count; i++)
+				firedBy.World.AddFrameEndTask(w => w.Add(new SmokeParticle(Neutral || firedBy.IsDead ? firedBy.World.WorldActor : firedBy, this, target.CenterPosition)));
 		}
 	}
 }
