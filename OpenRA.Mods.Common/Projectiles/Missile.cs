@@ -879,7 +879,7 @@ namespace OpenRA.Mods.Common.Projectiles
 				|| (!string.IsNullOrEmpty(info.BoundToTerrainType) && world.Map.GetTerrainInfo(cell).Type != info.BoundToTerrainType) // Hit incompatible terrain
 				|| (height.Length < info.AirburstAltitude.Length && relTarHorDist < info.CloseEnough.Length); // Airburst
 
-			if (!string.IsNullOrEmpty(info.PointDefenseType))
+			if (!shouldExplode && !string.IsNullOrEmpty(info.PointDefenseType))
 				shouldExplode |= world.ActorsWithTrait<IPointDefense>().Any(x => x.Trait.Destroy(pos, args.SourceActor.Owner, info.PointDefenseType));
 
 			if (shouldExplode)

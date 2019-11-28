@@ -129,7 +129,7 @@ namespace OpenRA.Mods.AS.Projectiles
 						parachute.PlayBackwardsThen(info.ParachuteOpeningSequence, () => world.AddFrameEndTask(w => w.Remove(this)));
 				}
 
-				if (!string.IsNullOrEmpty(info.PointDefenseType))
+				if (!exploded && !string.IsNullOrEmpty(info.PointDefenseType))
 				{
 					var shouldExplode = world.ActorsWithTrait<IPointDefense>().Any(x => x.Trait.Destroy(pos, args.SourceActor.Owner, info.PointDefenseType));
 					if (shouldExplode)

@@ -247,7 +247,7 @@ namespace OpenRA.Mods.Common.Projectiles
 			if (remainingBounces < info.BounceCount)
 				shouldExplode |= AnyValidTargetsInRadius(world, pos, info.Width, args.SourceActor, true);
 
-			if (!string.IsNullOrEmpty(info.PointDefenseType))
+			if (!shouldExplode && !string.IsNullOrEmpty(info.PointDefenseType))
 				shouldExplode |= world.ActorsWithTrait<IPointDefense>().Any(x => x.Trait.Destroy(pos, args.SourceActor.Owner, info.PointDefenseType));
 
 			if (shouldExplode)

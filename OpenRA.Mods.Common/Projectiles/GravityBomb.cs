@@ -95,6 +95,7 @@ namespace OpenRA.Mods.Common.Projectiles
 				pos += new WVec(0, 0, args.PassiveTarget.Z - pos.Z);
 				world.AddFrameEndTask(w => w.Remove(this));
 				args.Weapon.Impact(Target.FromPos(pos), args.GuidedTarget, args.SourceActor, args.DamageModifiers);
+				return;
 			}
 
 			if (!string.IsNullOrEmpty(info.PointDefenseType))
