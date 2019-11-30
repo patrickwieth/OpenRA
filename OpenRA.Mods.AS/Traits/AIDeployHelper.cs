@@ -26,7 +26,7 @@ namespace OpenRA.Mods.AS.Traits
 	}
 
 	[Desc("If this unit is owned by an AI, issue a deploy order automatically.")]
-	public class AIDeployHelperInfo : ITraitInfo
+	public class AIDeployHelperInfo : ConditionalTraitInfo
 	{
 		[Desc("Events leading to the actor getting uncloaked. Possible values are: None, Attack, Damage, Heal, Periodically.")]
 		public readonly DeployTriggers DeployTrigger = DeployTriggers.Attack | DeployTriggers.Damage;
@@ -40,15 +40,13 @@ namespace OpenRA.Mods.AS.Traits
 		[Desc("Delay to wait for the actor to undeploy (if capable to) after a successful deploy.")]
 		public readonly int UndeployTicks = 450;
 
-		public object Create(ActorInitializer init) { return new AIDeployHelper(this); }
+		public override object Create(ActorInitializer init) { return new AIDeployHelper(this); }
 	}
 
 	// TO-DO: Pester OpenRA to allow INotifyDeployTrigger to be used for other traits besides WithMakeAnimation. Like this one.
-	public class AIDeployHelper : INotifyAttack, ITick, INotifyDamage, INotifyCreated, ISync
+	public class AIDeployHelper : ConditionalTrait<AIDeployHelperInfo>, INotifyAttack, ITick, INotifyDamage, INotifyCreated, ISync
 	{
 		const string PrimaryBuildingOrderID = "PrimaryProducer";
-
-		readonly AIDeployHelperInfo info;
 
 		[Sync]
 		int undeployTicks = -1, deployTicks;
@@ -57,11 +55,9 @@ namespace OpenRA.Mods.AS.Traits
 		IIssueDeployOrder[] deployTraits;
 
 		public AIDeployHelper(AIDeployHelperInfo info)
-		{
-			this.info = info;
-		}
+			: base(info) { }
 
-		void INotifyCreated.Created(Actor self)
+		protected override void Created(Actor self)
 		{
 			undeployable = self.Info.HasTraitInfo<GrantConditionOnDeployInfo>();
 			deployTraits = self.TraitsImplementing<IIssueDeployOrder>().ToArray();
@@ -73,7 +69,7 @@ namespace OpenRA.Mods.AS.Traits
 			if (deployTicks > 0)
 				return;
 
-			if (self.World.SharedRandom.Next(100) > info.DeployChance)
+			if (self.World.SharedRandom.Next(100) > Info.DeployChance)
 				return;
 
 			var orders = deployTraits.Where(d => d.CanIssueDeployOrder(self)).Select(d => d.IssueDeployOrder(self, false));
@@ -86,11 +82,11 @@ namespace OpenRA.Mods.AS.Traits
 
 			if (undeployable)
 			{
-				undeployTicks = info.UndeployTicks;
+				undeployTicks = Info.UndeployTicks;
 				deployed = true;
 			}
 
-			deployTicks = info.DeployTicks;
+			deployTicks = Info.DeployTicks;
 		}
 
 		void Undeploy(Actor self)
@@ -100,10 +96,10 @@ namespace OpenRA.Mods.AS.Traits
 
 		void INotifyAttack.Attacking(Actor self, Target target, Armament a, Barrel barrel)
 		{
-			if (!self.Owner.IsBot)
+			if (IsTraitDisabled || !self.Owner.IsBot)
 				return;
 
-			if (info.DeployTrigger.HasFlag(DeployTriggers.Attack))
+			if (Info.DeployTrigger.HasFlag(DeployTriggers.Attack))
 				TryDeploy(self);
 		}
 
@@ -111,7 +107,7 @@ namespace OpenRA.Mods.AS.Traits
 
 		void ITick.Tick(Actor self)
 		{
-			if (!self.Owner.IsBot)
+			if (IsTraitDisabled || !self.Owner.IsBot)
 				return;
 
 			if (deployed)
@@ -125,19 +121,19 @@ namespace OpenRA.Mods.AS.Traits
 				return;
 			}
 
-			if (--deployTicks < 0 && info.DeployTrigger.HasFlag(DeployTriggers.Periodically))
+			if (--deployTicks < 0 && Info.DeployTrigger.HasFlag(DeployTriggers.Periodically))
 				TryDeploy(self);
 		}
 
 		void INotifyDamage.Damaged(Actor self, AttackInfo e)
 		{
-			if (!self.Owner.IsBot)
+			if (IsTraitDisabled || !self.Owner.IsBot)
 				return;
 
-			if (e.Damage.Value > 0 && info.DeployTrigger.HasFlag(DeployTriggers.Damage))
+			if (e.Damage.Value > 0 && Info.DeployTrigger.HasFlag(DeployTriggers.Damage))
 				TryDeploy(self);
 
-			if (e.Damage.Value < 0 && info.DeployTrigger.HasFlag(DeployTriggers.Heal))
+			if (e.Damage.Value < 0 && Info.DeployTrigger.HasFlag(DeployTriggers.Heal))
 				TryDeploy(self);
 		}
 	}
