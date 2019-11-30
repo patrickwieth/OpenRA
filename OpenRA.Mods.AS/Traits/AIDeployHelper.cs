@@ -28,7 +28,7 @@ namespace OpenRA.Mods.AS.Traits
 	[Desc("If this unit is owned by an AI, issue a deploy order automatically.")]
 	public class AIDeployHelperInfo : ITraitInfo
 	{
-		[Desc("Events leading to the actor getting uncloaked. Possible values are: None, Attack, Damage, Heal.")]
+		[Desc("Events leading to the actor getting uncloaked. Possible values are: None, Attack, Damage, Heal, Periodically.")]
 		public readonly DeployTriggers DeployTrigger = DeployTriggers.Attack | DeployTriggers.Damage;
 
 		[Desc("Chance of deploying when the trigger activates.")]
@@ -46,12 +46,14 @@ namespace OpenRA.Mods.AS.Traits
 	// TO-DO: Pester OpenRA to allow INotifyDeployTrigger to be used for other traits besides WithMakeAnimation. Like this one.
 	public class AIDeployHelper : INotifyAttack, ITick, INotifyDamage, INotifyCreated, ISync
 	{
+		const string PrimaryBuildingOrderID = "PrimaryProducer";
+
 		readonly AIDeployHelperInfo info;
 
 		[Sync]
 		int undeployTicks = -1, deployTicks;
 
-		bool undeployable, deployed;
+		bool undeployable, deployed, primaryBuilding;
 		IIssueDeployOrder[] deployTraits;
 
 		public AIDeployHelper(AIDeployHelperInfo info)
@@ -63,6 +65,7 @@ namespace OpenRA.Mods.AS.Traits
 		{
 			undeployable = self.Info.HasTraitInfo<GrantConditionOnDeployInfo>();
 			deployTraits = self.TraitsImplementing<IIssueDeployOrder>().ToArray();
+			primaryBuilding = self.Info.HasTraitInfo<PrimaryBuildingInfo>();
 		}
 
 		void TryDeploy(Actor self)
@@ -77,6 +80,9 @@ namespace OpenRA.Mods.AS.Traits
 
 			foreach (var o in orders)
 				self.World.IssueOrder(o);
+
+			if (primaryBuilding)
+				self.World.IssueOrder(new Order(PrimaryBuildingOrderID, self, false));
 
 			if (undeployable)
 			{
