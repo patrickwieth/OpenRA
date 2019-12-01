@@ -48,6 +48,11 @@ namespace OpenRA.Mods.AS.Traits
 
 		public readonly WDist Altitude = WDist.Zero;
 
+		[Desc("Should this storm be associated with an enemy (the Owner player)?")]
+		public readonly bool Enemy = true;
+
+		public readonly string Owner = "Creeps";
+
 		public WeaponInfo WeaponInfo { get; private set; }
 
 		void IRulesetLoaded<ActorInfo>.RulesetLoaded(Ruleset rules, ActorInfo info)
@@ -117,13 +122,14 @@ namespace OpenRA.Mods.AS.Traits
 					: info.Density[0];
 
 				var weapons = mapsize * density / 1000;
+				var firer = info.Enemy ? world.Players.First(x => x.PlayerName == info.Owner).PlayerActor : world.WorldActor;
 
 				for (var i = 0; i < weapons; i++)
 				{
 					var tpos = world.Map.CenterOfCell(world.Map.ChooseRandomCell(world.SharedRandom))
 						+ new WVec(WDist.Zero, WDist.Zero, info.Altitude);
 
-					info.WeaponInfo.Impact(Target.FromPos(tpos), world.WorldActor, Enumerable.Empty<int>());
+					info.WeaponInfo.Impact(Target.FromPos(tpos), firer, Enumerable.Empty<int>());
 				}
 			}
 		}
