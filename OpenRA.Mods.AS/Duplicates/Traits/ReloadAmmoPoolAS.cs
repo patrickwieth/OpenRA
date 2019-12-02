@@ -102,10 +102,10 @@ namespace OpenRA.Mods.AS.Traits
 
 		float ISelectionBar.GetValue()
 		{
-			if (!self.Owner.IsAlliedWith(self.World.RenderPlayer) || IsTraitDisabled)
+			if (!self.Owner.IsAlliedWith(self.World.RenderPlayer) || IsTraitDisabled || ammoPool.HasFullAmmo)
 				return 0;
 
-			return remainingTicks / (float)Info.Delay;
+			return 1 - (remainingTicks / (float)Info.Delay);
 		}
 
 		Color ISelectionBar.GetColor() { return Info.Color; }
