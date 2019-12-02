@@ -63,7 +63,12 @@ namespace OpenRA.Mods.AS.Traits.BotModules
 
 			var player = bot.Player;
 
-			var target = world.Actors.Where(x => x.Owner == player && Info.Pluggables.Contains(x.Info.Name))
+			var targetActors = world.Actors.Where(x => x.IsInWorld && !x.IsDead && x.Owner == player && Info.Pluggables.Contains(x.Info.Name));
+
+			if (!targetActors.Any())
+				return;
+
+			var target = targetActors
 				.Select(x => Pair.New(x, x.TraitsImplementing<Pluggable>().FirstOrDefault(p => p.AcceptsPlug(x, plugType))))
 				.FirstOrDefault(x => x.Second != null);
 
