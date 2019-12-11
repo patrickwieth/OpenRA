@@ -26,7 +26,7 @@ namespace OpenRA.Mods.AS.Traits
 	}
 
 	[Desc("If this unit is owned by an AI, activate a support power.")]
-	public class AISupportPowerTargeterHelperInfo : ConditionalTraitInfo
+	public class AISupportPowerExplicitNotifierInfo : ConditionalTraitInfo
 	{
 		[FieldLoader.Require]
 		[Desc("The support power's order name which the trait should activate.")]
@@ -44,49 +44,35 @@ namespace OpenRA.Mods.AS.Traits
 		[Desc("Delay between two activation tries when `Trigger` is set to `Periodically`.")]
 		public readonly int Ticks = 1000;
 
-		public override object Create(ActorInitializer init) { return new AISupportPowerTargeterHelper(this); }
+		public override object Create(ActorInitializer init) { return new AISupportPowerExplicitNotifier(this); }
 	}
 
-	public class AISupportPowerTargeterHelper : ConditionalTrait<AISupportPowerTargeterHelperInfo>, INotifyAttack, ITick, INotifyDamage, INotifyCreated, ISync, INotifyOwnerChanged
+	public class AISupportPowerExplicitNotifier : ConditionalTrait<AISupportPowerExplicitNotifierInfo>, INotifyAttack, ITick, INotifyDamage, INotifyCreated, ISync, INotifyOwnerChanged
 	{
-		SupportPowerManager supportPowerManager;
-		PlayerResources playerResource;
+		SupportPowerExplicitTargetBotModule botModule;
 		int ticks;
 
-		public AISupportPowerTargeterHelper(AISupportPowerTargeterHelperInfo info)
+		public AISupportPowerExplicitNotifier(AISupportPowerExplicitNotifierInfo info)
 			: base(info) { }
 
 		protected override void Created(Actor self)
 		{
-			supportPowerManager = self.Owner.PlayerActor.Trait<SupportPowerManager>();
-			playerResource = self.Owner.PlayerActor.Trait<PlayerResources>();
+			botModule = self.Owner.PlayerActor.Trait<SupportPowerExplicitTargetBotModule>();
 
 			base.Created(self);
 		}
 
 		void INotifyOwnerChanged.OnOwnerChanged(Actor self, Player oldOwner, Player newOwner)
 		{
-			supportPowerManager = newOwner.PlayerActor.Trait<SupportPowerManager>();
-			playerResource = newOwner.PlayerActor.Trait<PlayerResources>();
+			botModule = newOwner.PlayerActor.Trait<SupportPowerExplicitTargetBotModule>();
 		}
 
 		void TryActivation(Actor self)
 		{
-			if (self.World.SharedRandom.Next(100) > Info.ActivationChance)
+			if (botModule.IsTraitDisabled)
 				return;
 
-			foreach (var power in supportPowerManager.Powers.Values)
-			{
-				if (power.Ready && Info.OrderName.StartsWith(power.Info.OrderName))
-				{
-					if (power.Info.Cost != 0 && playerResource.Cash + playerResource.Resources < power.Info.Cost)
-						continue;
-
-					self.World.IssueOrder(new Order(power.Key, supportPowerManager.Self,
-						Target.FromCell(self.World, self.World.Map.CellContaining(self.CenterPosition)), false)
-							{ SuppressVisualFeedback = true });
-				}
-			}
+			botModule.AddEntry(new TraitPair<AISupportPowerExplicitNotifier>(self, this));
 		}
 
 		void INotifyAttack.Attacking(Actor self, Target target, Armament a, Barrel barrel)
