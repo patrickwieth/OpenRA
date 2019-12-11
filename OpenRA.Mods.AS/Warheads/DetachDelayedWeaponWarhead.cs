@@ -10,12 +10,12 @@
 
 using System.Collections.Generic;
 using System.Linq;
-using OpenRA.Mods.AS.Warheads;
+using OpenRA.Mods.AS.Traits;
 using OpenRA.Mods.Common;
 using OpenRA.Mods.Common.Traits;
 using OpenRA.Traits;
 
-namespace OpenRA.Mods.AS.Traits.Warheads
+namespace OpenRA.Mods.AS.Warheads
 {
 	[Desc("This warhead can detach a DelayedWeapon from the target. Requires an appropriate type of DelayedWeaponAttachable trait to function properly.")]
 	public class DetachDelayedWeaponWarhead : WarheadAS
