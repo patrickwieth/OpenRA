@@ -95,7 +95,7 @@ namespace OpenRA.Mods.AS.Projectiles
 
 			target = args.PassiveTarget;
 			source = args.Source;
-			random = args.SourceActor.World.SharedRandom;
+			random = args.SourceActor.World.LocalRandom;
 
 			hasLaunchEffect = !string.IsNullOrEmpty(info.LaunchEffectImage) && !string.IsNullOrEmpty(info.LaunchEffectSequence);
 
