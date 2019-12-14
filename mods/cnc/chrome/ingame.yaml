@@ -10,13 +10,13 @@ Container@INGAME_ROOT:
 				TakeScreenshotKey: TakeScreenshot
 				MuteAudioKey: ToggleMute
 		LogicKeyListener@WORLD_KEYHANDLER:
-			Logic: CycleBasesHotkeyLogic, CycleProductionActorsHotkeyLogic, JumpToLastEventHotkeyLogic, JumpToSelectedActorsHotkeyLogic, TogglePixelDoubleHotkeyLogic, TogglePlayerStanceColorHotkeyLogic, CycleStatusBarsHotkeyLogic, PauseHotkeyLogic, RemoveFromControlGroupHotkeyLogic
+			Logic: CycleBasesHotkeyLogic, CycleProductionActorsHotkeyLogic, JumpToLastEventHotkeyLogic, JumpToSelectedActorsHotkeyLogic, ResetZoomHotkeyLogic, TogglePlayerStanceColorHotkeyLogic, CycleStatusBarsHotkeyLogic, PauseHotkeyLogic, RemoveFromControlGroupHotkeyLogic
 				RemoveFromControlGroupKey: RemoveFromControlGroup
 				CycleBasesKey: CycleBase
 				CycleProductionActorsKey: CycleProductionBuildings
 				JumpToLastEventKey: ToLastEvent
 				JumpToSelectedActorsKey: ToSelection
-				TogglePixelDoubleKey: TogglePixelDouble
+				ResetZoomKey: ResetZoom
 				TogglePlayerStanceColorKey: TogglePlayerStanceColor
 				CycleStatusBarsKey: CycleStatusBars
 				PauseKey: Pause
@@ -77,6 +77,8 @@ Container@OBSERVER_WIDGETS:
 			Width: WINDOW_RIGHT
 			Height: WINDOW_BOTTOM
 			TooltipContainer: TOOLTIP_CONTAINER
+			ZoomInKey: ZoomIn
+			ZoomOutKey: ZoomOut
 			ScrollUpKey: MapScrollUp
 			ScrollDownKey: MapScrollDown
 			ScrollLeftKey: MapScrollLeft
@@ -1048,6 +1050,8 @@ Container@PLAYER_WIDGETS:
 			Height: WINDOW_BOTTOM
 			TooltipTemplate: WORLD_TOOLTIP_FACTIONSUFFIX
 			TooltipContainer: TOOLTIP_CONTAINER
+			ZoomInKey: ZoomIn
+			ZoomOutKey: ZoomOut
 			ScrollUpKey: MapScrollUp
 			ScrollDownKey: MapScrollDown
 			ScrollLeftKey: MapScrollLeft

@@ -160,12 +160,19 @@ namespace OpenRA.Mods.Common.Traits
 			player = self.Owner;
 		}
 
+		protected override void Created(Actor self)
+		{
+			// Special case handling is required for the Player actor.
+			// Created is called before Player.PlayerActor is assigned,
+			// so we must query player traits from self, which refers
+			// for bot modules always to the Player actor.
+			playerPower = self.TraitOrDefault<PowerManager>();
+			playerResources = self.Trait<PlayerResources>();
+			positionsUpdatedModules = self.TraitsImplementing<IBotPositionsUpdated>().ToArray();
+		}
+
 		protected override void TraitEnabled(Actor self)
 		{
-			playerPower = player.PlayerActor.TraitOrDefault<PowerManager>();
-			playerResources = player.PlayerActor.Trait<PlayerResources>();
-			positionsUpdatedModules = player.PlayerActor.TraitsImplementing<IBotPositionsUpdated>().ToArray();
-
 			var tileset = world.Map.Rules.TileSet;
 			resourceTypeIndices = new BitArray(tileset.TerrainInfo.Length); // Big enough
 			foreach (var t in world.Map.Rules.Actors["world"].TraitInfos<ResourceTypeInfo>())
@@ -222,7 +229,7 @@ namespace OpenRA.Mods.Common.Traits
 			foreach (var rp in world.ActorsWithTrait<RallyPoint>())
 			{
 				if (rp.Actor.Owner == player &&
-					!IsRallyPointValid(rp.Trait.Location, rp.Actor.Info.TraitInfoOrDefault<BuildingInfo>()))
+					!IsRallyPointValid(rp.Trait.Path[0], rp.Actor.Info.TraitInfoOrDefault<BuildingInfo>()))
 				{
 					bot.QueueOrder(new Order("SetRallyPoint", rp.Actor, Target.FromCell(world, ChooseRallyLocationNear(rp.Actor)), false)
 					{

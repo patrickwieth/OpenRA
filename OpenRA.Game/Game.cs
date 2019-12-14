@@ -458,6 +458,7 @@ namespace OpenRA
 
 			PerfHistory.Items["render"].HasNormalTick = false;
 			PerfHistory.Items["batches"].HasNormalTick = false;
+			PerfHistory.Items["render_world"].HasNormalTick = false;
 			PerfHistory.Items["render_widgets"].HasNormalTick = false;
 			PerfHistory.Items["render_flip"].HasNormalTick = false;
 
@@ -672,28 +673,33 @@ namespace OpenRA
 
 					// World rendering is disabled while the loading screen is displayed
 					if (worldRenderer != null && !worldRenderer.World.IsLoadingGameSave)
+					{
+						worldRenderer.Viewport.Tick();
 						worldRenderer.PrepareRenderables();
+					}
 
 					Ui.PrepareRenderables();
 					Renderer.WorldModelRenderer.EndFrame();
 				}
 
 				// worldRenderer is null during the initial install/download screen
-				if (worldRenderer != null)
+				// World rendering is disabled while the loading screen is displayed
+				// Use worldRenderer.World instead of OrderManager.World to avoid a rendering mismatch while processing orders
+				if (worldRenderer != null && !worldRenderer.World.IsLoadingGameSave)
 				{
-					Renderer.BeginFrame(worldRenderer.Viewport.TopLeft, worldRenderer.Viewport.Zoom);
+					Renderer.BeginWorld(worldRenderer.Viewport.Rectangle);
 					Sound.SetListenerPosition(worldRenderer.Viewport.CenterPosition);
-
-					// World rendering is disabled while the loading screen is displayed
-					// Use worldRenderer.World instead of OrderManager.World to avoid a rendering mismatch while processing orders
-					if (!worldRenderer.World.IsLoadingGameSave)
+					using (new PerfSample("render_world"))
 						worldRenderer.Draw();
 				}
-				else
-					Renderer.BeginFrame(int2.Zero, 1f);
 
 				using (new PerfSample("render_widgets"))
 				{
+					Renderer.BeginUI();
+
+					if (worldRenderer != null && !worldRenderer.World.IsLoadingGameSave)
+						worldRenderer.DrawAnnotations();
+
 					Ui.Draw();
 
 					if (ModData != null && ModData.CursorProvider != null)
@@ -720,6 +726,7 @@ namespace OpenRA
 
 			PerfHistory.Items["render"].Tick();
 			PerfHistory.Items["batches"].Tick();
+			PerfHistory.Items["render_world"].Tick();
 			PerfHistory.Items["render_widgets"].Tick();
 			PerfHistory.Items["render_flip"].Tick();
 		}
