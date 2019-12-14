@@ -8,6 +8,7 @@
  */
 #endregion
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Mods.Common;
@@ -39,6 +40,9 @@ namespace OpenRA.Mods.AS.Traits
 			"decreased by a percentage of the original time.")]
 		public readonly int[] BuildTimeSpeedReduction = { 100, 85, 75, 65, 60, 55, 50 };
 
+		[Desc("Build time multiplier penalties for producing different actors at the same time.")]
+		public readonly int[] ParallelPenalty = { 100, 116, 133, 150, 166, 183, 200, 216, 233, 250 };
+
 		public override object Create(ActorInitializer init) { return new ClassicParallelProductionQueue(init, this); }
 	}
 
@@ -48,6 +52,8 @@ namespace OpenRA.Mods.AS.Traits
 
 		readonly Actor self;
 		readonly ClassicParallelProductionQueueInfo info;
+
+		int penalty;
 
 		public ClassicParallelProductionQueue(ActorInitializer init, ClassicParallelProductionQueueInfo info)
 			: base(init, init.Self, info)
@@ -89,6 +95,22 @@ namespace OpenRA.Mods.AS.Traits
 			var item = Queue.FirstOrDefault(i => !i.Paused);
 			if (item == null)
 				return;
+
+			var parallelBuilds = Queue.FindAll(i => !i.Paused && !i.Done)
+				.GroupBy(i => i.Item)
+				.ToList()
+				.Count - 1;
+
+			if (parallelBuilds > 0 && !developerMode.FastBuild)
+			{
+				penalty -= 100;
+				if (penalty < 0)
+				{
+					penalty = info.ParallelPenalty[Math.Min(parallelBuilds, info.ParallelPenalty.Length - 1)];
+				}
+				else
+					return;
+			}
 
 			var before = item.RemainingTime;
 			item.Tick(playerResources);
@@ -207,7 +229,7 @@ namespace OpenRA.Mods.AS.Traits
 				.GroupBy(i => i.Item)
 				.ToList()
 				.Count;
-			return item.RemainingTimeActual * parallelBuilds;
+			return item.RemainingTimeActual * parallelBuilds * info.ParallelPenalty[Math.Min(parallelBuilds - 1, info.ParallelPenalty.Length - 1)] / 100;
 		}
 	}
 }
