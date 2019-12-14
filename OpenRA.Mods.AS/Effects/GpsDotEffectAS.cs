@@ -109,7 +109,8 @@ namespace OpenRA.Mods.AS.Effects
 				actor.EffectiveOwner.Owner : actor.Owner;
 
 			var palette = wr.Palette(trait.Info.IndicatorPalettePrefix + effectiveOwner.InternalName);
-			return anim.Render(actor.CenterPosition, palette);
+			var screenPos = wr.Viewport.WorldToViewPx(wr.ScreenPxPosition(actor.CenterPosition));
+			return anim.RenderUI(wr, screenPos, WVec.Zero, 0, palette, 1f);
 		}
 	}
 }

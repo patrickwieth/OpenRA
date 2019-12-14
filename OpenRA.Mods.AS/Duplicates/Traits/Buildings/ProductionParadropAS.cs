@@ -9,6 +9,7 @@
 #endregion
 
 using System;
+using System.Collections.Generic;
 using OpenRA.Activities;
 using OpenRA.Mods.Common;
 using OpenRA.Mods.Common.Activities;
@@ -103,7 +104,7 @@ namespace OpenRA.Mods.AS.Traits
 		public override void DoProduction(Actor self, ActorInfo producee, ExitInfo exitinfo, string productionType, TypeDictionary inits)
 		{
 			var exit = CPos.Zero;
-			var exitLocation = CPos.Zero;
+			var exitLocations = new List<CPos>();
 
 			var info = (ProductionParadropInfo)Info;
 			var actorType = info.ActorType;
@@ -123,7 +124,7 @@ namespace OpenRA.Mods.AS.Traits
 
 				var initialFacing = exitinfo.Facing < 0 ? (to - spawn).Yaw.Facing : exitinfo.Facing;
 
-				exitLocation = rp.Value != null ? rp.Value.Location : exit;
+				exitLocations = rp.Value != null ? rp.Value.Path : new List<CPos> { exit };
 
 				td.Add(new LocationInit(exit));
 				td.Add(new CenterPositionInit(spawn));
@@ -138,7 +139,8 @@ namespace OpenRA.Mods.AS.Traits
 
 				var move = newUnit.TraitOrDefault<IMove>();
 				if (move != null)
-					newUnit.QueueActivity(new AttackMoveActivity(newUnit, () => move.MoveTo(exitLocation, 1, targetLineColor: Color.OrangeRed)));
+					foreach (var cell in exitLocations)
+						newUnit.QueueActivity(new AttackMoveActivity(newUnit, () => move.MoveTo(cell, 1, evaluateNearestMovableCell: true, targetLineColor: Color.OrangeRed)));
 
 				if (!self.IsDead)
 					foreach (var t in self.TraitsImplementing<INotifyProduction>())
