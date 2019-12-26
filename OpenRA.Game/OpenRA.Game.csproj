@@ -46,6 +46,10 @@
     <StartAction>Project</StartAction>
     <StartArguments>Game.Mod=ts</StartArguments>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(RunConfiguration)' == 'Red Alert 2 - Valiant Shades'">
+    <StartAction>Project</StartAction>
+    <StartArguments>Game.Mod=ra2vsh</StartArguments>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="Open.Nat">
       <HintPath>..\thirdparty\download\Open.Nat.dll</HintPath>
@@ -66,7 +70,7 @@
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>
     <None Include="App.config" />
-    <PackageReference Include="StyleCop.Analyzers" Version="1.1.118" /> 
+    <PackageReference Include="StyleCop.Analyzers" Version="1.1.118" />
     <AdditionalFiles Include="../stylecop.json" />
     <AdditionalFiles Include="Properties/launchSettings.json" />
   </ItemGroup>

@@ -16,9 +16,9 @@
       "commandName": "Project",
       "commandLineArgs": "Game.Mod=ts"
     },
-    "Red Alert 2 - Valiant Hearts": {
+    "Red Alert 2 - Valiant Shades": {
       "commandName": "Project",
-      "commandLineArgs": "Game.Mod=ra2vh"
+      "commandLineArgs": "Game.Mod=ra2vsh"
     }
   }
 }

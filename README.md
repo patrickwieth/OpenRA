@@ -6,7 +6,7 @@ This repository was made under the guidance of the OpenRA ModSDK soft-fork appro
 Current build status: [![Build Status](https://travis-ci.org/AttacqueSuperior/Engine.svg?branch=master)](https://travis-ci.org/AttacqueSuperior/Engine)
 
 Primary users of this codebase:
-* Red Alert 2 - Valiant Hearts: https://github.com/AttacqueSuperior/ValiantHearts
+* Red Alert 2 - Valiant Shades: https://github.com/AttacqueSuperior/ValiantShades
 
 This repository's additional aim is to be used by other OpenRA modders for their advancements as well as providing reference implementations for a few TS/RA2/Generals logics.
 
@@ -67,7 +67,7 @@ Check our [Playing the Game](https://github.com/OpenRA/OpenRA/wiki/Playing-the-g
 
 ## License
 Copyright 2007-2019 The OpenRA Developers (see [AUTHORS](https://github.com/OpenRA/OpenRA/blob/bleed/AUTHORS))
-This file is part of OpenRA, which is free software. It is made 
+This file is part of OpenRA, which is free software. It is made
 available to you under the terms of the GNU General Public License
 as published by the Free Software Foundation, either version 3 of
 the License, or (at your option) any later version. For more
