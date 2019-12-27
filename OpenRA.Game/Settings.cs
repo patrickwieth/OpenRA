@@ -138,6 +138,9 @@ namespace OpenRA
 		[Desc("This can be set to Windowed, Fullscreen or PseudoFullscreen.")]
 		public WindowMode Mode = WindowMode.PseudoFullscreen;
 
+		[Desc("Enable VSync.")]
+		public bool VSync = true;
+
 		[Desc("Screen resolution in fullscreen mode.")]
 		public int2 FullscreenSize = new int2(0, 0);
 
@@ -149,8 +152,8 @@ namespace OpenRA
 		public bool CursorDouble = false;
 		public WorldViewport ViewportDistance = WorldViewport.Medium;
 
-		[Desc("Add a frame rate limiter. It is recommended to not disable this.")]
-		public bool CapFramerate = true;
+		[Desc("Add a frame rate limiter.")]
+		public bool CapFramerate = false;
 
 		[Desc("At which frames per second to cap the framerate.")]
 		public int MaxFramerate = 60;
