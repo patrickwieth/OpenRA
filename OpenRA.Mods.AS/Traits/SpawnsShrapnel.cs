@@ -43,6 +43,9 @@ namespace OpenRA.Mods.AS.Traits
 		[Desc("Should the shrapnel hit the spawner actor?")]
 		public readonly bool AllowSelfHit = false;
 
+		[Desc("Shrapnel spawn offset relative to actor's position.")]
+		public readonly WVec LocalOffset = WVec.Zero;
+
 		public WeaponInfo WeaponInfo { get; private set; }
 
 		public override object Create(ActorInitializer init) { return new SpawnsShrapnel(init.Self, this); }
@@ -64,6 +67,7 @@ namespace OpenRA.Mods.AS.Traits
 	class SpawnsShrapnel : PausableConditionalTrait<SpawnsShrapnelInfo>, ITick, ISync
 	{
 		readonly World world;
+		readonly BodyOrientation body;
 
 		[Sync]
 		int ticks;
@@ -72,6 +76,7 @@ namespace OpenRA.Mods.AS.Traits
 			: base(info)
 		{
 			world = self.World;
+			body = self.TraitOrDefault<BodyOrientation>();
 		}
 
 		void ITick.Tick(Actor self)
@@ -83,7 +88,11 @@ namespace OpenRA.Mods.AS.Traits
 					? world.SharedRandom.Next(Info.Delay[0], Info.Delay[1])
 					: Info.Delay[0];
 
-			var position = self.CenterPosition;
+			var localoffset = body != null
+					? body.LocalToWorld(Info.LocalOffset.Rotate(body.QuantizeOrientation(self, self.Orientation)))
+					: Info.LocalOffset;
+
+			var position = self.CenterPosition + localoffset;
 
 			var availableTargetActors = world.FindActorsOnCircle(position, Info.WeaponInfo.Range)
 				.Where(x => (Info.AllowSelfHit || x != self)
