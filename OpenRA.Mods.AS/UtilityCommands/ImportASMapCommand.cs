@@ -274,7 +274,7 @@ namespace OpenRA.Mods.AS.UtilityCommands
 			{ "wwlf", "mumy" }
 		};
 
-		[Desc("FILENAME", "Convert an Attacque Supérior map to the OpenRA format.")]
+		[Desc("FILENAME", "AUTHOR (optional, defaults to Westwood Studios)", "Convert an Attacque Supérior/Valiant Shades map to the OpenRA format.")]
 		void IUtilityCommand.Run(Utility utility, string[] args)
 		{
 			// HACK: The engine code assumes that Game.modData is set.
@@ -288,11 +288,14 @@ namespace OpenRA.Mods.AS.UtilityCommands
 			var iniSize = mapSection.GetValue("Size", "0, 0, 0, 0").Split(',').Select(int.Parse).ToArray();
 			var iniBounds = mapSection.GetValue("LocalSize", "0, 0, 0, 0").Split(',').Select(int.Parse).ToArray();
 			var size = new Size(iniSize[2], 2 * iniSize[3]);
+			var author = args.Length > 2
+				? args[2]
+				: "Westwwod Studios";
 
 			var map = new Map(Game.ModData, utility.ModData.DefaultTileSets[tileset], size.Width, size.Height)
 			{
 				Title = basic.GetValue("Name", Path.GetFileNameWithoutExtension(filename)),
-				Author = "Westwood Studios",
+				Author = author,
 				Bounds = new Rectangle(iniBounds[0], iniBounds[1], iniBounds[2], 2 * iniBounds[3] + 2 * iniBounds[1]),
 				RequiresMod = utility.ModData.Manifest.Id
 			};
