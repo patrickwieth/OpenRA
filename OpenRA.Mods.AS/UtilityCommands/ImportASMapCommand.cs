@@ -290,7 +290,7 @@ namespace OpenRA.Mods.AS.UtilityCommands
 			var size = new Size(iniSize[2], 2 * iniSize[3]);
 			var author = args.Length > 2
 				? args[2]
-				: "Westwwod Studios";
+				: "Westwood Studios";
 
 			var map = new Map(Game.ModData, utility.ModData.DefaultTileSets[tileset], size.Width, size.Height)
 			{

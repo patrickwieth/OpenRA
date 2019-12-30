@@ -150,6 +150,10 @@ namespace OpenRA.Mods.AS.Warheads
 					{
 						var subCell = positionable.GetAvailableSubCell(cell.Current);
 
+						if (ai.HasTraitInfo<AircraftInfo>()
+							&& ai.TraitInfo<AircraftInfo>().CanEnterCell(firedBy.World, unit, cell.Current))
+							subCell = SubCell.FullCell;
+
 						if (subCell != SubCell.Invalid)
 						{
 							positionable.SetPosition(unit, cell.Current, subCell);
