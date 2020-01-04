@@ -322,10 +322,6 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			var ipLabel = widget.Get<LabelWidget>("IP");
 			ipLabel.GetText = () => cachedDescriptiveIP;
 
-			var locationLabel = widget.Get<LabelWidget>("LOCATION");
-			var cachedCountryLookup = GeoIP.LookupCountry(address);
-			locationLabel.GetText = () => cachedCountryLookup;
-
 			if (client.IsAdmin)
 			{
 				var adminLabel = widget.Get("GAME_ADMIN");
