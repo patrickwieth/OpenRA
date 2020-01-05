@@ -319,13 +319,6 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			var nameFont = Game.Renderer.Fonts[nameLabel.Font];
 			widget.Bounds.Width = nameFont.Measure(nameLabel.Text).X + 2 * nameLabel.Bounds.Left;
 
-			var ipLabel = widget.Get<LabelWidget>("IP");
-			ipLabel.GetText = () => cachedDescriptiveIP;
-
-			var locationLabel = widget.Get<LabelWidget>("LOCATION");
-			var cachedCountryLookup = GeoIP.LookupCountry(address);
-			locationLabel.GetText = () => cachedCountryLookup;
-
 			if (client.IsAdmin)
 			{
 				var adminLabel = widget.Get("GAME_ADMIN");

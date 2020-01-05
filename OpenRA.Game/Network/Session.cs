@@ -115,6 +115,7 @@ namespace OpenRA.Network
 			public string Faction;
 			public int SpawnPoint;
 			public string Name;
+			[FieldLoader.Ignore]
 			public string IpAddress;
 			public ClientState State = ClientState.Invalid;
 			public int Team;
