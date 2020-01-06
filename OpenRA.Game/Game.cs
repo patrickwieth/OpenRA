@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2019 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -22,6 +22,7 @@ using System.Threading.Tasks;
 using OpenRA.Graphics;
 using OpenRA.Network;
 using OpenRA.Primitives;
+using OpenRA.Server;
 using OpenRA.Support;
 using OpenRA.Widgets;
 
@@ -912,7 +913,7 @@ namespace OpenRA
 
 		public static void CreateServer(ServerSettings settings)
 		{
-			server = new Server.Server(new IPEndPoint(IPAddress.Any, settings.ListenPort), settings, ModData, false);
+			server = new Server.Server(new IPEndPoint(IPAddress.Any, settings.ListenPort), settings, ModData, ServerType.Multiplayer);
 		}
 
 		public static int CreateLocalServer(string map)
@@ -924,7 +925,7 @@ namespace OpenRA
 				AdvertiseOnline = false
 			};
 
-			server = new Server.Server(new IPEndPoint(IPAddress.Loopback, 0), settings, ModData, false);
+			server = new Server.Server(new IPEndPoint(IPAddress.Loopback, 0), settings, ModData, ServerType.Local);
 
 			return server.Port;
 		}
