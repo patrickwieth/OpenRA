@@ -95,8 +95,15 @@ namespace OpenRA.Mods.AS.Traits
 
 		void IResolveOrder.ResolveOrder(Actor self, Order order)
 		{
+			if (IsTraitDisabled)
+				return;
+
 			var os = order.OrderString;
 			if (os != "PlacePlugAI")
+				return;
+
+			var ts = order.TargetString;
+			if (ts != Info.Plug)
 				return;
 
 			self.World.AddFrameEndTask(w =>
