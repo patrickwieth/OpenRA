@@ -212,8 +212,11 @@ namespace OpenRA.Mods.Common.Activities
 
 		protected override void OnFirstRun(Actor self)
 		{
-			QueueChild(new Fly(self, target, target.CenterPosition));
-			QueueChild(new Fly(self, target, exitRange, WDist.MaxValue, target.CenterPosition));
+			if (target.Type != TargetType.Invalid)
+			{
+				QueueChild(new Fly(self, target, target.CenterPosition));
+				QueueChild(new Fly(self, target, exitRange, WDist.MaxValue, target.CenterPosition));
+			}
 		}
 
 		public override bool Tick(Actor self)
@@ -251,8 +254,11 @@ namespace OpenRA.Mods.Common.Activities
 
 		protected override void OnFirstRun(Actor self)
 		{
-			QueueChild(new Fly(self, target, target.CenterPosition));
-			QueueChild(new Fly(self, target, exitRange, WDist.MaxValue, target.CenterPosition));
+			if (target.Type != TargetType.Invalid)
+			{
+				QueueChild(new Fly(self, target, target.CenterPosition));
+				QueueChild(new Fly(self, target, exitRange, WDist.MaxValue, target.CenterPosition));
+			}
 		}
 
 		public override bool Tick(Actor self)
