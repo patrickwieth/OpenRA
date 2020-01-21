@@ -43,10 +43,9 @@ namespace OpenRA.Mods.AS.Traits
 
 		public void Tick(Actor attachable)
 		{
-			RemainingTime--;
 			if (!attachable.IsDead && attachable.IsInWorld && IsValid)
 			{
-				if (RemainingTime == 0)
+				if (--RemainingTime < 0)
 				{
 					Activate(attachable);
 				}
