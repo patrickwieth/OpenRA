@@ -55,6 +55,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 	{
 		readonly IMove move;
 		protected readonly Animation DefaultAnimation;
+		readonly bool hasIdleSequence;
 
 		bool dirty;
 		string idleSequence;
@@ -74,20 +75,9 @@ namespace OpenRA.Mods.Common.Traits.Render
 			DefaultAnimation = new Animation(init.World, rs.GetImage(self), RenderSprites.MakeFacingFunc(self));
 			rs.Add(new AnimationWithOffset(DefaultAnimation, null, () => IsTraitDisabled));
 			PlayStandAnimation(self);
+			hasIdleSequence = Info.IdleSequences.Length > 0;
 
 			move = init.Self.Trait<IMove>();
-		}
-
-		public void PlayStandAnimation(Actor self)
-		{
-			state = AnimationState.Waiting;
-
-			var sequence = DefaultAnimation.GetRandomExistingSequence(Info.StandSequences, Game.CosmeticRandom);
-			if (sequence != null)
-			{
-				var normalized = NormalizeInfantrySequence(self, sequence);
-				DefaultAnimation.PlayRepeating(normalized);
-			}
 		}
 
 		protected override void Created(Actor self)
@@ -110,7 +100,19 @@ namespace OpenRA.Mods.Common.Traits.Render
 
 		protected virtual bool AllowIdleAnimation(Actor self)
 		{
-			return !IsModifyingSequence;
+			return hasIdleSequence && !IsModifyingSequence;
+		}
+
+		public void PlayStandAnimation(Actor self)
+		{
+			state = AnimationState.Waiting;
+
+			var sequence = DefaultAnimation.GetRandomExistingSequence(Info.StandSequences, Game.CosmeticRandom);
+			if (sequence != null)
+			{
+				var normalized = NormalizeInfantrySequence(self, sequence);
+				DefaultAnimation.PlayRepeating(normalized);
+			}
 		}
 
 		public void Attacking(Actor self, Target target, Armament a)
@@ -162,29 +164,19 @@ namespace OpenRA.Mods.Common.Traits.Render
 
 		void INotifyIdle.TickIdle(Actor self)
 		{
-			if (state != AnimationState.Idle && state != AnimationState.IdleAnimating && state != AnimationState.Attacking)
-			{
-				PlayStandAnimation(self);
-				state = AnimationState.Idle;
+			if (!AllowIdleAnimation(self))
+				return;
 
-				if (Info.IdleSequences.Length > 0)
-				{
-					idleSequence = Info.IdleSequences.Random(self.World.SharedRandom);
-					idleDelay = self.World.SharedRandom.Next(Info.MinIdleDelay, Info.MaxIdleDelay);
-				}
-			}
-			else if (AllowIdleAnimation(self))
+			if (state == AnimationState.Waiting)
 			{
-				if (idleSequence != null && DefaultAnimation.HasSequence(idleSequence))
-				{
-					if (idleDelay > 0 && --idleDelay == 0)
-					{
-						state = AnimationState.IdleAnimating;
-						DefaultAnimation.PlayThen(idleSequence, () => PlayStandAnimation(self));
-					}
-				}
-				else
-					PlayStandAnimation(self);
+				state = AnimationState.Idle;
+				idleSequence = Info.IdleSequences.Random(self.World.SharedRandom);
+				idleDelay = self.World.SharedRandom.Next(Info.MinIdleDelay, Info.MaxIdleDelay);
+			}
+			else if (state == AnimationState.Idle && idleDelay > 0 && --idleDelay == 0)
+			{
+				state = AnimationState.IdleAnimating;
+				DefaultAnimation.PlayThen(idleSequence, () => PlayStandAnimation(self));
 			}
 		}
 

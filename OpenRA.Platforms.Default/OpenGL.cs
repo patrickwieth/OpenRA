@@ -497,6 +497,10 @@ namespace OpenRA.Platforms.Default
 
 			DetectGLFeatures();
 
+			// Allow users to force-disable the debug message callback feature to work around driver bugs
+			if (Features.HasFlag(GLFeatures.DebugMessagesCallback) && Game.Settings.Graphics.DisableGLDebugMessageCallback)
+				Features ^= GLFeatures.DebugMessagesCallback;
+
 			if (!Features.HasFlag(GLFeatures.Core))
 			{
 				WriteGraphicsLog("Unsupported OpenGL version: " + glGetString(GL_VERSION));
@@ -508,8 +512,9 @@ namespace OpenRA.Platforms.Default
 			{
 				try
 				{
-					glDebugMessageCallback = Bind<DebugMessageCallback>("glDebugMessageCallback");
-					glDebugMessageInsert = Bind<DebugMessageInsert>("glDebugMessageInsert");
+					var suffix = Features.HasFlag(GLFeatures.GLES) ? "KHR" : "";
+					glDebugMessageCallback = Bind<DebugMessageCallback>("glDebugMessageCallback" + suffix);
+					glDebugMessageInsert = Bind<DebugMessageInsert>("glDebugMessageInsert" + suffix);
 
 					glEnable(GL_DEBUG_OUTPUT);
 					glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
