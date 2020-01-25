@@ -312,24 +312,34 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		[ObjectCreator.UseCtor]
 		public AnonymousProfileTooltipLogic(Widget widget, OrderManager orderManager, Session.Client client)
 		{
-			var address = LobbyUtils.GetExternalIP(client, orderManager);
-			var cachedDescriptiveIP = address ?? "Unknown IP";
-
 			var nameLabel = widget.Get<LabelWidget>("NAME");
 			var nameFont = Game.Renderer.Fonts[nameLabel.Font];
 			widget.Bounds.Width = nameFont.Measure(nameLabel.Text).X + 2 * nameLabel.Bounds.Left;
 
-			var ipLabel = widget.Get<LabelWidget>("IP");
-			ipLabel.GetText = () => cachedDescriptiveIP;
-
 			var locationLabel = widget.Get<LabelWidget>("LOCATION");
-			var cachedCountryLookup = GeoIP.LookupCountry(address);
-			locationLabel.GetText = () => cachedCountryLookup;
+			var ipLabel = widget.Get<LabelWidget>("IP");
+			var adminLabel = widget.Get("GAME_ADMIN");
+
+			if (client.Location != null)
+			{
+				locationLabel.IsVisible = () => true;
+				locationLabel.GetText = () => client.Location;
+				widget.Bounds.Height += locationLabel.Bounds.Height;
+				ipLabel.Bounds.Y += locationLabel.Bounds.Height;
+				adminLabel.Bounds.Y += locationLabel.Bounds.Height;
+			}
+
+			if (client.AnonymizedIPAddress != null)
+			{
+				ipLabel.IsVisible = () => true;
+				ipLabel.GetText = () => client.AnonymizedIPAddress;
+				widget.Bounds.Height += ipLabel.Bounds.Height;
+				adminLabel.Bounds.Y += locationLabel.Bounds.Height;
+			}
 
 			if (client.IsAdmin)
 			{
-				var adminLabel = widget.Get("GAME_ADMIN");
-				adminLabel.IsVisible = () => client.IsAdmin;
+				adminLabel.IsVisible = () => true;
 				widget.Bounds.Height += adminLabel.Bounds.Height;
 			}
 		}
