@@ -19,6 +19,14 @@ if (!(Test-Path "ICSharpCode.SharpZipLib.dll"))
 	rmdir SharpZipLib -Recurse
 }
 
+if (!(Test-Path "MaxMind.Db.dll"))
+{
+	echo "Fetching MaxMind.Db from NuGet."
+	./nuget.exe install MaxMind.Db -Version 2.0.0 -ExcludeVersion -Verbosity quiet -Source nuget.org
+	cp MaxMind.Db/lib/net45/MaxMind.Db.* .
+	rmdir MaxMind.Db -Recurse
+}
+
 if (!(Test-Path "nunit.framework.dll"))
 {
 	echo "Fetching NUnit from NuGet."
@@ -30,19 +38,19 @@ if (!(Test-Path "nunit.framework.dll"))
 if (!(Test-Path "windows/SDL2.dll"))
 {
 	echo "Fetching SDL2 from libsdl.org"
-
+	
 	# Download zip:
 	$zipFileName = "SDL2-2.0.5-win32-x64.zip"
 	$target = Join-Path $pwd.ToString() $zipFileName
 	(New-Object System.Net.WebClient).DownloadFile("https://www.libsdl.org/release/" + $zipFileName, $target)
-
+	
 	# Extract zip:
 	$shell_app=new-object -com shell.application
 	$currentPath = (Get-Location).Path
 	$zipFile = $shell_app.namespace($currentPath + "\$zipFileName")
 	$destination = $shell_app.namespace($currentPath + "\windows")
 	$destination.Copyhere($zipFile.items())
-
+	
 	# Remove junk files:
 	rm "$zipFileName"
 	rm -path "$currentPath\windows\README-SDL.txt"
