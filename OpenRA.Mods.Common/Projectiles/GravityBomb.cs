@@ -94,7 +94,7 @@ namespace OpenRA.Mods.Common.Projectiles
 			{
 				pos += new WVec(0, 0, args.PassiveTarget.Z - pos.Z);
 				world.AddFrameEndTask(w => w.Remove(this));
-				args.Weapon.Impact(Target.FromPos(pos), args.GuidedTarget, args.SourceActor, args.DamageModifiers);
+				args.Weapon.Impact(Target.FromPos(pos), args.SourceActor, args.DamageModifiers);
 				return;
 			}
 
@@ -103,7 +103,7 @@ namespace OpenRA.Mods.Common.Projectiles
 				var shouldExplode = world.ActorsWithTrait<IPointDefense>().Any(x => x.Trait.Destroy(pos, args.SourceActor.Owner, info.PointDefenseType));
 				if (shouldExplode)
 				{
-					args.Weapon.Impact(Target.FromPos(pos), args.GuidedTarget, args.SourceActor, args.DamageModifiers);
+					args.Weapon.Impact(Target.FromPos(pos), args.SourceActor, args.DamageModifiers);
 					world.AddFrameEndTask(w => w.Remove(this));
 				}
 			}
