@@ -24,6 +24,9 @@ namespace OpenRA.Mods.AS.Warheads
 		[Desc("The duration of the shake.")]
 		public readonly int Duration;
 
+		[Desc("Shake multipliers by the X and Y axis, comma-separated.")]
+		public readonly float2 Multiplier = new float2(0, 0);
+
 		public override void DoImpact(Target target, WarheadArgs args)
 		{
 			var firedBy = args.SourceActor;
@@ -36,7 +39,7 @@ namespace OpenRA.Mods.AS.Warheads
 			var screenShaker = firedBy.World.WorldActor.TraitOrDefault<ScreenShaker>();
 
 			if (screenShaker != null)
-				screenShaker.AddEffect(Duration, target.CenterPosition, Intensity);
+				screenShaker.AddEffect(Duration, target.CenterPosition, Intensity, Multiplier);
 		}
 	}
 }
