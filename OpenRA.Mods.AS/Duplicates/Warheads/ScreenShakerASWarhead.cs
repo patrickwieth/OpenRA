@@ -14,7 +14,7 @@ using OpenRA.Traits;
 namespace OpenRA.Mods.AS.Warheads
 {
 	[Desc("This warhead shakes the area when detonated.")]
-	public class ScreenShakerWarhead : WarheadAS
+	public class ScreenShakerASWarhead : WarheadAS
 	{
 		[FieldLoader.Require]
 		[Desc("The intensity of the shake.")]
