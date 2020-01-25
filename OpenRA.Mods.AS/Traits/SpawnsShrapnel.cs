@@ -104,7 +104,7 @@ namespace OpenRA.Mods.AS.Traits
 					if (!activeShapes.Any())
 						return false;
 
-					var distance = activeShapes.Min(t => t.Info.Type.DistanceFromEdge(position, x));
+					var distance = activeShapes.Min(t => t.DistanceFromEdge(x, position));
 
 					if (distance < Info.WeaponInfo.Range)
 						return true;

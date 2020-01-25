@@ -72,7 +72,7 @@ namespace OpenRA.Mods.AS.Warheads
 					if (!activeShapes.Any())
 						return false;
 
-					var distance = activeShapes.Min(t => t.Info.Type.DistanceFromEdge(epicenter, a));
+					var distance = activeShapes.Min(t => t.DistanceFromEdge(a, epicenter));
 
 					if (distance != WDist.Zero)
 						return false;
@@ -90,7 +90,7 @@ namespace OpenRA.Mods.AS.Warheads
 					if (!activeShapes.Any())
 						return false;
 
-					var distance = activeShapes.Min(t => t.Info.Type.DistanceFromEdge(epicenter, x));
+					var distance = activeShapes.Min(t => t.DistanceFromEdge(x, epicenter));
 
 					if (distance < weapon.Range)
 						return true;
