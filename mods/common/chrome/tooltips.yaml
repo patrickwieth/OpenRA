@@ -133,7 +133,7 @@ Background@LATENCY_TOOLTIP:
 Background@ANONYMOUS_PLAYER_TOOLTIP:
 	Logic: AnonymousProfileTooltipLogic
 	Background: dialog4
-	Height: 32
+	Height: 56
 	Width: 200
 	Children:
 		Label@NAME:
@@ -142,9 +142,19 @@ Background@ANONYMOUS_PLAYER_TOOLTIP:
 			Text: Anonymous Player
 			Height: 24
 			Font: MediumBold
-		Container@GAME_ADMIN:
+		Label@LOCATION:
 			X: 7
 			Y: 24
+			Height: 12
+			Font: TinyBold
+		Label@IP:
+			X: 7
+			Y: 37
+			Height: 12
+			Font: TinyBold
+		Container@GAME_ADMIN:
+			X: 7
+			Y: 49
 			Height: 12
 			Visible: False
 			Children:

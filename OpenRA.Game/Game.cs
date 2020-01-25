@@ -300,6 +300,7 @@ namespace OpenRA
 			Log.AddChannel("server", "server.log", true);
 			Log.AddChannel("sound", "sound.log");
 			Log.AddChannel("graphics", "graphics.log");
+			Log.AddChannel("geoip", "geoip.log");
 			Log.AddChannel("nat", "nat.log");
 
 			var platforms = new[] { Settings.Game.Platform, "Default", null };
@@ -336,6 +337,8 @@ namespace OpenRA
 						Sound.Dispose();
 				}
 			}
+
+			GeoIP.Initialize();
 
 			if (Settings.Server.DiscoverNatDevices)
 				discoverNat = UPnP.DiscoverNatDevices(Settings.Server.NatDiscoveryTimeout);
