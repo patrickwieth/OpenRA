@@ -100,7 +100,7 @@ namespace OpenRA.Mods.AS.Traits
 				var tpos = world.Map.CenterOfCell(world.Map.ChooseRandomCell(world.SharedRandom))
 					+ new WVec(WDist.Zero, WDist.Zero, info.Altitude);
 
-				info.WeaponInfo.Impact(Target.FromPos(tpos), firer, Enumerable.Empty<int>());
+				info.WeaponInfo.Impact(Target.FromPos(tpos), firer);
 			}
 		}
 

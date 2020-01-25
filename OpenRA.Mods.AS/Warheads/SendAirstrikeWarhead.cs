@@ -9,7 +9,7 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
+using OpenRA.GameRules;
 using OpenRA.Mods.Common;
 using OpenRA.Mods.Common.Activities;
 using OpenRA.Mods.Common.Traits;
@@ -39,8 +39,9 @@ namespace OpenRA.Mods.AS.Warheads
 		public readonly int QuantizedFacings = 32;
 		public readonly WDist Cordon = new WDist(5120);
 
-		public override void DoImpact(Target target, Actor firedBy, IEnumerable<int> damageModifiers)
+		public override void DoImpact(Target target, WarheadArgs args)
 		{
+			var firedBy = args.SourceActor;
 			if (!target.IsValidFor(firedBy))
 				return;
 
@@ -78,9 +79,9 @@ namespace OpenRA.Mods.AS.Warheads
 					});
 
 					if (Mode == AirstrikeTarget.Target)
-						a.QueueActivity(new FlyAttack(a, target, true, Color.OrangeRed));
+						a.QueueActivity(new FlyAttack(a, AttackSource.Default, target, true, Color.OrangeRed));
 					else
-						a.QueueActivity(new FlyAttack(a, Target.FromPos(target.CenterPosition + spawnOffset), true, Color.OrangeRed));
+						a.QueueActivity(new FlyAttack(a, AttackSource.Default, Target.FromPos(target.CenterPosition + spawnOffset), true, Color.OrangeRed));
 
 					a.QueueActivity(new FlyOffMap(a));
 					a.QueueActivity(new RemoveSelf());

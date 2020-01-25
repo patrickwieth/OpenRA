@@ -48,7 +48,7 @@ namespace OpenRA.Mods.AS.Activities
 				if (info.ExplosionWeapon != null)
 				{
 					// Use .FromPos since this actor is killed. Cannot use Target.FromActor
-					info.ExplosionWeapon.Impact(Target.FromPos(self.CenterPosition), self, Enumerable.Empty<int>());
+					info.ExplosionWeapon.Impact(Target.FromPos(self.CenterPosition), self);
 				}
 
 				self.Dispose();
