@@ -64,7 +64,7 @@ namespace OpenRA.Mods.AS.Traits
 			foreach (var notify in self.TraitsImplementing<INotifyDelivery>())
 				notify.IncomingDelivery(self);
 
-			var info = (ProductionParadropInfo)Info;
+			var info = (ProductionParadropASInfo)Info;
 			var actorType = info.ActorType;
 
 			owner.World.AddFrameEndTask(w =>
