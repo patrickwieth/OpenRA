@@ -106,7 +106,7 @@ namespace OpenRA.Mods.AS.Traits
 			var exit = CPos.Zero;
 			var exitLocations = new List<CPos>();
 
-			var info = (ProductionParadropInfo)Info;
+			var info = (ProductionParadropASInfo)Info;
 			var actorType = info.ActorType;
 
 			var altitude = self.World.Map.Rules.Actors[actorType].TraitInfo<AircraftInfo>().CruiseAltitude;
