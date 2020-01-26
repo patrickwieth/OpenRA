@@ -110,6 +110,8 @@ namespace OpenRA
 			{
 				Game.RunAfterTick(() =>
 				{
+					ChromeProvider.SetDPIScale(after);
+
 					foreach (var f in Fonts)
 						f.Value.SetScale(after);
 				});
@@ -375,6 +377,24 @@ namespace OpenRA
 		{
 			Flush();
 			Context.ClearDepthBuffer();
+		}
+
+		public void EnableAntialiasingFilter()
+		{
+			if (renderType != RenderType.UI)
+				throw new InvalidOperationException("EndFrame called with renderType = {0}, expected RenderType.UI.".F(renderType));
+
+			Flush();
+			SpriteRenderer.SetAntialiasingPixelsPerTexel(Window.WindowScale);
+		}
+
+		public void DisableAntialiasingFilter()
+		{
+			if (renderType != RenderType.UI)
+				throw new InvalidOperationException("EndFrame called with renderType = {0}, expected RenderType.UI.".F(renderType));
+
+			Flush();
+			SpriteRenderer.SetAntialiasingPixelsPerTexel(0);
 		}
 
 		public void GrabWindowMouseFocus()

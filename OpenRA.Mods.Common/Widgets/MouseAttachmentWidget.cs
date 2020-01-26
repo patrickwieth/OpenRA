@@ -20,24 +20,28 @@ namespace OpenRA.Mods.Common.Widgets
 
 		Sprite sprite;
 		readonly WorldRenderer worldRenderer;
-		readonly CursorProvider cursorProvider;
+		readonly GraphicSettings graphicSettings;
 		string palette;
 		int2 location;
 
 		[ObjectCreator.UseCtor]
 		public MouseAttachmentWidget(ModData modData, WorldRenderer worldRenderer)
 		{
-			cursorProvider = modData.CursorProvider;
 			this.worldRenderer = worldRenderer;
+			graphicSettings = Game.Settings.Graphics;
 		}
 
 		public override void Draw()
 		{
 			if (sprite != null && palette != null)
 			{
-				var scale = Game.Cursor is SoftwareCursor && cursorProvider.DoubleCursorSize ? 2 : 1;
 				var directionPalette = worldRenderer.Palette(palette);
-				WidgetUtils.DrawSHPCentered(sprite, ChildOrigin, directionPalette, scale);
+
+				// Cursor is rendered in native window coordinates
+				// Apply same scaling rules as hardware cursors
+				var ws = Game.Renderer.WindowScale;
+				var scale = (graphicSettings.CursorDouble ? 2 : 1) * (ws > 1.5f ? 2 : 1);
+				WidgetUtils.DrawSHPCentered(sprite, ChildOrigin, directionPalette, scale / ws);
 			}
 		}
 

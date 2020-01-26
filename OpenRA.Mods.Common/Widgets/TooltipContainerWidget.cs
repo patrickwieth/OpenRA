@@ -19,7 +19,7 @@ namespace OpenRA.Mods.Common.Widgets
 	public class TooltipContainerWidget : Widget
 	{
 		static readonly Action Nothing = () => { };
-		readonly CursorProvider cursorProvider;
+		readonly GraphicSettings graphicSettings;
 
 		public int2 CursorOffset = new int2(0, 20);
 		public int BottomEdgeYOffset = -5;
@@ -30,7 +30,7 @@ namespace OpenRA.Mods.Common.Widgets
 
 		public TooltipContainerWidget()
 		{
-			cursorProvider = Game.ModData.CursorProvider;
+			graphicSettings = Game.Settings.Graphics;
 			IsVisible = () => Game.RunTime > Viewport.LastMoveRunTime + TooltipDelayMilliseconds;
 		}
 
@@ -54,7 +54,8 @@ namespace OpenRA.Mods.Common.Widgets
 		{
 			get
 			{
-				var pos = Viewport.LastMousePos + (cursorProvider.DoubleCursorSize ? CursorOffset * 2 : CursorOffset);
+				var scale = graphicSettings.CursorDouble ? 2 : 1;
+				var pos = Viewport.LastMousePos + scale * CursorOffset;
 				if (tooltip != null)
 				{
 					// If the tooltip overlaps the right edge of the screen, move it left until it fits
@@ -63,7 +64,7 @@ namespace OpenRA.Mods.Common.Widgets
 
 					// If the tooltip overlaps the bottom edge of the screen, switch tooltip above cursor
 					if (pos.Y + tooltip.Bounds.Bottom > Game.Renderer.Resolution.Height)
-						pos = pos.WithY(Viewport.LastMousePos.Y + (cursorProvider.DoubleCursorSize ? 2 : 1) * BottomEdgeYOffset - tooltip.Bounds.Height);
+						pos = pos.WithY(Viewport.LastMousePos.Y + scale * BottomEdgeYOffset - tooltip.Bounds.Height);
 				}
 
 				return pos;

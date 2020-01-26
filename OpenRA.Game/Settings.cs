@@ -154,8 +154,6 @@ namespace OpenRA
 		[Desc("Screen resolution in windowed mode.")]
 		public int2 WindowedSize = new int2(1024, 768);
 
-		public bool HardwareCursors = true;
-
 		public bool CursorDouble = false;
 		public WorldViewport ViewportDistance = WorldViewport.Medium;
 
@@ -165,14 +163,14 @@ namespace OpenRA
 		[Desc("At which frames per second to cap the framerate.")]
 		public int MaxFramerate = 60;
 
-		[Desc("Disable high resolution DPI scaling on Windows operating systems.")]
-		public bool DisableWindowsDPIScaling = true;
-
 		[Desc("Disable separate OpenGL render thread on Windows operating systems.")]
 		public bool DisableWindowsRenderThread = true;
 
 		[Desc("Disable the OpenGL debug message callback feature.")]
 		public bool DisableGLDebugMessageCallback = false;
+
+		[Desc("Disable operating-system provided cursor rendering.")]
+		public bool DisableHardwareCursors = false;
 
 		[Desc("Use OpenGL ES if both ES and regular OpenGL are available.")]
 		public bool PreferGLES = false;
@@ -216,8 +214,7 @@ namespace OpenRA
 		public int ViewportEdgeScrollMargin = 5;
 
 		public bool LockMouseWindow = false;
-		public MouseScrollType MiddleMouseScroll = MouseScrollType.Standard;
-		public MouseScrollType RightMouseScroll = MouseScrollType.Disabled;
+		public MouseScrollType MouseScroll = MouseScrollType.Joystick;
 		public MouseButtonPreference MouseButtonPreference = new MouseButtonPreference();
 		public float ViewportEdgeScrollStep = 30f;
 		public float UIScrollSpeed = 50f;
@@ -226,6 +223,7 @@ namespace OpenRA
 		public int MouseScrollDeadzone = 8;
 
 		public bool UseClassicMouseStyle = false;
+		public bool ClassicMouseMiddleScroll = false;
 		public StatusBarsType StatusBars = StatusBarsType.Standard;
 		public TargetLinesType TargetLines = TargetLinesType.Manual;
 		public bool UsePlayerStanceColors = false;
