@@ -118,18 +118,21 @@ namespace OpenRA.Mods.AS.Traits
 
 			if (self.OccupiesSpace != null)
 			{
-				exit = self.Location + exitinfo.ExitCell;
+				exit = self.Location;
+				if (exitinfo != null)
+					exit += exitinfo.ExitCell;
 				var spawn = self.World.Map.CenterOfCell(exit) + new WVec(WDist.Zero, WDist.Zero, altitude);
 				var to = self.World.Map.CenterOfCell(exit);
 
-				var initialFacing = exitinfo.Facing < 0 ? (to - spawn).Yaw.Facing : exitinfo.Facing;
+				var initialFacing = (exitinfo != null && exitinfo.Facing > -1) ? exitinfo.Facing : (to - spawn).Yaw.Facing;
 
 				exitLocations = rp.Value != null ? rp.Value.Path : new List<CPos> { exit };
 
 				td.Add(new LocationInit(exit));
 				td.Add(new CenterPositionInit(spawn));
 				td.Add(new FacingInit(initialFacing));
-				td.Add(new CreationActivityDelayInit(exitinfo.ExitDelay));
+				if (exitinfo != null)
+					td.Add(new CreationActivityDelayInit(exitinfo.ExitDelay));
 			}
 
 			self.World.AddFrameEndTask(w =>
