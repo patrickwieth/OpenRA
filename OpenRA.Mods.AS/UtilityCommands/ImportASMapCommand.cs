@@ -271,7 +271,8 @@ namespace OpenRA.Mods.AS.UtilityCommands
 			{ "tibtre02", "tibtre01" },
 			{ "tibtre03", "tibtre01" },
 			{ "amradr", "gaairc" },
-			{ "wwlf", "mumy" }
+			{ "wwlf", "mumy" },
+			{ "adog", "dog" }
 		};
 
 		[Desc("FILENAME", "AUTHOR (optional, defaults to Westwood Studios)", "Convert an Attacque Supérior/Valiant Shades map to the OpenRA format.")]
