@@ -37,7 +37,7 @@ namespace OpenRA.GameRules
 	{
 		public WeaponInfo Weapon;
 		public int[] DamageModifiers = { };
-		public WPos Source;
+		public WPos? Source;
 		public Actor SourceActor;
 		public Target WeaponTarget;
 
@@ -203,12 +203,10 @@ namespace OpenRA.GameRules
 			var world = args.SourceActor.World;
 			foreach (var warhead in Warheads)
 			{
-				var wh = warhead; // force the closure to bind to the current warhead
-
-				if (wh.Delay > 0)
-			 		world.AddFrameEndTask(w => w.Add(new DelayedImpact(wh.Delay, wh, target, args)));
+				if (warhead.Delay > 0)
+					world.AddFrameEndTask(w => w.Add(new DelayedImpact(warhead.Delay, warhead, target, args)));
 				else
-					wh.DoImpact(target, args);
+					warhead.DoImpact(target, args);
 			}
 		}
 
@@ -219,10 +217,12 @@ namespace OpenRA.GameRules
 			var args = new WarheadArgs
 			{
 				Weapon = this,
-				Source = firedBy.CenterPosition,
 				SourceActor = firedBy,
 				WeaponTarget = target
 			};
+
+			if (firedBy.OccupiesSpace != null)
+				args.Source = firedBy.CenterPosition;
 
 			Impact(target, args);
 		}
