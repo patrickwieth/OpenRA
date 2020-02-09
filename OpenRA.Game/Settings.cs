@@ -176,6 +176,9 @@ namespace OpenRA
 		[Desc("Use OpenGL ES if both ES and regular OpenGL are available.")]
 		public bool PreferGLES = false;
 
+		[Desc("Display index to use in a multi-monitor fullscreen setup.")]
+		public int VideoDisplay = 0;
+
 		public int BatchSize = 8192;
 		public int SheetSize = 2048;
 
@@ -200,9 +203,9 @@ namespace OpenRA
 
 	public class PlayerSettings
 	{
-		[Desc("Sets the player nickname for in-game and IRC chat.")]
-		public string Name = "Newbie";
-		public Color Color = Color.FromAhsl(75, 255, 180);
+		[Desc("Sets the player nickname.")]
+		public string Name = "Commander";
+		public Color Color = Color.FromArgb(200, 32, 32);
 		public string LastServer = "localhost:1234";
 		public Color[] CustomColors = { };
 	}
@@ -237,6 +240,9 @@ namespace OpenRA
 		public Modifiers ZoomModifier = Modifiers.None;
 
 		public bool FetchNews = true;
+
+		[Desc("Version of introduction prompt that the player last viewed.")]
+		public int IntroductionPromptVersion = 0;
 
 		public MPGameFilters MPGameFilters = MPGameFilters.Waiting | MPGameFilters.Empty | MPGameFilters.Protected | MPGameFilters.Started;
 	}
