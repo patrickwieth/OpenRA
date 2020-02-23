@@ -63,7 +63,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				costLabel.GetText = () => costString;
 				costLabel.GetColor = () => playerResources.Cash + playerResources.Resources >= cost
 					? Color.White : Color.Red;
-				costLabel.IsVisible = () => cost != 0;
+				costLabel.Visible = cost != 0;
+				var costSize = costFont.Measure(costString);
 
 				nameLabel.Text = sp.Info.Description;
 				var nameSize = nameFont.Measure(nameLabel.Text);
@@ -94,13 +95,11 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				}
 
 				var timeWidth = timeSize.X;
-				var costWidth = costFont.Measure(costString).X;
+				var costWidth = costSize.X;
 				var topWidth = nameSize.X + hotkeyWidth + timeWidth + timeOffset;
 
 				if (cost != 0)
-				{
 					topWidth += costWidth + costOffset;
-				}
 
 				widget.Bounds.Width = 2 * nameLabel.Bounds.X + Math.Max(topWidth, descSize.X);
 				widget.Bounds.Height = baseHeight + descSize.Y;
