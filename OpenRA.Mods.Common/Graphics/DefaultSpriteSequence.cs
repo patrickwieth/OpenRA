@@ -180,16 +180,17 @@ namespace OpenRA.Mods.Common.Graphics
 				{
 					MiniYaml length;
 					if (d.TryGetValue("Length", out length) && length.Value == "*")
-						Length = frameCount - Start;
+						Length = Frames != null ? Frames.Length : frameCount - Start;
 					else
 						Length = LoadField(d, "Length", 1);
 
 					// Plays the animation forwards, and then in reverse
 					if (LoadField(d, "Reverses", false))
 					{
-						var frames = Frames ?? Exts.MakeArray(Length, i => Start + i);
-						Frames = frames.Concat(frames.Skip(1).Take(frames.Length - 2).Reverse()).ToArray();
+						var frames = Frames != null ? Frames.Skip(Start).Take(Length).ToArray() : Exts.MakeArray(Length, i => Start + i);
+						Frames = frames.Concat(frames.Skip(1).Take(Length - 2).Reverse()).ToArray();
 						Length = 2 * Length - 2;
+						Start = 0;
 					}
 
 					Stride = LoadField(d, "Stride", Length);
@@ -204,13 +205,26 @@ namespace OpenRA.Mods.Common.Graphics
 							"{0}: Sequence {1}.{2}: Length must be <= Frames.Length"
 							.F(info.Nodes[0].Location, sequence, animation));
 
-					if (Start < 0 || Start + (Facings - 1) * Stride + Length > frameCount)
+					var end = Start + (Facings - 1) * Stride + Length - 1;
+					if (Frames != null)
+					{
+						foreach (var f in Frames)
+							if (f < 0 || f >= frameCount)
+								throw new InvalidOperationException(
+									"{5}: Sequence {0}.{1} defines a Frames override that references frame {4}, but only [{2}..{3}] actually exist"
+										.F(sequence, animation, Start, end, f, info.Nodes[0].Location));
+
+						if (Start < 0 || end >= Frames.Length)
+							throw new InvalidOperationException(
+								"{5}: Sequence {0}.{1} uses indices [{2}..{3}] of the Frames list, but only {4} frames are defined"
+									.F(sequence, animation, Start, end, Frames.Length, info.Nodes[0].Location));
+					}
+					else if (Start < 0 || end >= frameCount)
 						throw new InvalidOperationException(
 							"{5}: Sequence {0}.{1} uses frames [{2}..{3}], but only 0..{4} actually exist"
-							.F(sequence, animation, Start, Start + (Facings - 1) * Stride + Length - 1, frameCount - 1,
-								info.Nodes[0].Location));
+								.F(sequence, animation, Start, end, frameCount - 1, info.Nodes[0].Location));
 
-					if (ShadowStart + (Facings - 1) * Stride + Length > frameCount)
+					if (ShadowStart >= 0 && ShadowStart + (Facings - 1) * Stride + Length > frameCount)
 						throw new InvalidOperationException(
 							"{5}: Sequence {0}.{1}'s shadow frames use frames [{2}..{3}], but only [0..{4}] actually exist"
 							.F(sequence, animation, ShadowStart, ShadowStart + (Facings - 1) * Stride + Length - 1, frameCount - 1,
