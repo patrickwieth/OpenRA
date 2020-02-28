@@ -53,7 +53,7 @@ namespace OpenRA.Mods.AS.Traits
 				if (world.LocalRandom.Next(100) > entry.Trait.Info.DeployChance)
 					continue;
 
-				var orders = entry.Trait.DeployTraits.Where(d => d.CanIssueDeployOrder(entry.Actor)).Select(d => d.IssueDeployOrder(entry.Actor, false));
+				var orders = entry.Trait.DeployTraits.Where(d => d.CanIssueDeployOrder(entry.Actor, false)).Select(d => d.IssueDeployOrder(entry.Actor, false));
 
 				foreach (var order in orders)
 					bot.QueueOrder(order);
