@@ -40,6 +40,9 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("It will try to pivot to face the enemy if stance is not HoldFire.")]
 		public readonly bool AllowTurning = true;
 
+		[Desc("Scan for new targets when idle.")]
+		public readonly bool ScanOnIdle = true;
+
 		[Desc("Set to a value >1 to override weapons maximum range for this.")]
 		public readonly int ScanRadius = -1;
 
@@ -236,9 +239,8 @@ namespace OpenRA.Mods.Common.Traits
 			if (attacker.Disposed)
 				return;
 
-			var allowMove = allowMovement && Stance > UnitStance.Defend;
 			foreach (var dat in disableAutoTarget)
-				if (dat.DisableAutoTarget(self, allowMove))
+				if (dat.DisableAutoTarget(self))
 					return;
 
 			if (!attacker.IsInWorld)
@@ -250,6 +252,7 @@ namespace OpenRA.Mods.Common.Traits
 			}
 
 			// Don't fire at an invisible enemy when we can't move to reveal it
+			var allowMove = allowMovement && Stance > UnitStance.Defend;
 			if (!allowMove && !attacker.CanBeViewedByPlayer(self.Owner))
 				return;
 
@@ -269,7 +272,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		void INotifyIdle.TickIdle(Actor self)
 		{
-			if (IsTraitDisabled || Stance < UnitStance.Defend)
+			if (IsTraitDisabled || !Info.ScanOnIdle || Stance < UnitStance.Defend)
 				return;
 
 			var allowMove = allowMovement && Stance > UnitStance.Defend;
@@ -291,7 +294,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (nextScanTime <= 0 && ActiveAttackBases.Any())
 			{
 				foreach (var dat in disableAutoTarget)
-					if (dat.DisableAutoTarget(self, allowMove))
+					if (dat.DisableAutoTarget(self))
 						return Target.Invalid;
 
 				nextScanTime = self.World.SharedRandom.Next(Info.MinimumScanTimeInterval, Info.MaximumScanTimeInterval);
