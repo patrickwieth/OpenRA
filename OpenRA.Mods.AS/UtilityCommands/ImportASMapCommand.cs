@@ -30,8 +30,8 @@ namespace OpenRA.Mods.AS.UtilityCommands
 
 		static readonly Dictionary<byte, string> OverlayToActor = new Dictionary<byte, string>()
 		{
-			{ 0x01, "gasand" },
-			{ 0x03, "gawall" },
+			{ 0x00, "gasand" },
+			{ 0x02, "gawall" },
 			/*
 			{ 0x18, "bridge1" },
 			{ 0x19, "bridge2" },
@@ -126,26 +126,27 @@ namespace OpenRA.Mods.AS.UtilityCommands
 			{ 0xAF, "trock03" },
 			{ 0xB0, "trock04" },
 			{ 0xB1, "trock05" },
-			{ 0xBC, "crate" },
-			{ 0xF3, "crate" }, // wcrate (water crate)
+			{ 0xB3, "crate" },
+			{ 0xF2, "crate" }, // wcrate (water crate)
 
 			// YR terrain objects
-			{ 0xF5, "lunrk1" },
-			{ 0xF6, "lunrk2" },
-			{ 0xF7, "lunrk3" },
-			{ 0xF8, "lunrk4" },
-			{ 0xF9, "lunrk5" },
-			{ 0xFA, "lunrk6" },
-
-			// AS additions
-			{ 0xF4, "yawall" },
-			{ 0xFB, "pawall" },
-			{ 0xFC, "bawall" },
-			{ 0xCB, "fawall" },
+			{ 0xF4, "lunrk1" },
+			{ 0xF5, "lunrk2" },
+			{ 0xF6, "lunrk3" },
+			{ 0xF7, "lunrk4" },
+			{ 0xF8, "lunrk5" },
+			{ 0xF9, "lunrk6" },
 			{ 0xCC, "cafncb" },
 			{ 0xCD, "cafncw" },
-			{ 0xF2, "cafncp" },
-			{ 0xF1, "cakrmw" }
+			{ 0xF1, "cafncp" },
+			{ 0xF0, "cakrmw" },
+			{ 0xF3, "gafwll" }
+
+			// AS additions
+			// { 0xF4, "yawall" },
+			// { 0xFB, "pawall" },
+			// { 0xFC, "bawall" },
+			// { 0xCB, "fawall" }
 		};
 
 		static readonly Dictionary<byte, Size> OverlayShapes = new Dictionary<byte, Size>()
