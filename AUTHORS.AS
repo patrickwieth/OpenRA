@@ -34,6 +34,7 @@ The plugin is maintained by
 
  * Matthias Mailänder (Mailaender)
    > WithExitOverlay
+   > ChronoshiftableWithSpriteEffect
 
  * Martin Lang (Gerseras/Seraphinexxx)
    > DelayedWeapon system
