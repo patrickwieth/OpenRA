@@ -267,7 +267,7 @@ namespace OpenRA.Mods.Common.Activities
 					return;
 				}
 
-				self.InflictDamage(host.Actor, new Damage(-hpToRepair, repairsUnits.Info.RepairDamageType));
+				self.InflictDamage(host.Actor, new Damage(-hpToRepair));
 				remainingTicks = repairsUnits.Info.Interval;
 			}
 			else
