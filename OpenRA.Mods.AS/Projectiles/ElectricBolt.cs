@@ -76,13 +76,12 @@ namespace OpenRA.Mods.AS.Projectiles
 		readonly WVec upVector;
 		readonly MersenneTwister random;
 		readonly bool hasLaunchEffect;
+		readonly HashSet<Pair<Color, WPos[]>> zaps;
 
 		[Sync]
 		readonly WPos target, source;
 
 		int ticks = 0;
-
-		HashSet<Pair<Color, WPos[]>> zaps;
 
 		public ElectricBolt(ElectricBoltInfo info, ProjectileArgs args)
 		{

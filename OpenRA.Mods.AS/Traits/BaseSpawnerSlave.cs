@@ -40,7 +40,6 @@ namespace OpenRA.Mods.AS.Traits
 
 		public bool HasFreeWill = false;
 
-		int masterDeadToken = ConditionManager.InvalidConditionToken;
 		BaseSpawnerMaster spawnerMaster = null;
 
 		public Actor Master { get; private set; }
@@ -128,7 +127,7 @@ namespace OpenRA.Mods.AS.Traits
 		{
 			// Grant MasterDead condition.
 			if (conditionManager != null && !string.IsNullOrEmpty(info.MasterDeadCondition))
-				masterDeadToken = conditionManager.GrantCondition(self, info.MasterDeadCondition);
+				conditionManager.GrantCondition(self, info.MasterDeadCondition);
 
 			switch (disposal)
 			{

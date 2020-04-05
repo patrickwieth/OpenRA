@@ -23,7 +23,7 @@ namespace OpenRA.Mods.AS.Activities
 		readonly Actor master;
 		readonly CarrierMaster spawnerMaster;
 
-		public EnterCarrierMaster(Actor self, Actor master, CarrierMaster spawnerMaster, EnterBehaviour enterBehaviour)
+		public EnterCarrierMaster(Actor self, Actor master, CarrierMaster spawnerMaster)
 			: base(self, Target.FromActor(master))
 		{
 			this.master = master;

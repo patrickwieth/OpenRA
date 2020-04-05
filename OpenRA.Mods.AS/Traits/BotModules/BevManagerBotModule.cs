@@ -57,8 +57,6 @@ namespace OpenRA.Mods.AS.Traits
 		readonly World world;
 		readonly Player player;
 
-		readonly Predicate<Actor> unitCannotBeOrdered;
-
 		CPos initialBaseCenter;
 		int scanInterval;
 		bool firstTick = true;
@@ -68,7 +66,6 @@ namespace OpenRA.Mods.AS.Traits
 		{
 			world = self.World;
 			player = self.Owner;
-			unitCannotBeOrdered = a => a.Owner != player || a.IsDead || !a.IsInWorld;
 		}
 
 		protected override void TraitEnabled(Actor self)

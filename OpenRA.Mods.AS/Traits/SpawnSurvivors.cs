@@ -67,10 +67,11 @@ namespace OpenRA.Mods.AS.Traits
 			{
 				foreach (var actorType in Info.Actors)
 				{
-					var td = new TypeDictionary();
-
-					td.Add(new OwnerInit(self.Owner));
-					td.Add(new LocationInit(eligibleLocations.Random(w.SharedRandom)));
+					var td = new TypeDictionary
+					{
+						new OwnerInit(self.Owner),
+						new LocationInit(eligibleLocations.Random(w.SharedRandom))
+					};
 
 					var unit = w.CreateActor(true, actorType.ToLowerInvariant(), td);
 					var mobile = unit.TraitOrDefault<Mobile>();

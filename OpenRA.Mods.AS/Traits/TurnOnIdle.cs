@@ -24,10 +24,11 @@ namespace OpenRA.Mods.AS.Traits
 
 	class TurnOnIdle : ConditionalTrait<TurnOnIdleInfo>, INotifyIdle
 	{
+		readonly Mobile mobile;
+
 		int currDelay;
 		int turnTicks;
 		int targetFacing;
-		Mobile mobile;
 
 		public TurnOnIdle(ActorInitializer init, TurnOnIdleInfo info)
 			: base(info)

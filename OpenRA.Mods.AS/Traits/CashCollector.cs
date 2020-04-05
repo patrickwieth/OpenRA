@@ -51,6 +51,7 @@ namespace OpenRA.Mods.AS.Traits
 	public class CashCollector : ConditionalTrait<CashCollectorInfo>, ITick, INotifyAddedToWorld, INotifyRemovedFromWorld, INotifyOtherProduction
 	{
 		readonly Actor self;
+		readonly HashSet<CashCollectable> collectables;
 
 		int proximityTrigger;
 		WPos cachedPosition;
@@ -58,8 +59,6 @@ namespace OpenRA.Mods.AS.Traits
 		WDist desiredRange;
 		WDist cachedVRange;
 		WDist desiredVRange;
-
-		HashSet<CashCollectable> collectables;
 
 		bool cachedDisabled = true;
 		int ticks;

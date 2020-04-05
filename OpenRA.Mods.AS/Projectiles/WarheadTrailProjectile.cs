@@ -140,9 +140,10 @@ namespace OpenRA.Mods.AS.Projectiles
 
 		readonly WarheadTrailProjectileEffect[] projectiles; // offset projectiles
 
-		WPos offsetSourcePos = WPos.Zero;
+		readonly WPos offsetSourcePos = WPos.Zero;
+		readonly World world;
+
 		int ticks;
-		World world;
 
 		public Actor SourceActor { get { return args.SourceActor; } }
 

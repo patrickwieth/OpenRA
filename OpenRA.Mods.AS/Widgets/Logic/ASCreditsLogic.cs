@@ -26,7 +26,6 @@ namespace OpenRA.Mods.AS.Widgets.Logic
 
 	public class ASCreditsLogic : ChromeLogic
 	{
-		readonly ModData modData;
 		readonly ScrollPanelWidget scrollPanel;
 		readonly LabelWidget template;
 
@@ -38,8 +37,6 @@ namespace OpenRA.Mods.AS.Widgets.Logic
 		[ObjectCreator.UseCtor]
 		public ASCreditsLogic(Widget widget, ModData modData, Action onExit)
 		{
-			this.modData = modData;
-
 			var panel = widget.Get("CREDITS_PANEL");
 
 			panel.Get<ButtonWidget>("BACK_BUTTON").OnClick = () =>

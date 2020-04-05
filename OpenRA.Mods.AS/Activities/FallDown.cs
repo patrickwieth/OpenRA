@@ -18,15 +18,14 @@ namespace OpenRA.Mods.AS.Activities
 		readonly IPositionable pos;
 		readonly WVec fallVector;
 
-		WPos dropPosition;
 		WPos currentPosition;
 
-		public FallDown(Actor self, WPos dropPosition, int fallRate, Actor ignoreActor = null)
+		public FallDown(Actor self, WPos currentPosition, int fallRate)
 		{
 			pos = self.TraitOrDefault<IPositionable>();
 			IsInterruptible = false;
 			fallVector = new WVec(0, 0, fallRate);
-			this.dropPosition = dropPosition;
+			this.currentPosition = currentPosition;
 		}
 
 		public override bool Tick(Actor self)
@@ -49,7 +48,7 @@ namespace OpenRA.Mods.AS.Activities
 		protected override void OnFirstRun(Actor self)
 		{
 			// Place the actor and retrieve its visual position (CenterPosition)
-			pos.SetPosition(self, dropPosition);
+			pos.SetPosition(self, currentPosition);
 			currentPosition = self.CenterPosition;
 		}
 	}

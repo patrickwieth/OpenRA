@@ -29,7 +29,7 @@ namespace OpenRA.Mods.AS.Warheads
 			var airMargin = new WDist(128);
 
 			// Matching target actor
-			if (GetDirectHit(world, cell, pos, firedBy, true))
+			if (GetDirectHit(world, pos, firedBy, true))
 				return ImpactType.TargetHit;
 
 			var dat = world.Map.DistanceAboveTerrain(pos);
@@ -40,7 +40,7 @@ namespace OpenRA.Mods.AS.Warheads
 			return ImpactType.Ground;
 		}
 
-		public bool GetDirectHit(World world, CPos cell, WPos pos, Actor firedBy, bool checkTargetType = false)
+		public bool GetDirectHit(World world, WPos pos, Actor firedBy, bool checkTargetType = false)
 		{
 			foreach (var victim in world.FindActorsOnCircle(pos, WDist.Zero))
 			{

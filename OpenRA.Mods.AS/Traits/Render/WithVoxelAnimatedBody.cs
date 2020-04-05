@@ -53,7 +53,8 @@ namespace OpenRA.Mods.AS.Traits
 		readonly WithVoxelAnimatedBodyInfo info;
 		readonly RenderVoxels rv;
 		readonly ModelAnimation modelAnimation;
-		uint tick, frame, frames;
+		readonly uint frames;
+		uint tick, frame;
 
 		public WithVoxelAnimatedBody(Actor self, WithVoxelAnimatedBodyInfo info)
 			: base(info)

@@ -54,7 +54,7 @@ namespace OpenRA.Mods.AS.Traits
 		[Desc("The condition to grant during teleport.")]
 		public readonly string Condition = null;
 
-		public override object Create(ActorInitializer init) { return new ChronoResourceDelivery(init.Self, this); }
+		public override object Create(ActorInitializer init) { return new ChronoResourceDelivery(this); }
 	}
 
 	public class ChronoResourceDelivery : ConditionalTrait<ChronoResourceDeliveryInfo>, INotifyHarvesterAction, ITick
@@ -67,7 +67,7 @@ namespace OpenRA.Mods.AS.Traits
 		ConditionManager manager;
 		int token = ConditionManager.InvalidConditionToken;
 
-		public ChronoResourceDelivery(Actor self, ChronoResourceDeliveryInfo info)
+		public ChronoResourceDelivery(ChronoResourceDeliveryInfo info)
 			: base(info) { }
 
 		protected override void Created(Actor self)

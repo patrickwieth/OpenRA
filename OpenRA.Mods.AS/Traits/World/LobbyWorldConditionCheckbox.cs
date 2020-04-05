@@ -57,7 +57,6 @@ namespace OpenRA.Mods.AS.Traits
 	public class LobbyWorldConditionCheckbox : INotifyCreated
 	{
 		readonly LobbyWorldConditionCheckboxInfo info;
-		HashSet<string> prerequisites = new HashSet<string>();
 
 		public LobbyWorldConditionCheckbox(LobbyWorldConditionCheckboxInfo info)
 		{

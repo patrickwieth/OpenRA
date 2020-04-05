@@ -23,7 +23,7 @@ namespace OpenRA.Mods.AS.Traits
 
 		public readonly int MinAltitude = 1;
 
-		public object Create(ActorInitializer init) { return new GrantConditionAboveAltitude(init, this); }
+		public object Create(ActorInitializer init) { return new GrantConditionAboveAltitude(this); }
 	}
 
 	public class GrantConditionAboveAltitude : ITick, INotifyAddedToWorld, INotifyCreated, INotifyRemovedFromWorld
@@ -33,7 +33,7 @@ namespace OpenRA.Mods.AS.Traits
 		ConditionManager manager;
 		int token = ConditionManager.InvalidConditionToken;
 
-		public GrantConditionAboveAltitude(ActorInitializer init, GrantConditionAboveAltitudeInfo info)
+		public GrantConditionAboveAltitude(GrantConditionAboveAltitudeInfo info)
 		{
 			this.info = info;
 		}

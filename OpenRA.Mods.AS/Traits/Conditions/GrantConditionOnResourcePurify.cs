@@ -24,12 +24,11 @@ namespace OpenRA.Mods.AS.Traits
 		[FieldLoader.Require]
 		public readonly int Duration;
 
-		public override object Create(ActorInitializer init) { return new GrantConditionOnResourcePurify(init.Self, this); }
+		public override object Create(ActorInitializer init) { return new GrantConditionOnResourcePurify(this); }
 	}
 
 	public class GrantConditionOnResourcePurify : PausableConditionalTrait<GrantConditionOnResourcePurifyInfo>, ITick, INotifyResourceAccepted
 	{
-		readonly Actor self;
 		readonly GrantConditionOnResourcePurifyInfo info;
 
 		ConditionManager manager;
@@ -37,10 +36,9 @@ namespace OpenRA.Mods.AS.Traits
 
 		int ticks;
 
-		public GrantConditionOnResourcePurify(Actor self, GrantConditionOnResourcePurifyInfo info)
+		public GrantConditionOnResourcePurify(GrantConditionOnResourcePurifyInfo info)
 			: base(info)
 		{
-			this.self = self;
 			this.info = info;
 		}
 

@@ -100,7 +100,7 @@ namespace OpenRA.Mods.AS.Traits
 			var altitude = self.World.Map.Rules.Actors[info.UnitType].TraitInfo<AircraftInfo>().CruiseAltitude.Length;
 			var attackRotation = WRot.FromFacing(attackFacing);
 			var delta = new WVec(0, -1024, 0).Rotate(attackRotation);
-			target = target + new WVec(0, 0, altitude);
+			target += new WVec(0, 0, altitude);
 
 			var startPos = target - (self.World.Map.DistanceToEdge(target, -delta) + info.Cordon).Length * delta / 1024;
 

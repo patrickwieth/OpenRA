@@ -60,10 +60,10 @@ namespace OpenRA.Mods.AS.Traits
 		}
 
 		readonly Dictionary<string, Stack<int>> spawnContainTokens = new Dictionary<string, Stack<int>>();
+		readonly Stack<int> loadedTokens = new Stack<int>();
 		public readonly CarrierMasterInfo CarrierMasterInfo;
 
 		ConditionManager conditionManager;
-		Stack<int> loadedTokens = new Stack<int>();
 
 		int respawnTicks = 0;
 
@@ -155,7 +155,7 @@ namespace OpenRA.Mods.AS.Traits
 			});
 		}
 
-		void Recall(Actor self)
+		void Recall()
 		{
 			// Tell launched slaves to come back and enter me.
 			foreach (var slaveEntry in SlaveEntries)
@@ -257,7 +257,7 @@ namespace OpenRA.Mods.AS.Traits
 
 		protected override void TraitPaused(Actor self)
 		{
-			Recall(self);
+			Recall();
 		}
 	}
 }

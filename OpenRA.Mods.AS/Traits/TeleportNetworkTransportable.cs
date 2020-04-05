@@ -107,7 +107,7 @@ namespace OpenRA.Mods.AS.Traits
 
 		class TeleportNetworkTransportOrderTargeter : UnitOrderTargeter
 		{
-			TeleportNetworkTransportableInfo info;
+			readonly TeleportNetworkTransportableInfo info;
 
 			public TeleportNetworkTransportOrderTargeter(TeleportNetworkTransportableInfo info)
 				: base("TeleportNetworkTransport", 6, info.EnterCursor, true, true)

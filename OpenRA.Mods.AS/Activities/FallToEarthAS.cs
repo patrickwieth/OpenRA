@@ -20,7 +20,7 @@ namespace OpenRA.Mods.AS.Activities
 	{
 		readonly Aircraft aircraft;
 		readonly FallsToEarthASInfo info;
-		int spinAcceleration = 0;
+		readonly int spinAcceleration = 0;
 		int spin = 0;
 		int spinAccelerationDelay;
 		int velocityAccelerationDelay;

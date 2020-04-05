@@ -151,7 +151,7 @@ namespace OpenRA.Mods.AS.Traits
 
 			SpawnIntoWorld(self, se.Actor, self.CenterPosition);
 
-			se.SpawnerSlave.SetSpawnInfo(finishEdge, spawnOffset, targetPos);
+			se.SpawnerSlave.SetSpawnInfo(finishEdge, spawnOffset);
 
 			// Queue attack order, too.
 			self.World.AddFrameEndTask(w =>

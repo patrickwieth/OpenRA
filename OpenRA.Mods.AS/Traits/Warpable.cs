@@ -71,7 +71,7 @@ namespace OpenRA.Mods.AS.Traits
 
 		public void AddDamage(int damage, Actor damager)
 		{
-			recievedDamage = recievedDamage + damage;
+			recievedDamage += damage;
 			tick = info.RevokeDelay;
 
 			if (info.ScaleWithCurrentHealthPercentage)

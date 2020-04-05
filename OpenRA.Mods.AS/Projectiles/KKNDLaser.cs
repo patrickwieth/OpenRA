@@ -63,10 +63,10 @@ namespace OpenRA.Mods.AS.Projectiles
 		readonly MersenneTwister random;
 
 		[Sync]
-		WPos target;
+		readonly WPos target;
 
 		[Sync]
-		WPos source;
+		readonly WPos source;
 
 		int ticks;
 

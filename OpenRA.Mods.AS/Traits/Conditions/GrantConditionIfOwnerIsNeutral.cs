@@ -20,7 +20,7 @@ namespace OpenRA.Mods.AS.Traits
 		[Desc("The condition to grant.")]
 		public readonly string Condition = null;
 
-		public object Create(ActorInitializer init) { return new GrantConditionIfOwnerIsNeutral(init.Self, this); }
+		public object Create(ActorInitializer init) { return new GrantConditionIfOwnerIsNeutral(this); }
 	}
 
 	public class GrantConditionIfOwnerIsNeutral : INotifyCreated, INotifyOwnerChanged
@@ -30,7 +30,7 @@ namespace OpenRA.Mods.AS.Traits
 
 		int token = ConditionManager.InvalidConditionToken;
 
-		public GrantConditionIfOwnerIsNeutral(Actor self, GrantConditionIfOwnerIsNeutralInfo info)
+		public GrantConditionIfOwnerIsNeutral(GrantConditionIfOwnerIsNeutralInfo info)
 		{
 			this.info = info;
 		}

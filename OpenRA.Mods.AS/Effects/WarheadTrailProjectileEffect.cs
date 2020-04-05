@@ -27,6 +27,7 @@ namespace OpenRA.Mods.AS.Effects
 		readonly ProjectileArgs args;
 		readonly Animation anim;
 		readonly string trailPalette;
+		readonly World world;
 
 		[Sync]
 		readonly WPos targetpos, source;
@@ -41,7 +42,6 @@ namespace OpenRA.Mods.AS.Effects
 		WPos projectilepos;
 
 		int ticks, smokeTicks;
-		World world;
 		public bool DetonateSelf { get; private set; }
 		public WPos Position { get { return projectilepos; } }
 

@@ -30,12 +30,10 @@ namespace OpenRA.Mods.AS.Traits
 
 	public class AirstrikeSlave : BaseSpawnerSlave, INotifyIdle
 	{
-		readonly AmmoPool[] ammoPools;
 		public readonly AirstrikeSlaveInfo Info;
 
 		WPos finishEdge;
 		WVec spawnOffset;
-		WPos targetPos;
 
 		AirstrikeMaster spawnerMaster;
 
@@ -43,14 +41,12 @@ namespace OpenRA.Mods.AS.Traits
 			: base(init, info)
 		{
 			Info = info;
-			ammoPools = init.Self.TraitsImplementing<AmmoPool>().ToArray();
 		}
 
-		public void SetSpawnInfo(WPos finishEdge, WVec spawnOffset, WPos targetPos)
+		public void SetSpawnInfo(WPos finishEdge, WVec spawnOffset)
 		{
 			this.finishEdge = finishEdge;
 			this.spawnOffset = spawnOffset;
-			this.targetPos = targetPos;
 		}
 
 		public void LeaveMap(Actor self)
@@ -64,22 +60,13 @@ namespace OpenRA.Mods.AS.Traits
 				return;
 
 			// Cancel whatever else self was doing and return.
-			self.QueueActivity(false, new ReturnAirstrikeMaster(self, Master, spawnerMaster, finishEdge + spawnOffset));
+			self.QueueActivity(false, new ReturnAirstrikeMaster(Master, spawnerMaster, finishEdge + spawnOffset));
 		}
 
 		public override void LinkMaster(Actor self, Actor master, BaseSpawnerMaster spawnerMaster)
 		{
 			base.LinkMaster(self, master, spawnerMaster);
 			this.spawnerMaster = spawnerMaster as AirstrikeMaster;
-		}
-
-		bool NeedToReload(Actor self)
-		{
-			// The unit may not have ammo but will have unlimited ammunitions.
-			if (ammoPools.Length == 0)
-				return false;
-
-			return ammoPools.All(x => !x.HasAmmo);
 		}
 
 		void INotifyIdle.TickIdle(Actor self)

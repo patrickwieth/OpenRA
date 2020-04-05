@@ -205,7 +205,7 @@ namespace OpenRA.Mods.AS.Traits
 		public virtual void SpawnIntoWorld(Actor self, Actor slave, WPos centerPosition)
 		{
 			var exit = self.RandomExitOrDefault(self.World, null);
-			SetSpawnedFacing(slave, self, exit);
+			SetSpawnedFacing(slave, exit);
 
 			self.World.AddFrameEndTask(w =>
 			{
@@ -226,7 +226,7 @@ namespace OpenRA.Mods.AS.Traits
 			});
 		}
 
-		void SetSpawnedFacing(Actor spawned, Actor spawner, Exit exit)
+		void SetSpawnedFacing(Actor spawned, Exit exit)
 		{
 			int facingOffset = facing == null ? 0 : facing.Facing;
 

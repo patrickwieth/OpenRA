@@ -45,14 +45,14 @@ namespace OpenRA.Mods.AS.Traits
 	}
 
 	// TO-DO: Pester OpenRA to allow INotifyDeployTrigger to be used for other traits besides WithMakeAnimation. Like this one.
-	public class AIDeployNotifier : ConditionalTrait<AIDeployNotifierInfo>, INotifyAttack, ITick, INotifyDamage, INotifyCreated, ISync, INotifyOwnerChanged
+	public class AIDeployNotifier : ConditionalTrait<AIDeployNotifierInfo>, INotifyAttack, ITick, INotifyDamage, INotifyCreated, ISync, INotifyOwnerChanged, INotifyDeployComplete
 	{
 		public const string PrimaryBuildingOrderID = "PrimaryProducer";
 
 		[Sync]
 		int undeployTicks = -1, deployTicks;
 
-		bool undeployable, deployed;
+		bool deployed;
 		public bool PrimaryBuilding;
 		public IIssueDeployOrder[] DeployTraits;
 		DeployBotModule deployBotModule;
@@ -62,7 +62,6 @@ namespace OpenRA.Mods.AS.Traits
 
 		protected override void Created(Actor self)
 		{
-			undeployable = self.Info.HasTraitInfo<GrantConditionOnDeployInfo>();
 			DeployTraits = self.TraitsImplementing<IIssueDeployOrder>().ToArray();
 			PrimaryBuilding = self.Info.HasTraitInfo<PrimaryBuildingInfo>();
 			deployBotModule = self.Owner.PlayerActor.Trait<DeployBotModule>();
@@ -132,6 +131,16 @@ namespace OpenRA.Mods.AS.Traits
 		void INotifyOwnerChanged.OnOwnerChanged(Actor self, Player oldOwner, Player newOwner)
 		{
 			deployBotModule = newOwner.PlayerActor.Trait<DeployBotModule>();
+		}
+
+		void INotifyDeployComplete.FinishedDeploy(Actor self)
+		{
+			deployed = true;
+		}
+
+		void INotifyDeployComplete.FinishedUndeploy(Actor self)
+		{
+			deployed = false;
 		}
 	}
 }

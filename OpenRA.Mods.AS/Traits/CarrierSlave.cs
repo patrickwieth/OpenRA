@@ -51,7 +51,7 @@ namespace OpenRA.Mods.AS.Traits
 
 			// Cancel whatever else self was doing and return.
 			var target = Target.FromActor(Master);
-			self.QueueActivity(false, new EnterCarrierMaster(self, Master, spawnerMaster, EnterBehaviour.Exit));
+			self.QueueActivity(false, new EnterCarrierMaster(self, Master, spawnerMaster));
 		}
 
 		public override void LinkMaster(Actor self, Actor master, BaseSpawnerMaster spawnerMaster)
