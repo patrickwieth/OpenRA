@@ -237,6 +237,8 @@ namespace OpenRA.Mods.Common.Traits
 		WPos cachedPosition;
 		int cachedFacing;
 
+		ICrushResource[] notifyCrushResource;
+
 		public Aircraft(ActorInitializer init, AircraftInfo info)
 			: base(info)
 		{
@@ -300,6 +302,7 @@ namespace OpenRA.Mods.Common.Traits
 			positionOffsets = self.TraitsImplementing<IAircraftCenterPositionOffset>().ToArray();
 			overrideAircraftLanding = self.TraitOrDefault<IOverrideAircraftLanding>();
 			notifyVisualPositionChanged = self.TraitsImplementing<INotifyVisualPositionChanged>().ToArray();
+			notifyCrushResource = self.TraitsImplementing<ICrushResource>().ToArray();
 			base.Created(self);
 		}
 
@@ -785,6 +788,9 @@ namespace OpenRA.Mods.Common.Traits
 			var notifiers = actors.SelectMany(a => a.TraitsImplementing<INotifyCrushed>().Select(t => new TraitPair<INotifyCrushed>(a, t)));
 			foreach (var notifyCrushed in notifiers)
 				notifyCrushed.Trait.WarnCrush(notifyCrushed.Actor, self, Info.Crushes);
+
+			foreach (var crushResource in notifyCrushResource)
+				crushResource.CrushResource(self, TopLeft);
 		}
 
 		public void AddInfluence(IEnumerable<CPos> landingCells)

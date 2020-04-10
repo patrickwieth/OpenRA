@@ -36,4 +36,10 @@ namespace OpenRA.Mods.Common.Traits
 	{
 		bool Destroy(WPos position, Player attacker, string type);
 	}
+
+	[RequireExplicitImplementation]
+	public interface ICrushResource
+	{
+		void CrushResource(Actor self, CPos cell);
+	}
 }

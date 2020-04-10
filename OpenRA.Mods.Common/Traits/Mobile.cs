@@ -255,6 +255,8 @@ namespace OpenRA.Mods.Common.Traits
 		}
 		#endregion
 
+		ICrushResource[] notifyCrushResource;
+
 		public Mobile(ActorInitializer init, MobileInfo info)
 			: base(info)
 		{
@@ -300,6 +302,8 @@ namespace OpenRA.Mods.Common.Traits
 			Pathfinder = self.World.WorldActor.Trait<IPathFinder>();
 			Locomotor = self.World.WorldActor.TraitsImplementing<Locomotor>()
 				.Single(l => l.Info.Name == Info.Locomotor);
+
+			notifyCrushResource = self.TraitsImplementing<ICrushResource>().ToArray();
 
 			base.Created(self);
 		}
@@ -811,6 +815,9 @@ namespace OpenRA.Mods.Common.Traits
 			var notifiers = actors.SelectMany(a => a.TraitsImplementing<INotifyCrushed>().Select(t => new TraitPair<INotifyCrushed>(a, t)));
 			foreach (var notifyCrushed in notifiers)
 				notifyCrushed.Trait.WarnCrush(notifyCrushed.Actor, self, Info.LocomotorInfo.Crushes);
+
+			foreach (var crushResource in notifyCrushResource)
+				crushResource.CrushResource(self, ToCell);
 		}
 
 		public Activity ScriptedMove(CPos cell) { return new Move(self, cell); }

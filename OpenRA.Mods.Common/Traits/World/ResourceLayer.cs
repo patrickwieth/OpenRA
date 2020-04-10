@@ -205,6 +205,27 @@ namespace OpenRA.Mods.Common.Traits
 			return c.Type;
 		}
 
+		public KeyValuePair<ResourceType, int> CrushResource(CPos cell)
+		{
+			var c = Content[cell];
+			if (c.Type == null)
+				return new KeyValuePair<ResourceType, int>(null, 0);
+
+			var content = new KeyValuePair<ResourceType, int>(c.Type, c.Density);
+
+			Content[cell] = EmptyCell;
+			world.Map.CustomTerrain[cell] = byte.MaxValue;
+			--resCells;
+
+			foreach (var rl in resourceLogicLayers)
+				rl.UpdatePosition(cell, c.Type, 0);
+
+			if (CellChanged != null)
+				CellChanged(cell, c.Type);
+
+			return content;
+		}
+
 		public void Destroy(CPos cell)
 		{
 			// Don't break other users of CustomTerrain if there are no resources
