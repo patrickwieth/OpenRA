@@ -34,7 +34,11 @@ namespace OpenRA.Mods.AS.Warheads
 		{
 			var definedResourceTypeInfos = rules.Actors["world"].TraitInfos<ResourceTypeInfo>();
 			foreach (var resourceTypeInfo in ResourceTypes)
-				resourceTypeInfos.Add(definedResourceTypeInfos.FirstOrDefault(x => x.Type == resourceTypeInfo));
+			{
+				var resTypeInfo = definedResourceTypeInfos.FirstOrDefault(x => x.Type == resourceTypeInfo);
+				if (resTypeInfo != null)
+					resourceTypeInfos.Add(resTypeInfo);
+			}
 		}
 
 		// TODO: Allow maximum resource removal to be defined in total.
