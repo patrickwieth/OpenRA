@@ -225,6 +225,34 @@ namespace OpenRA.Mods.Common.Traits
 				CellChanged(cell, c.Type);
 		}
 
+		public void DestroyDensity(CPos cell, int density)
+		{
+			var c = Content[cell];
+			if (c.Type == null)
+				return;
+
+			if (c.Density < density)
+			{
+				Content[cell] = EmptyCell;
+				world.Map.CustomTerrain[cell] = byte.MaxValue;
+				--resCells;
+
+				foreach (var rl in resourceLogicLayers)
+					rl.UpdatePosition(cell, c.Type, 0);
+			}
+			else
+			{
+				c.Density -= density;
+				Content[cell] = c;
+
+				foreach (var rl in resourceLogicLayers)
+					rl.UpdatePosition(cell, c.Type, c.Density);
+			}
+
+			if (CellChanged != null)
+				CellChanged(cell, c.Type);
+		}
+
 		public CellContents GetResource(CPos cell) { return Content[cell]; }
 		public ResourceType GetResourceType(CPos cell) { return Content[cell].Type; }
 
