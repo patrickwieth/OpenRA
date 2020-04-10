@@ -61,7 +61,8 @@ namespace OpenRA.Mods.AS.Warheads
 			// Destroy resources in the selected tiles
 			foreach (var cell in allCells)
 			{
-				if (resourceTypeInfos.Contains(resLayer.GetResourceType(cell).Info))
+				var cellContent = resLayer.GetResourceType(cell);
+				if (cellContent != null && resourceTypeInfos.Contains(cellContent.Info))
 					resLayer.DestroyDensity(cell, Density);
 			}
 		}
