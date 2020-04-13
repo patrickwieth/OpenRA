@@ -26,6 +26,13 @@ The plugin is maintained by
  * CastleJing
    > Bugfixes on mind controller logic
 
+ * darkscrypt (Devon/wolfbyte)
+   > Major rewrite on garrison code
+   > Smart deploy logic
+
+ * DnAp
+   > Initial garrison logic
+
  * Holloweye
    > SmokeParticle(Emitter) basic implementation
 
@@ -49,6 +56,8 @@ The plugin is maintained by
    > Warpable logic
    > Infect logic
    > GrantTimedCondition
+   > garrison logic maintainance
+   > OpenToppedDamageWarhead
 
  * Sean Hunt (coppro)
    > Chrono Miner implementation (ChronoResourceDelivery)
