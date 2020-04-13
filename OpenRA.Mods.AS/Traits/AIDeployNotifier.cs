@@ -75,6 +75,7 @@ namespace OpenRA.Mods.AS.Traits
 			deployBotModule.AddEntry(new TraitPair<AIDeployNotifier>(self, this));
 
 			deployTicks = Info.DeployTicks;
+			undeployTicks = Info.UndeployTicks;
 		}
 
 		void Undeploy(Actor self)
