@@ -29,6 +29,7 @@ namespace OpenRA.Mods.AS.Effects
 		readonly bool visibleThroughFog;
 		readonly bool canDamage;
 		readonly int turnRate;
+		readonly string palette;
 
 		[Sync]
 		WPos pos;
@@ -60,6 +61,7 @@ namespace OpenRA.Mods.AS.Effects
 				: smoke.Duration[0];
 
 			canDamage = smoke.Weapon != null;
+			palette = smoke.Palette + (smoke.IsPlayerPalette ? invoker.Owner.InternalName : "");
 		}
 
 		public void Tick(World world)
@@ -111,7 +113,7 @@ namespace OpenRA.Mods.AS.Effects
 			if (world.FogObscures(pos) && !visibleThroughFog)
 				return SpriteRenderable.None;
 
-			return anim.Render(pos, wr.Palette(smoke.Palette));
+			return anim.Render(pos, wr.Palette(palette));
 		}
 	}
 }

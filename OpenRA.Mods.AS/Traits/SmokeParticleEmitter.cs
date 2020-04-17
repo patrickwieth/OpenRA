@@ -49,8 +49,10 @@ namespace OpenRA.Mods.AS.Traits
 		public readonly string[] Sequences = null;
 
 		[Desc("Which palette to use.")]
-		[PaletteReference]
+		[PaletteReference("IsPlayerPalette")]
 		public readonly string Palette = null;
+
+		public readonly bool IsPlayerPalette = false;
 
 		[WeaponReference]
 		[Desc("Has to be defined in weapons.yaml, if defined, as well.")]
@@ -89,6 +91,11 @@ namespace OpenRA.Mods.AS.Traits
 		string ISmokeParticleInfo.Palette
 		{
 			get { return Palette; }
+		}
+
+		bool ISmokeParticleInfo.IsPlayerPalette
+		{
+			get { return IsPlayerPalette; }
 		}
 
 		WDist[] ISmokeParticleInfo.Speed

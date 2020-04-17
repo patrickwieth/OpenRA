@@ -73,8 +73,10 @@ namespace OpenRA.Mods.AS.Projectiles
 		[SequenceReference("HelixImage")]
 		public readonly string[] HelixSequences;
 
-		[PaletteReference]
+		[PaletteReference("IsHelixPlayerPalette")]
 		public readonly string HelixPalette = "effect";
+
+		public readonly bool IsHelixPlayerPalette = false;
 
 		[FieldLoader.Require]
 		[Desc("The duration of an individual particle. Two values mean actual lifetime will vary between them.")]
@@ -127,6 +129,11 @@ namespace OpenRA.Mods.AS.Projectiles
 		string ISmokeParticleInfo.Palette
 		{
 			get { return HelixPalette; }
+		}
+
+		bool ISmokeParticleInfo.IsPlayerPalette
+		{
+			get { return IsHelixPlayerPalette; }
 		}
 
 		WDist[] ISmokeParticleInfo.Speed

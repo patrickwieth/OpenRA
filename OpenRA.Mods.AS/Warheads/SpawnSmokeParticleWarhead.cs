@@ -41,9 +41,11 @@ namespace OpenRA.Mods.AS.Warheads
 		[Desc("Which sequence to use.")]
 		public readonly string[] Sequences = null;
 
-		[PaletteReference]
+		[PaletteReference("IsPlayerPalette")]
 		[Desc("Which palette to use.")]
 		public readonly string Palette = null;
+
+		public readonly bool IsPlayerPalette = false;
 
 		[Desc("Defines particle ownership (invoker if unset).")]
 		public readonly bool Neutral = false;
@@ -67,6 +69,11 @@ namespace OpenRA.Mods.AS.Warheads
 		string ISmokeParticleInfo.Palette
 		{
 			get { return Palette; }
+		}
+
+		bool ISmokeParticleInfo.IsPlayerPalette
+		{
+			get { return IsPlayerPalette; }
 		}
 
 		WDist[] ISmokeParticleInfo.Speed
