@@ -808,6 +808,9 @@ namespace OpenRA.Mods.Common.Traits
 			if (!self.IsAtGroundLevel())
 				return;
 
+			foreach (var crushResource in notifyCrushResource)
+				crushResource.CrushResource(self, ToCell);
+
 			var actors = self.World.ActorMap.GetActorsAt(ToCell).Where(a => a != self).ToList();
 			if (!AnyCrushables(actors))
 				return;
@@ -815,9 +818,6 @@ namespace OpenRA.Mods.Common.Traits
 			var notifiers = actors.SelectMany(a => a.TraitsImplementing<INotifyCrushed>().Select(t => new TraitPair<INotifyCrushed>(a, t)));
 			foreach (var notifyCrushed in notifiers)
 				notifyCrushed.Trait.WarnCrush(notifyCrushed.Actor, self, Info.LocomotorInfo.Crushes);
-
-			foreach (var crushResource in notifyCrushResource)
-				crushResource.CrushResource(self, ToCell);
 		}
 
 		public Activity ScriptedMove(CPos cell) { return new Move(self, cell); }
