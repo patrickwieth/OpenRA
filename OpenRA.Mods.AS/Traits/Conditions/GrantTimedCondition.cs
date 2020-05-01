@@ -91,7 +91,7 @@ namespace OpenRA.Mods.AS.Traits
 			if (token == ConditionManager.InvalidConditionToken)
 				return;
 
-			if (--Ticks < 0)
+			if (--Ticks < 1)
 				RevokeCondition(self);
 		}
 
