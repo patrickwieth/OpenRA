@@ -247,7 +247,7 @@ namespace OpenRA.Mods.AS.Traits
 				return;
 
 			airborne = true;
-			if (!string.IsNullOrEmpty(Info.AirborneCondition) && airborneToken == Actor.InvalidConditionToken)
+			if (airborneToken == Actor.InvalidConditionToken)
 				airborneToken = self.GrantCondition(Info.AirborneCondition);
 		}
 

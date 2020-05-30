@@ -186,7 +186,7 @@ namespace OpenRA.Mods.AS.Traits
 				OnDeployCompleted();
 			else
 			{
-				if (!string.IsNullOrEmpty(Info.DeployingCondition) && deployingToken == Actor.InvalidConditionToken)
+				if (deployingToken == Actor.InvalidConditionToken)
 					deployingToken = self.GrantCondition(Info.DeployingCondition);
 				wsb.PlayCustomAnimation(self, Info.DeployAnimation, OnDeployCompleted);
 			}
@@ -194,7 +194,7 @@ namespace OpenRA.Mods.AS.Traits
 
 		void OnDeployCompleted()
 		{
-			if (!string.IsNullOrEmpty(Info.DeployedCondition) && deployedToken == Actor.InvalidConditionToken)
+			if (deployedToken == Actor.InvalidConditionToken)
 				deployedToken = self.GrantCondition(Info.DeployedCondition);
 
 			if (deployingToken != Actor.InvalidConditionToken)
@@ -216,7 +216,7 @@ namespace OpenRA.Mods.AS.Traits
 				OnUndeployCompleted();
 			else
 			{
-				if (!string.IsNullOrEmpty(Info.DeployingCondition) && deployingToken == Actor.InvalidConditionToken)
+				if (deployingToken == Actor.InvalidConditionToken)
 					deployingToken = self.GrantCondition(Info.DeployingCondition);
 				wsb.PlayCustomAnimation(self, Info.UndeployAnimation, OnUndeployCompleted);
 			}

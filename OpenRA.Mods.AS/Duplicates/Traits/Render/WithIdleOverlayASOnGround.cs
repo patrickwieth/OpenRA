@@ -33,12 +33,15 @@ namespace OpenRA.Mods.AS.Traits.Render
 				p = init.WorldRenderer.Palette(Palette);
 
 			var idleImage = !string.IsNullOrEmpty(Image) ? Image : image;
-			Func<int> facing;
+			Func<WAngle> facing;
 			if (init.Contains<DynamicFacingInit>())
-				facing = init.Get<DynamicFacingInit, Func<int>>();
+			{
+				var getFacing = init.Get<DynamicFacingInit, Func<int>>();
+				facing = () => WAngle.FromFacing(getFacing());
+			}
 			else
 			{
-				var f = init.Contains<FacingInit>() ? init.Get<FacingInit, int>() : 0;
+				var f = WAngle.FromFacing(init.Contains<FacingInit>() ? init.Get<FacingInit, int>() : 0);
 				facing = () => f;
 			}
 
@@ -46,7 +49,7 @@ namespace OpenRA.Mods.AS.Traits.Render
 			anim.PlayRepeating(RenderSprites.NormalizeSequence(anim, init.GetDamageState(), Sequence));
 
 			var body = init.Actor.TraitInfo<BodyOrientationInfo>();
-			Func<WRot> orientation = () => body.QuantizeOrientation(WRot.FromFacing(facing()), facings);
+			Func<WRot> orientation = () => body.QuantizeOrientation(WRot.FromYaw(facing()), facings);
 			Func<WVec> offset = () => body.LocalToWorld(Offset.Rotate(orientation()));
 			Func<int> zOffset = () =>
 			{

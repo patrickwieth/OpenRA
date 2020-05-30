@@ -8,6 +8,7 @@
  */
 #endregion
 
+using System;
 using System.Collections.Generic;
 using OpenRA.GameRules;
 using OpenRA.Graphics;
@@ -136,8 +137,11 @@ namespace OpenRA.Mods.AS.Projectiles
 		public void Tick(World world)
 		{
 			if (hasLaunchEffect && ticks == 0)
-				world.AddFrameEndTask(w => w.Add(new SpriteEffect(args.CurrentSource, args.CurrentMuzzleFacing, world,
+			{
+				Func<WAngle> getMuzzleFacing = () => WAngle.FromFacing(args.CurrentMuzzleFacing());
+				world.AddFrameEndTask(w => w.Add(new SpriteEffect(args.CurrentSource, getMuzzleFacing, world,
 					info.LaunchEffectImage, info.LaunchEffectSequence, info.LaunchEffectPalette)));
+			}
 
 			if (ticks == 0)
 				args.Weapon.Impact(Target.FromPos(target), new WarheadArgs(args));

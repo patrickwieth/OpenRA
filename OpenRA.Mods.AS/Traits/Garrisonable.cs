@@ -177,8 +177,7 @@ namespace OpenRA.Mods.AS.Traits
 						garrisonerTokens.GetOrAdd(c.Info.Name).Push(self.GrantCondition(garrisonerCondition));
 				}
 
-				if (!string.IsNullOrEmpty(Info.LoadedCondition))
-					loadedTokens.Push(self.GrantCondition(Info.LoadedCondition));
+				loadedTokens.Push(self.GrantCondition(Info.LoadedCondition));
 			}
 
 			// Defer notifications until we are certain all traits on the transport are initialised
@@ -430,8 +429,7 @@ namespace OpenRA.Mods.AS.Traits
 			if (Info.GarrisonerConditions.TryGetValue(a.Info.Name, out garrisonerCondition))
 				garrisonerTokens.GetOrAdd(a.Info.Name).Push(self.GrantCondition(garrisonerCondition));
 
-			if (!string.IsNullOrEmpty(Info.LoadedCondition))
-				loadedTokens.Push(self.GrantCondition(Info.LoadedCondition));
+			loadedTokens.Push(self.GrantCondition(Info.LoadedCondition));
 		}
 
 		void INotifyKilled.Killed(Actor self, AttackInfo e)

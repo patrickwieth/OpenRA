@@ -52,9 +52,6 @@ namespace OpenRA.Mods.AS.Traits
 
 		void StackControllingCondition(Actor self, string condition)
 		{
-			if (string.IsNullOrEmpty(condition))
-				return;
-
 			controllingTokens.Push(self.GrantCondition(condition));
 		}
 

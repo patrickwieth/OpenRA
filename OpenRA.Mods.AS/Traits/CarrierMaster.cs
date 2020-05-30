@@ -204,8 +204,7 @@ namespace OpenRA.Mods.AS.Traits
 			if (CarrierMasterInfo.SpawnContainConditions.TryGetValue(a.Info.Name, out spawnContainCondition))
 				spawnContainTokens.GetOrAdd(a.Info.Name).Push(self.GrantCondition(spawnContainCondition));
 
-			if (!string.IsNullOrEmpty(CarrierMasterInfo.LoadedCondition))
-				loadedTokens.Push(self.GrantCondition(CarrierMasterInfo.LoadedCondition));
+			loadedTokens.Push(self.GrantCondition(CarrierMasterInfo.LoadedCondition));
 		}
 
 		public override void Replenish(Actor self, BaseSpawnerSlaveEntry entry)
@@ -217,8 +216,7 @@ namespace OpenRA.Mods.AS.Traits
 			if (CarrierMasterInfo.SpawnContainConditions.TryGetValue(entry.Actor.Info.Name, out spawnContainCondition))
 				spawnContainTokens.GetOrAdd(entry.Actor.Info.Name).Push(self.GrantCondition(spawnContainCondition));
 
-			if (!string.IsNullOrEmpty(CarrierMasterInfo.LoadedCondition))
-				loadedTokens.Push(self.GrantCondition(CarrierMasterInfo.LoadedCondition));
+			loadedTokens.Push(self.GrantCondition(CarrierMasterInfo.LoadedCondition));
 		}
 
 		void ITick.Tick(Actor self)

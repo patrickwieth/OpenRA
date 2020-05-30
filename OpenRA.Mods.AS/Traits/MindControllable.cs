@@ -62,7 +62,7 @@ namespace OpenRA.Mods.AS.Traits
 			UnlinkMaster(self, Master);
 			Master = master;
 
-			if (token == Actor.InvalidConditionToken && !string.IsNullOrEmpty(Info.Condition))
+			if (token == Actor.InvalidConditionToken)
 				token = self.GrantCondition(Info.Condition);
 
 			if (master.Owner == creatorOwner)

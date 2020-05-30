@@ -44,7 +44,6 @@ namespace OpenRA.Mods.AS.Traits
 
 		readonly Actor self;
 		readonly HashSet<Actor> detectors = new HashSet<Actor>();
-		readonly bool isValidCondition;
 
 		int token = Actor.InvalidConditionToken;
 		bool IsEnabled { get { return token != Actor.InvalidConditionToken; } }
@@ -54,7 +53,6 @@ namespace OpenRA.Mods.AS.Traits
 		{
 			this.self = self;
 			Container = new HashSet<DelayedWeaponTrigger>();
-			isValidCondition = !string.IsNullOrEmpty(info.Condition);
 		}
 
 		void ITick.Tick(Actor self)
@@ -66,7 +64,7 @@ namespace OpenRA.Mods.AS.Traits
 
 				Container.RemoveWhere(p => !p.IsValid);
 
-				if (isValidCondition && token != Actor.InvalidConditionToken && !Container.Any())
+				if (token != Actor.InvalidConditionToken && !Container.Any())
 					token = self.RevokeCondition(token);
 			}
 		}
@@ -94,7 +92,7 @@ namespace OpenRA.Mods.AS.Traits
 
 		public void Attach(DelayedWeaponTrigger trigger)
 		{
-			if (isValidCondition && token == Actor.InvalidConditionToken)
+			if (token == Actor.InvalidConditionToken)
 				token = self.GrantCondition(Info.Condition);
 
 			Container.Add(trigger);
@@ -142,7 +140,7 @@ namespace OpenRA.Mods.AS.Traits
 
 				Container.RemoveWhere(p => !p.IsValid);
 
-				if (isValidCondition && token != Actor.InvalidConditionToken && !Container.Any())
+				if (token != Actor.InvalidConditionToken && !Container.Any())
 					token = self.RevokeCondition(token);
 			}
 		}

@@ -253,8 +253,7 @@ namespace OpenRA.Mods.AS.Traits
 			if (AirstrikeMasterInfo.SpawnContainConditions.TryGetValue(a.Info.Name, out spawnContainCondition))
 				spawnContainTokens.GetOrAdd(a.Info.Name).Push(self.GrantCondition(spawnContainCondition));
 
-			if (!string.IsNullOrEmpty(AirstrikeMasterInfo.LoadedCondition))
-				loadedTokens.Push(self.GrantCondition(AirstrikeMasterInfo.LoadedCondition));
+			loadedTokens.Push(self.GrantCondition(AirstrikeMasterInfo.LoadedCondition));
 		}
 
 		void ITick.Tick(Actor self)

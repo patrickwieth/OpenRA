@@ -41,9 +41,6 @@ namespace OpenRA.Mods.AS.Traits
 
 		void GrantCondition(Actor self, string condition)
 		{
-			if (string.IsNullOrEmpty(condition))
-				return;
-
 			token = self.GrantCondition(condition);
 		}
 

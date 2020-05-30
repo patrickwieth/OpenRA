@@ -83,8 +83,7 @@ namespace OpenRA.Mods.AS.Traits
 
 		public void GrantJoustCondition(Actor self)
 		{
-			if (!string.IsNullOrEmpty(info.JoustCondition))
-				joustToken = self.GrantCondition(info.JoustCondition);
+			joustToken = self.GrantCondition(info.JoustCondition);
 		}
 
 		public void RevokeJoustCondition(Actor self)

@@ -53,9 +53,6 @@ namespace OpenRA.Mods.AS.Traits
 
 		void GrantCondition(Actor self, string condition)
 		{
-			if (string.IsNullOrEmpty(condition))
-				return;
-
 			if (token == Actor.InvalidConditionToken)
 			{
 				Ticks = info.Duration;

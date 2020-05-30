@@ -76,7 +76,7 @@ namespace OpenRA.Mods.AS.Traits
 				{
 					enteringInfector = infector;
 
-					if (beingInfectedToken == Actor.InvalidConditionToken && !string.IsNullOrEmpty(Info.BeingInfectedCondition))
+					if (beingInfectedToken == Actor.InvalidConditionToken)
 						beingInfectedToken = self.GrantCondition(Info.BeingInfectedCondition);
 
 					return true;
@@ -88,7 +88,7 @@ namespace OpenRA.Mods.AS.Traits
 
 		public void GrantCondition(Actor self)
 		{
-			if (infectedToken == Actor.InvalidConditionToken && !string.IsNullOrEmpty(Info.InfectedCondition))
+			if (infectedToken == Actor.InvalidConditionToken)
 				infectedToken = self.GrantCondition(Info.InfectedCondition);
 
 			string infectedByCondition;

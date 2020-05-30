@@ -79,7 +79,7 @@ namespace OpenRA.Mods.AS.Traits
 				if (recievedDamage >= requiredDamage)
 					self.Kill(damager, info.DamageTypes);
 
-			if (!string.IsNullOrEmpty(info.Condition) && token == Actor.InvalidConditionToken)
+			if (token == Actor.InvalidConditionToken)
 				token = self.GrantCondition(info.Condition);
 		}
 

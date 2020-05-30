@@ -122,7 +122,7 @@ namespace OpenRA.Mods.AS.Traits
 		{
 			string specificGarrisonCondition;
 
-			if (anyGarrisonToken == Actor.InvalidConditionToken && !string.IsNullOrEmpty(Info.GarrisonCondition))
+			if (anyGarrisonToken == Actor.InvalidConditionToken)
 				anyGarrisonToken = self.GrantCondition(Info.GarrisonCondition);
 
 			if (specificGarrisonToken == Actor.InvalidConditionToken && Info.GarrisonConditions.TryGetValue(garrison.Info.Name, out specificGarrisonCondition))

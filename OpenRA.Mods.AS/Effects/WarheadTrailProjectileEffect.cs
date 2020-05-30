@@ -60,7 +60,7 @@ namespace OpenRA.Mods.AS.Effects
 
 			if (!string.IsNullOrEmpty(info.Image))
 			{
-				anim = new Animation(world, info.Image, new Func<int>(GetEffectiveFacing));
+				anim = new Animation(world, info.Image, new Func<WAngle>(GetEffectiveFacing));
 				anim.PlayRepeating(info.Sequences.Random(world.SharedRandom));
 			}
 
@@ -77,7 +77,7 @@ namespace OpenRA.Mods.AS.Effects
 			smokeTicks = info.TrailDelay;
 		}
 
-		int GetEffectiveFacing()
+		WAngle GetEffectiveFacing()
 		{
 			var at = (float)ticks / (lifespan - 1);
 			var attitude = WAngle.Zero.Tan() * (1 - 2 * at) / (4 * 1024);
@@ -85,9 +85,11 @@ namespace OpenRA.Mods.AS.Effects
 			var u = (facing % 128) / 128f;
 			var scale = 512 * u * (1 - u);
 
-			return (int)(facing < 128
+			var effective = (int)(facing < 128
 				? facing - scale * attitude
 				: facing + scale * attitude);
+
+			return WAngle.FromFacing(effective);
 		}
 
 		public IEnumerable<IRenderable> Render(WorldRenderer wr)
@@ -134,8 +136,8 @@ namespace OpenRA.Mods.AS.Effects
 			if (!string.IsNullOrEmpty(info.TrailImage) && --smokeTicks < 0)
 			{
 				var delayedPos = WPos.Lerp(source, targetpos, ticks - info.TrailDelay, estimatedlifespan);
-				world.AddFrameEndTask(w => w.Add(new SpriteEffect(delayedPos, w, info.TrailImage, info.TrailSequences.Random(world.SharedRandom),
-					trailPalette, facing: GetEffectiveFacing())));
+				world.AddFrameEndTask(w => w.Add(new SpriteEffect(delayedPos, GetEffectiveFacing(), w,
+					info.TrailImage, info.TrailSequences.Random(world.SharedRandom), trailPalette)));
 
 				smokeTicks = info.TrailInterval;
 			}

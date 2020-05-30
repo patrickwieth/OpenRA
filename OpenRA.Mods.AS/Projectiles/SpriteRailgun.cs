@@ -133,8 +133,8 @@ namespace OpenRA.Mods.AS.Projectiles
 				var offset = rad.Length * angle.Cos() * leftVector / (1024 * 1024)
 					+ rad.Length * angle.Sin() * upVector / (1024 * 1024);
 				var animpos = pos + offset;
-				args.SourceActor.World.AddFrameEndTask(w => w.Add(new SpriteEffect(animpos, w, info.HelixAnim,
-					info.HelixAnimSequence, info.HelixAnimPalette, facing: angle.Facing)));
+				args.SourceActor.World.AddFrameEndTask(w => w.Add(new SpriteEffect(animpos, angle, w,
+					info.HelixAnim, info.HelixAnimSequence, info.HelixAnimPalette)));
 
 				pos += forwardStep;
 				angle += angleStep;
