@@ -17,10 +17,24 @@ namespace OpenRA.Mods.Common.Traits
 	{
 		[Desc("Measured in ticks.")]
 		public readonly int ChargeInterval = 0;
+
+		public readonly string IconImage = "icon";
+
+		[SequenceReference("IconImage")]
+		[Desc("Icon sprite displayed in the support power palette.")]
 		public readonly string Icon = null;
+
+		[PaletteReference]
+		[Desc("Palette used for the icon.")]
+		public readonly string IconPalette = "chrome";
+
 		public readonly string Description = "";
 		public readonly string LongDesc = "";
+
+		[Desc("Allow multiple instances of the same support power.")]
 		public readonly bool AllowMultiple = false;
+
+		[Desc("Allow this to be used only once.")]
 		public readonly bool OneShot = false;
 		public readonly int Cost = 0;
 
@@ -64,10 +78,6 @@ namespace OpenRA.Mods.Common.Traits
 
 		[Desc("Defines to which players the timer is shown.")]
 		public readonly Stance DisplayTimerStances = Stance.None;
-
-		[PaletteReference]
-		[Desc("Palette used for the icon.")]
-		public readonly string IconPalette = "chrome";
 
 		[Desc("Beacons are only supported on the Airstrike, Paratroopers, and Nuke powers")]
 		public readonly bool DisplayBeacon = false;
@@ -143,6 +153,9 @@ namespace OpenRA.Mods.Common.Traits
 			Game.Sound.PlayToPlayer(SoundType.UI, self.Owner, Info.EndChargeSound);
 			Game.Sound.PlayNotification(self.World.Map.Rules, self.Owner, "Speech",
 				Info.EndChargeSpeechNotification, self.Owner.Faction.InternalName);
+
+			foreach (var notify in self.TraitsImplementing<INotifySupportPower>())
+				notify.Charged(self);
 		}
 
 		public virtual void SelectTarget(Actor self, string order, SupportPowerManager manager)
@@ -163,6 +176,9 @@ namespace OpenRA.Mods.Common.Traits
 					order.Player.Color,
 					Info.RadarPingDuration);
 			}
+
+			foreach (var notify in self.TraitsImplementing<INotifySupportPower>())
+				notify.Activated(self);
 		}
 
 		public virtual void PlayLaunchSounds()

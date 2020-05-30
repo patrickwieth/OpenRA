@@ -9,31 +9,26 @@
  */
 #endregion
 
-using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Mods.Common.Traits;
-using OpenRA.Mods.Common.Traits.Render;
 using OpenRA.Primitives;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Cnc.Traits
 {
-	[Desc("Reveals a decoration sprite to the indicated players when infiltrated.")]
-	class InfiltrateForDecorationInfo : WithDecorationInfo
+	class InfiltrateForSupportPowerResetInfo : ITraitInfo
 	{
 		[Desc("The `TargetTypes` from `Targetable` that are allowed to enter.")]
 		public readonly BitSet<TargetableType> Types = default(BitSet<TargetableType>);
 
-		public override object Create(ActorInitializer init) { return new InfiltrateForDecoration(init.Self, this); }
+		public object Create(ActorInitializer init) { return new InfiltrateForSupportPowerReset(this); }
 	}
 
-	class InfiltrateForDecoration : WithDecoration, INotifyInfiltrated
+	class InfiltrateForSupportPowerReset : INotifyInfiltrated
 	{
-		readonly HashSet<Player> infiltrators = new HashSet<Player>();
-		readonly InfiltrateForDecorationInfo info;
+		readonly InfiltrateForSupportPowerResetInfo info;
 
-		public InfiltrateForDecoration(Actor self, InfiltrateForDecorationInfo info)
-			: base(self, info)
+		public InfiltrateForSupportPowerReset(InfiltrateForSupportPowerResetInfo info)
 		{
 			this.info = info;
 		}
@@ -43,13 +38,10 @@ namespace OpenRA.Mods.Cnc.Traits
 			if (!info.Types.Overlaps(types))
 				return;
 
-			infiltrators.Add(infiltrator.Owner);
-		}
-
-		protected override bool ShouldRender(Actor self)
-		{
-			return self.World.RenderPlayer == null || infiltrators.Any(i =>
-				Info.ValidStances.HasStance(i.Stances[self.World.RenderPlayer]));
+			var manager = self.Owner.PlayerActor.Trait<SupportPowerManager>();
+			var powers = manager.GetPowersForActor(self).Where(sp => !sp.Disabled);
+			foreach (var power in powers)
+				power.ResetTimer();
 		}
 	}
 }
