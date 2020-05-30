@@ -46,11 +46,21 @@ namespace OpenRA.Mods.Common
 			return facing + turn;
 		}
 
-		public static int QuantizeFacing(int facing, int numFrames)
+		/// <summary>
+		/// Calculate the frame index (between 0..numFrames) that
+		/// should be used for the given facing value.
+		/// </summary>
+		public static int IndexFacing(WAngle facing, int numFrames)
 		{
-			var step = 256 / numFrames;
-			var a = (facing + step / 2) & 0xff;
+			var step = 1024 / numFrames;
+			var a = (facing.Angle + step / 2) & 1023;
 			return a / step;
+		}
+
+		/// <summary>Rounds the given facing value to the nearest quantized step.</summary>
+		public static WAngle QuantizeFacing(WAngle facing, int steps)
+		{
+			return new WAngle(IndexFacing(facing, steps) * (1024 / steps));
 		}
 
 		/// <summary>Wraps an arbitrary integer facing value into the range 0 - 255</summary>

@@ -44,7 +44,7 @@ namespace OpenRA.Mods.Cnc.Graphics
 
 		protected override int GetFacingFrameOffset(WAngle facing)
 		{
-			return Util.ClassicQuantizeFacing(facing.Facing, Facings, useClassicFacings);
+			return useClassicFacings ? Util.ClassicIndexFacing(facing, Facings) : Common.Util.IndexFacing(facing, Facings);
 		}
 	}
 }
