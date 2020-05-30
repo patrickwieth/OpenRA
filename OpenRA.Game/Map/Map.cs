@@ -851,6 +851,10 @@ namespace OpenRA
 
 			// Apply ramp offset
 			var cell = CellContaining(pos);
+
+			if (!Contains(cell))
+				return new WDist(pos.Z);
+
 			var offset = pos - CenterOfCell(cell);
 
 			var ramp = Ramp[cell];
