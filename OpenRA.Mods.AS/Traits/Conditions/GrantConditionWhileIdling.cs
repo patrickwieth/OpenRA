@@ -8,7 +8,6 @@
  */
 #endregion
 
-using OpenRA.Mods.Common.Traits;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.AS.Traits
@@ -24,12 +23,11 @@ namespace OpenRA.Mods.AS.Traits
 		public object Create(ActorInitializer init) { return new GrantConditionWhileIdling(this); }
 	}
 
-	public class GrantConditionWhileIdling : ITick, INotifyIdle, INotifyCreated
+	public class GrantConditionWhileIdling : ITick, INotifyIdle
 	{
 		readonly GrantConditionWhileIdlingInfo info;
 
-		ConditionManager manager;
-		int token = ConditionManager.InvalidConditionToken;
+		int token = Actor.InvalidConditionToken;
 		int delay;
 
 		public GrantConditionWhileIdling(GrantConditionWhileIdlingInfo info)
@@ -37,18 +35,13 @@ namespace OpenRA.Mods.AS.Traits
 			this.info = info;
 		}
 
-		void INotifyCreated.Created(Actor self)
-		{
-			manager = self.Trait<ConditionManager>();
-		}
-
 		void ITick.Tick(Actor self)
 		{
-			if (delay > 0 && token == ConditionManager.InvalidConditionToken)
-				token = manager.GrantCondition(self, info.Condition);
+			if (delay > 0 && token == Actor.InvalidConditionToken)
+				token = self.GrantCondition(info.Condition);
 
-			if (token != ConditionManager.InvalidConditionToken && --delay < 0)
-				token = manager.RevokeCondition(self, token);
+			if (token != Actor.InvalidConditionToken && --delay < 0)
+				token = self.RevokeCondition(token);
 		}
 
 		void INotifyIdle.TickIdle(Actor self)

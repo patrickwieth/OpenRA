@@ -40,15 +40,14 @@ namespace OpenRA.Mods.AS.Traits
 		public object Create(ActorInitializer init) { return new Warpable(init, this); }
 	}
 
-	public class Warpable : INotifyCreated, ISync, ITick, ISelectionBar
+	public class Warpable : ISync, ITick, ISelectionBar
 	{
 		readonly Actor self;
 		readonly WarpableInfo info;
 		readonly Health health;
 		readonly int requiredDamage;
 
-		ConditionManager conditionManager;
-		int token = ConditionManager.InvalidConditionToken;
+		int token = Actor.InvalidConditionToken;
 
 		[Sync]
 		int recievedDamage;
@@ -62,11 +61,6 @@ namespace OpenRA.Mods.AS.Traits
 			self = init.Self;
 			health = self.Trait<Health>();
 			requiredDamage = info.EraseDamage >= 0 ? info.EraseDamage : health.MaxHP;
-		}
-
-		void INotifyCreated.Created(Actor self)
-		{
-			conditionManager = self.TraitOrDefault<ConditionManager>();
 		}
 
 		public void AddDamage(int damage, Actor damager)
@@ -85,10 +79,8 @@ namespace OpenRA.Mods.AS.Traits
 				if (recievedDamage >= requiredDamage)
 					self.Kill(damager, info.DamageTypes);
 
-			if (conditionManager != null &&
-				!string.IsNullOrEmpty(info.Condition) &&
-				token == ConditionManager.InvalidConditionToken)
-				token = conditionManager.GrantCondition(self, info.Condition);
+			if (!string.IsNullOrEmpty(info.Condition) && token == Actor.InvalidConditionToken)
+				token = self.GrantCondition(info.Condition);
 		}
 
 		void ITick.Tick(Actor self)
@@ -97,8 +89,8 @@ namespace OpenRA.Mods.AS.Traits
 			{
 				recievedDamage = 0;
 
-				if (conditionManager != null && token != ConditionManager.InvalidConditionToken)
-					token = conditionManager.RevokeCondition(self, token);
+				if (token != Actor.InvalidConditionToken)
+					token = self.RevokeCondition(token);
 			}
 		}
 

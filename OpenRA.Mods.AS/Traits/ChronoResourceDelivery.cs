@@ -64,8 +64,7 @@ namespace OpenRA.Mods.AS.Traits
 		int ticksTillCheck = 0;
 		int dockFacing;
 		IFacing facing;
-		ConditionManager manager;
-		int token = ConditionManager.InvalidConditionToken;
+		int token = Actor.InvalidConditionToken;
 
 		public ChronoResourceDelivery(ChronoResourceDeliveryInfo info)
 			: base(info) { }
@@ -73,7 +72,6 @@ namespace OpenRA.Mods.AS.Traits
 		protected override void Created(Actor self)
 		{
 			facing = self.TraitOrDefault<IFacing>();
-			manager = self.Trait<ConditionManager>();
 
 			base.Created(self);
 		}
@@ -130,8 +128,8 @@ namespace OpenRA.Mods.AS.Traits
 				return;
 			}
 
-			if (token == ConditionManager.InvalidConditionToken && !string.IsNullOrWhiteSpace(Info.Condition))
-				token = manager.GrantCondition(self, Info.Condition);
+			if (token == Actor.InvalidConditionToken && !string.IsNullOrWhiteSpace(Info.Condition))
+				token = self.GrantCondition(Info.Condition);
 
 			var pos = self.Trait<IPositionable>();
 			if (pos.CanEnterCell(destination.Value))
@@ -178,8 +176,8 @@ namespace OpenRA.Mods.AS.Traits
 
 			self.World.AddFrameEndTask(w =>
 			{
-				if (token != ConditionManager.InvalidConditionToken)
-					token = manager.RevokeCondition(self, token);
+				if (token != Actor.InvalidConditionToken)
+					token = self.RevokeCondition(token);
 			});
 		}
 	}

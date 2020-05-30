@@ -41,8 +41,7 @@ namespace OpenRA.Mods.AS.Traits
 	{
 		readonly GrantRandomConditionOnDeliveryInfo info;
 
-		ConditionManager conditionManager;
-		int conditionToken = ConditionManager.InvalidConditionToken;
+		int conditionToken = Actor.InvalidConditionToken;
 
 		public GrantRandomConditionOnDelivery(Actor self, GrantRandomConditionOnDeliveryInfo info)
 		{
@@ -55,8 +54,7 @@ namespace OpenRA.Mods.AS.Traits
 				return;
 
 			var condition = info.Conditions.Random(self.World.SharedRandom);
-			conditionManager = self.Trait<ConditionManager>();
-			conditionToken = conditionManager.GrantCondition(self, condition);
+			conditionToken = self.GrantCondition(condition);
 		}
 
 		void INotifyDelivery.Delivered(Actor self)
@@ -64,11 +62,11 @@ namespace OpenRA.Mods.AS.Traits
 			if (!info.Triggers.HasFlag(GrantRandomConditionOnDeliveryTrigger.Delivery))
 				return;
 
-			if (conditionToken != ConditionManager.InvalidConditionToken)
+			if (conditionToken != Actor.InvalidConditionToken)
 			{
-				conditionManager.RevokeCondition(self, conditionToken);
+				self.RevokeCondition(conditionToken);
 				var condition = info.Conditions.Random(self.World.SharedRandom);
-				conditionToken = conditionManager.GrantCondition(self, condition);
+				conditionToken = self.GrantCondition(condition);
 			}
 		}
 
@@ -77,21 +75,21 @@ namespace OpenRA.Mods.AS.Traits
 			if (!info.Triggers.HasFlag(GrantRandomConditionOnDeliveryTrigger.IncomingDelivery))
 				return;
 
-			if (conditionToken != ConditionManager.InvalidConditionToken)
+			if (conditionToken != Actor.InvalidConditionToken)
 			{
-				conditionManager.RevokeCondition(self, conditionToken);
+				self.RevokeCondition(conditionToken);
 				var condition = info.Conditions.Random(self.World.SharedRandom);
-				conditionToken = conditionManager.GrantCondition(self, condition);
+				conditionToken = self.GrantCondition(condition);
 			}
 		}
 
 		void INotifyOwnerChanged.OnOwnerChanged(Actor self, Player oldOwner, Player newOwner)
 		{
-			if (conditionToken != ConditionManager.InvalidConditionToken)
+			if (conditionToken != Actor.InvalidConditionToken)
 			{
-				conditionManager.RevokeCondition(self, conditionToken);
+				self.RevokeCondition(conditionToken);
 				var condition = info.Conditions.Random(self.World.SharedRandom);
-				conditionToken = conditionManager.GrantCondition(self, condition);
+				conditionToken = self.GrantCondition(condition);
 			}
 		}
 	}

@@ -30,8 +30,7 @@ namespace OpenRA.Mods.AS.Traits
 	{
 		readonly GrantRandomConditionOnProductionInfo info;
 
-		ConditionManager conditionManager;
-		int conditionToken = ConditionManager.InvalidConditionToken;
+		int conditionToken = Actor.InvalidConditionToken;
 
 		public GrantRandomConditionOnProduction(Actor self, GrantRandomConditionOnProductionInfo info)
 		{
@@ -44,27 +43,26 @@ namespace OpenRA.Mods.AS.Traits
 				return;
 
 			var condition = info.Conditions.Random(self.World.SharedRandom);
-			conditionManager = self.Trait<ConditionManager>();
-			conditionToken = conditionManager.GrantCondition(self, condition);
+			conditionToken = self.GrantCondition(condition);
 		}
 
 		void INotifyOwnerChanged.OnOwnerChanged(Actor self, Player oldOwner, Player newOwner)
 		{
-			if (conditionToken != ConditionManager.InvalidConditionToken)
+			if (conditionToken != Actor.InvalidConditionToken)
 			{
-				conditionManager.RevokeCondition(self, conditionToken);
+				self.RevokeCondition(conditionToken);
 				var condition = info.Conditions.Random(self.World.SharedRandom);
-				conditionToken = conditionManager.GrantCondition(self, condition);
+				conditionToken = self.GrantCondition(condition);
 			}
 		}
 
 		void INotifyProduction.UnitProduced(Actor self, Actor other, CPos exit)
 		{
-			if (conditionToken != ConditionManager.InvalidConditionToken)
+			if (conditionToken != Actor.InvalidConditionToken)
 			{
-				conditionManager.RevokeCondition(self, conditionToken);
+				self.RevokeCondition(conditionToken);
 				var condition = info.Conditions.Random(self.World.SharedRandom);
-				conditionToken = conditionManager.GrantCondition(self, condition);
+				conditionToken = self.GrantCondition(condition);
 			}
 		}
 	}

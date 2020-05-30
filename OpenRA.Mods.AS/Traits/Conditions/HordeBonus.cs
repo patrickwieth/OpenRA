@@ -50,7 +50,6 @@ namespace OpenRA.Mods.AS.Traits
 	{
 		readonly Actor self;
 		readonly HordeBonusInfo info;
-		ConditionManager manager;
 
 		int proximityTrigger;
 		WPos cachedPosition;
@@ -63,9 +62,9 @@ namespace OpenRA.Mods.AS.Traits
 
 		HashSet<Actor> sources;
 
-		int token = ConditionManager.InvalidConditionToken;
+		int token = Actor.InvalidConditionToken;
 
-		bool IsEnabled { get { return token != ConditionManager.InvalidConditionToken; } }
+		bool IsEnabled { get { return token != Actor.InvalidConditionToken; } }
 
 		public HordeBonus(Actor self, HordeBonusInfo info)
 			: base(info)
@@ -75,13 +74,6 @@ namespace OpenRA.Mods.AS.Traits
 			cachedRange = info.Range;
 			cachedVRange = info.MaximumVerticalOffset;
 			sources = new HashSet<Actor>();
-		}
-
-		protected override void Created(Actor self)
-		{
-			manager = self.Trait<ConditionManager>();
-
-			base.Created(self);
 		}
 
 		void INotifyAddedToWorld.AddedToWorld(Actor self)
@@ -168,7 +160,7 @@ namespace OpenRA.Mods.AS.Traits
 			{
 				if (!IsEnabled)
 				{
-					token = manager.GrantCondition(self, info.Condition);
+					token = self.GrantCondition(info.Condition);
 					Game.Sound.Play(SoundType.World, info.EnableSound, self.CenterPosition);
 				}
 			}
@@ -176,7 +168,7 @@ namespace OpenRA.Mods.AS.Traits
 			{
 				if (IsEnabled)
 				{
-					token = manager.RevokeCondition(self, token);
+					token = self.RevokeCondition(token);
 					Game.Sound.Play(SoundType.World, info.DisableSound, self.CenterPosition);
 				}
 			}
