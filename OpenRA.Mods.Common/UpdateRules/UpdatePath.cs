@@ -34,34 +34,12 @@ namespace OpenRA.Mods.Common.UpdateRules
 			Justification = "Extracting update lists to temporary variables obfuscates the definitions.")]
 		static readonly UpdatePath[] Paths =
 		{
-			new UpdatePath("release-20190314", "release-20191117", new UpdateRule[]
-			{
-				new MultipleDeploySounds(),
-				new RemoveSimpleBeacon(),
-				new MakeMobilePausableConditional(),
-				new StreamlineRepairableTraits(),
-				new ReplaceSpecialMoveConsiderations(),
-				new RefactorHarvesterIdle(),
-				new SplitHarvesterSpriteBody(),
-				new RenameAttackMoveConditions(),
-				new RemovePlaceBuildingPalettes(),
-				new RenameHoversOffsetModifier(),
-				new AddAirAttackTypes(),
-				new MoveAbortOnResupply(),
-				new RenameCarryallDelays(),
-				new AddCanSlide(),
-				new AddAircraftIdleBehavior(),
-				new RenameSearchRadius(),
-				new RenameChronoshiftFootprint(),
-				new RemoveMoveIntoWorldFromExit(),
-			}),
-
 			new UpdatePath("release-20191117", "release-20200202", new UpdateRule[]
 			{
 				new ReplaceAttackTypeStrafe()
 			}),
 
-			new UpdatePath("release-20200202", "playtest-20200303", new UpdateRule[]
+			new UpdatePath("release-20200202", "release-20200503", new UpdateRule[]
 			{
 				new RemoveYesNo(),
 				new RemoveInitialFacingHardcoding(),
@@ -75,7 +53,7 @@ namespace OpenRA.Mods.Common.UpdateRules
 				new RenameRallyPointPath(),
 			}),
 
-			new UpdatePath("playtest-20200303", new UpdateRule[]
+			new UpdatePath("release-20200503", new UpdateRule[]
 			{
 				// Bleed only changes here
 				new AddPipDecorationTraits(),
@@ -84,6 +62,7 @@ namespace OpenRA.Mods.Common.UpdateRules
 				new MoveClassicFacingFudge(),
 				new RenameWithNukeLaunch(),
 				new SpawnActorPowerDefaultEffect(),
+				new RemoveConditionManager(),
 			})
 		};
 
