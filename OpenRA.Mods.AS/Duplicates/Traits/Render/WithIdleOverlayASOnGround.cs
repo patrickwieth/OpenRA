@@ -34,14 +34,15 @@ namespace OpenRA.Mods.AS.Traits.Render
 
 			var idleImage = !string.IsNullOrEmpty(Image) ? Image : image;
 			Func<WAngle> facing;
-			if (init.Contains<DynamicFacingInit>())
+			var dynamicfacingInit = init.GetOrDefault<DynamicFacingInit>(this);
+			if (dynamicfacingInit != null)
 			{
-				var getFacing = init.Get<DynamicFacingInit, Func<int>>();
+				var getFacing = dynamicfacingInit.Value;
 				facing = () => WAngle.FromFacing(getFacing());
 			}
 			else
 			{
-				var f = WAngle.FromFacing(init.Contains<FacingInit>() ? init.Get<FacingInit, int>() : 0);
+				var f = WAngle.FromFacing(init.GetValue<FacingInit, int>(this, 0));
 				facing = () => f;
 			}
 

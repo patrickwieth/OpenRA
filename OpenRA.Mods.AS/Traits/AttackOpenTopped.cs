@@ -155,7 +155,7 @@ namespace OpenRA.Mods.AS.Traits
 					var palette = a.Info.MuzzlePalette;
 
 					if (a.Info.MuzzleSplitFacings > 0)
-						sequence += Common.Util.QuantizeFacing(muzzleFacing, a.Info.MuzzleSplitFacings).ToString();
+						sequence += Common.Util.QuantizeFacing(targetYaw, a.Info.MuzzleSplitFacings).ToString();
 
 					var muzzleFlash = new AnimationWithOffset(muzzleAnim,
 						() => PortOffset(self, port),

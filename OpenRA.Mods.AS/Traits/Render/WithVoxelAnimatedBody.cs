@@ -10,14 +10,12 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using OpenRA.Graphics;
 using OpenRA.Mods.Cnc.Traits.Render;
 using OpenRA.Mods.Common.Graphics;
 using OpenRA.Mods.Common.Traits;
 using OpenRA.Mods.Common.Traits.Render;
 using OpenRA.Primitives;
-using OpenRA.Support;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.AS.Traits
@@ -40,7 +38,7 @@ namespace OpenRA.Mods.AS.Traits
 		{
 			var voxel = init.World.ModelCache.GetModelSequence(image, Sequence);
 			var body = init.Actor.TraitInfo<BodyOrientationInfo>();
-			var frame = init.Contains<BodyAnimationFrameInit>() ? init.Get<BodyAnimationFrameInit, uint>() : 0;
+			var frame = init.GetValue<BodyAnimationFrameInit, uint>(this, 0);
 
 			yield return new ModelAnimation(voxel, () => WVec.Zero,
 				() => new[] { body.QuantizeOrientation(orientation(), facings) },

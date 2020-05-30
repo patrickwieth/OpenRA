@@ -79,14 +79,16 @@ namespace OpenRA.Mods.AS.Traits
 			Info = info;
 			self = init.Self;
 
-			if (init.Contains<LocationInit>())
-				SetPosition(self, init.Get<LocationInit, CPos>());
+			var locationInit = init.GetOrDefault<LocationInit>(info);
+			if (locationInit != null)
+				SetPosition(self, locationInit.Value);
 
-			if (init.Contains<CenterPositionInit>())
-				SetPosition(self, init.Get<CenterPositionInit, WPos>());
+			var centerPositionInit = init.GetOrDefault<CenterPositionInit>(info);
+			if (centerPositionInit != null)
+				SetPosition(self, centerPositionInit.Value);
 
 			// I need facing but initial facing doesn't matter, they are determined by the spawner's facing.
-			Facing = init.Contains<FacingInit>() ? init.Get<FacingInit, int>() : 0;
+			Facing = init.GetValue<FacingInit, int>(info, 0);
 		}
 
 		// This kind of missile will not turn anyway. Hard-coding here.

@@ -129,14 +129,16 @@ namespace OpenRA.Mods.AS.Traits
 				return Util.AdjacentCells(self.World, Target.FromActor(self)).Where(c => loc != c);
 			});
 
-			if (init.Contains<RuntimeGarrisonInit>())
+			var runtimeGarrisonInit = init.GetOrDefault<RuntimeGarrisonInit>(info);
+			var garrisonInit = init.GetOrDefault<GarrisonInit>(info);
+			if (runtimeGarrisonInit != null)
 			{
-				garrisonable = new List<Actor>(init.Get<RuntimeCargoInit, Actor[]>());
+				garrisonable = runtimeGarrisonInit.Value.ToList();
 				totalWeight = garrisonable.Sum(c => GetWeight(c));
 			}
-			else if (init.Contains<GarrisonInit>())
+			else if (garrisonInit != null)
 			{
-				foreach (var u in init.Get<GarrisonInit, string[]>())
+				foreach (var u in garrisonInit.Value)
 				{
 					var unit = self.World.CreateActor(false, u.ToLowerInvariant(),
 						new TypeDictionary { new OwnerInit(self.Owner) });
@@ -519,7 +521,7 @@ namespace OpenRA.Mods.AS.Traits
 		readonly Actor[] value = { };
 		public RuntimeGarrisonInit() { }
 		public RuntimeGarrisonInit(Actor[] init) { value = init; }
-		public Actor[] Value(World world) { return value; }
+		public Actor[] Value { get { return value; } }
 	}
 
 	public class GarrisonInit : IActorInit<string[]>
@@ -528,6 +530,6 @@ namespace OpenRA.Mods.AS.Traits
 		readonly string[] value = { };
 		public GarrisonInit() { }
 		public GarrisonInit(string[] init) { value = init; }
-		public string[] Value(World world) { return value; }
+		public string[] Value { get { return value; } }
 	}
 }

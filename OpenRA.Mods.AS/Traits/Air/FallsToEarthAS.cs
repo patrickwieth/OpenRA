@@ -48,7 +48,7 @@ namespace OpenRA.Mods.AS.Traits
 		public FallsToEarthAS(ActorInitializer init, FallsToEarthASInfo info)
 		{
 			this.info = info;
-			effectiveOwner = init.Contains<EffectiveOwnerInit>() ? init.Get<EffectiveOwnerInit, Player>() : init.Self.Owner;
+			effectiveOwner = init.GetValue<EffectiveOwnerInit, Player>(info, init.Self.Owner);
 		}
 
 		// We return init.Self.Owner if there's no effective owner
