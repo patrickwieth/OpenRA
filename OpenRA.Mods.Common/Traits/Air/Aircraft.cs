@@ -1120,7 +1120,7 @@ namespace OpenRA.Mods.Common.Traits
 				return;
 
 			airborne = true;
-			if (!string.IsNullOrEmpty(Info.AirborneCondition) && airborneToken == Actor.InvalidConditionToken)
+			if (airborneToken == Actor.InvalidConditionToken)
 				airborneToken = self.GrantCondition(Info.AirborneCondition);
 		}
 
@@ -1144,7 +1144,7 @@ namespace OpenRA.Mods.Common.Traits
 				return;
 
 			cruising = true;
-			if (!string.IsNullOrEmpty(Info.CruisingCondition) && cruisingToken == Actor.InvalidConditionToken)
+			if (cruisingToken == Actor.InvalidConditionToken)
 				cruisingToken = self.GrantCondition(Info.CruisingCondition);
 		}
 

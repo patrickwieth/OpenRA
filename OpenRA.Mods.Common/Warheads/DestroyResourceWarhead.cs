@@ -24,9 +24,17 @@ namespace OpenRA.Mods.Common.Warheads
 		// TODO: Allow maximum resource removal to be defined. (Per tile, and in total).
 		public override void DoImpact(Target target, WarheadArgs args)
 		{
+			if (target.Type == TargetType.Invalid)
+				return;
+
 			var firedBy = args.SourceActor;
+			var pos = target.CenterPosition;
 			var world = firedBy.World;
-			var targetTile = world.Map.CellContaining(target.CenterPosition);
+			var dat = world.Map.DistanceAboveTerrain(pos);
+			if (dat > AirThreshold)
+				return;
+
+			var targetTile = world.Map.CellContaining(pos);
 			var resLayer = world.WorldActor.Trait<ResourceLayer>();
 
 			var minRange = (Size.Length > 1 && Size[1] > 0) ? Size[1] : 0;

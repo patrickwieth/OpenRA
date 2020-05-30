@@ -44,10 +44,6 @@ namespace OpenRA.Mods.Common.Warheads
 		[Desc("Chance of impact sound to play.")]
 		public readonly int ImpactSoundChance = 100;
 
-		[Desc("Consider explosion above this altitude an air explosion.",
-			"If that's the case, this warhead will consider the explosion position to have the 'Air' TargetType (in addition to any nearby actor's TargetTypes).")]
-		public readonly WDist AirThreshold = new WDist(128);
-
 		[Desc("Whether to consider actors in determining whether the explosion should happen. If false, only terrain will be considered.")]
 		public readonly bool ImpactActors = true;
 
@@ -106,10 +102,10 @@ namespace OpenRA.Mods.Common.Warheads
 
 		public override void DoImpact(Target target, WarheadArgs args)
 		{
-			var firedBy = args.SourceActor;
-			if (!target.IsValidFor(firedBy))
+			if (target.Type == TargetType.Invalid)
 				return;
 
+			var firedBy = args.SourceActor;
 			var pos = target.CenterPosition;
 			var world = firedBy.World;
 			var targetTile = world.Map.CellContaining(pos);
@@ -117,10 +113,6 @@ namespace OpenRA.Mods.Common.Warheads
 
 			if ((!world.Map.Contains(targetTile)) || (!isValid))
 				return;
-
-			var palette = ExplosionPalette;
-			if (UsePlayerPalette)
-				palette += firedBy.Owner.InternalName;
 
 			var explosion = Explosions.RandomOrDefault(world.LocalRandom);
 			if (Image != null && explosion != null)
@@ -130,6 +122,10 @@ namespace OpenRA.Mods.Common.Warheads
 					var dat = world.Map.DistanceAboveTerrain(pos);
 					pos = new WPos(pos.X, pos.Y, pos.Z - dat.Length);
 				}
+
+				var palette = ExplosionPalette;
+				if (UsePlayerPalette)
+					palette += firedBy.Owner.InternalName;
 
 				world.AddFrameEndTask(w => w.Add(new SpriteEffect(pos, w, Image, explosion, palette)));
 			}
