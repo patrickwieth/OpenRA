@@ -10,8 +10,6 @@ function All-Command
 		return
 	}
 
-	Dependencies-Command
-
 	dotnet build /p:Configuration=Release /nologo
 	if ($lastexitcode -ne 0)
 	{
@@ -91,27 +89,6 @@ function Version-Command
 			sc $mod $replacement
 		}
 		Write-Host ("Version strings set to '{0}'." -f $version)
-	}
-}
-
-function Dependencies-Command
-{
-	cd thirdparty
-	./fetch-thirdparty-deps.ps1
-	cp download/*.dll ..
-	cp download/windows/*.dll ..
-	cd ..
-	Write-Host "Dependencies copied." -ForegroundColor Cyan
-
-	if ((CheckForDotnet) -eq 1)
-	{
-		return
-	}
-
-	dotnet restore /nologo
-	if ($lastexitcode -ne 0)
-	{
-		Write-Host "Project restoration failed." -ForegroundColor Red
 	}
 }
 
@@ -237,7 +214,6 @@ if ($args.Length -eq 0)
 	Write-Host "Command list:"
 	Write-Host ""
 	Write-Host "  all, a              Builds the game and its development tools."
-	Write-Host "  dependencies, d     Copies the game's dependencies into the main game folder."
 	Write-Host "  version, v          Sets the version strings for the default mods to the"
 	Write-Host "                      latest version for the current Git branch."
 	Write-Host "  clean, c            Removes all built and copied files. Use the 'all' and"
@@ -263,7 +239,6 @@ if ($command.Length -gt 1)
 switch ($execute)
 {
 	{"all",           "a"  -contains $_} { All-Command }
-	{"dependencies",  "d"  -contains $_} { Dependencies-Command }
 	{"version",       "v"  -contains $_} { Version-Command }
 	{"clean",         "c"  -contains $_} { Clean-Command }
 	{"test",          "t"  -contains $_} { Test-Command }
