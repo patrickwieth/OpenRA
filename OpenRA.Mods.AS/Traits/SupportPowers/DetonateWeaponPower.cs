@@ -89,8 +89,8 @@ namespace OpenRA.Mods.AS.Traits
 			else
 				Game.Sound.Play(SoundType.World, Info.IncomingSound);
 
-			foreach (var launchpad in self.TraitsImplementing<INotifyNuke>())
-				launchpad.Launching(self);
+			foreach (var launchpad in self.TraitsImplementing<INotifySupportPower>())
+				launchpad.Activated(self);
 
 			var targetPosition = order.Target.CenterPosition + new WVec(WDist.Zero, WDist.Zero, Info.AirburstAltitude);
 
