@@ -348,7 +348,7 @@ namespace OpenRA.Server
 				{
 					Name = OpenRA.Settings.SanitizedPlayerName(handshake.Client.Name),
 					IPAddress = ipAddress.ToString(),
-					AnonymizedIPAddress = Settings.ShareAnonymizedIPs ? Session.AnonymizeIP(ipAddress) : null,
+					AnonymizedIPAddress = Type != ServerType.Local && Settings.ShareAnonymizedIPs ? Session.AnonymizeIP(ipAddress) : null,
 					Location = GeoIP.LookupCountry(ipAddress),
 					Index = newConn.PlayerIndex,
 					PreferredColor = handshake.Client.PreferredColor,
@@ -498,10 +498,16 @@ namespace OpenRA.Server
 											profile.ProfileName, profile.ProfileID);
 									}
 									else if (profile.KeyRevoked)
+									{
+										profile = null;
 										Log.Write("server", "{0} failed to authenticate as {1} (key revoked)", newConn.Socket.RemoteEndPoint, handshake.Fingerprint);
+									}
 									else
+									{
+										profile = null;
 										Log.Write("server", "{0} failed to authenticate as {1} (signature verification failed)",
 											newConn.Socket.RemoteEndPoint, handshake.Fingerprint);
+									}
 								}
 								else
 									Log.Write("server", "{0} failed to authenticate as {1} (invalid server response: `{2}` is not `Player`)",
