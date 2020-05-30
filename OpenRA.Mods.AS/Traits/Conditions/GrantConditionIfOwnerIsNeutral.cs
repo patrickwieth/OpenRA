@@ -13,13 +13,13 @@ using OpenRA.Traits;
 namespace OpenRA.Mods.AS.Traits
 {
 	[Desc("Grants a condition if the owner is the Neutral player.")]
-	public class GrantConditionIfOwnerIsNeutralInfo : ITraitInfo
+	public class GrantConditionIfOwnerIsNeutralInfo : TraitInfo
 	{
 		[GrantedConditionReference]
 		[Desc("The condition to grant.")]
 		public readonly string Condition = null;
 
-		public object Create(ActorInitializer init) { return new GrantConditionIfOwnerIsNeutral(this); }
+		public override object Create(ActorInitializer init) { return new GrantConditionIfOwnerIsNeutral(this); }
 	}
 
 	public class GrantConditionIfOwnerIsNeutral : INotifyCreated, INotifyOwnerChanged

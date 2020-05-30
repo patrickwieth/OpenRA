@@ -14,9 +14,9 @@ using OpenRA.Traits;
 namespace OpenRA.Mods.AS.Traits
 {
 	[Desc("Helper trait to set the AI to try selling and then repairing newly controlled buildings.")]
-	public class BotRepairOrSellCapturesInfo : ITraitInfo
+	public class BotRepairOrSellCapturesInfo : TraitInfo
 	{
-		public object Create(ActorInitializer init) { return new BotRepairOrSellCaptures(init.Self, this); }
+		public override object Create(ActorInitializer init) { return new BotRepairOrSellCaptures(init.Self, this); }
 	}
 
 	public class BotRepairOrSellCaptures : INotifyOwnerChanged

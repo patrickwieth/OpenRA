@@ -16,14 +16,14 @@ using OpenRA.Traits;
 namespace OpenRA.Mods.AS.Traits.Render
 {
 	[Desc("Display the time remaining until the next cash is given by the owner's PlayerCashTrickler trait.")]
-	class PlayerCashTricklerBarInfo : ITraitInfo
+	class PlayerCashTricklerBarInfo : TraitInfo
 	{
 		[Desc("Defines to which players the bar is to be shown.")]
 		public readonly Stance DisplayStances = Stance.Ally;
 
 		public readonly Color Color = Color.Magenta;
 
-		public object Create(ActorInitializer init) { return new PlayerCashTricklerBar(init.Self, this); }
+		public override object Create(ActorInitializer init) { return new PlayerCashTricklerBar(init.Self, this); }
 	}
 
 	class PlayerCashTricklerBar : ISelectionBar, INotifyCreated, INotifyOwnerChanged

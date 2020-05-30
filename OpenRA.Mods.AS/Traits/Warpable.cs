@@ -15,7 +15,7 @@ using OpenRA.Traits;
 namespace OpenRA.Mods.AS.Traits
 {
 	[Desc("This actor can be affected by temporal warheads.")]
-	public class WarpableInfo : ITraitInfo, Requires<IHealthInfo>
+	public class WarpableInfo : TraitInfo, Requires<IHealthInfo>
 	{
 		[GrantedConditionReference]
 		[Desc("The condition type to grant when the actor is affected.")]
@@ -37,7 +37,7 @@ namespace OpenRA.Mods.AS.Traits
 		public readonly bool ShowSelectionBar = true;
 		public readonly Color SelectionBarColor = Color.FromArgb(128, 200, 255);
 
-		public object Create(ActorInitializer init) { return new Warpable(init, this); }
+		public override object Create(ActorInitializer init) { return new Warpable(init, this); }
 	}
 
 	public class Warpable : ISync, ITick, ISelectionBar

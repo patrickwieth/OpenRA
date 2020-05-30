@@ -18,7 +18,7 @@ using OpenRA.Traits;
 namespace OpenRA.Mods.AS.Traits
 {
 	[Desc("This actor can enter Garrisonable actors.")]
-	public class GarrisonerInfo : ITraitInfo
+	public class GarrisonerInfo : TraitInfo
 	{
 		public readonly string GarrisonType = null;
 
@@ -48,7 +48,7 @@ namespace OpenRA.Mods.AS.Traits
 		[Desc("Boolean expression defining the condition under which the regular (non-force) enter cursor is disabled.")]
 		public readonly BooleanExpression RequireForceMoveCondition = null;
 
-		public object Create(ActorInitializer init) { return new Garrisoner(this); }
+		public override object Create(ActorInitializer init) { return new Garrisoner(this); }
 	}
 
 	public class Garrisoner : IIssueOrder, IResolveOrder, IOrderVoice, INotifyRemovedFromWorld, INotifyEnteredGarrison, INotifyExitedGarrison, INotifyKilled, IObservesVariables

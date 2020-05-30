@@ -25,7 +25,7 @@ namespace OpenRA.Mods.AS.Traits
 
 	[Desc("Grants a random condition from a predefined list to the actor when created." +
 		"Rerandomized when the actor changes ownership and when the trigger hits.")]
-	public class GrantRandomConditionOnDeliveryInfo : ITraitInfo
+	public class GrantRandomConditionOnDeliveryInfo : TraitInfo
 	{
 		[FieldLoader.Require]
 		[GrantedConditionReference]
@@ -34,7 +34,7 @@ namespace OpenRA.Mods.AS.Traits
 
 		public readonly GrantRandomConditionOnDeliveryTrigger Triggers = GrantRandomConditionOnDeliveryTrigger.IncomingDelivery;
 
-		public object Create(ActorInitializer init) { return new GrantRandomConditionOnDelivery(init.Self, this); }
+		public override object Create(ActorInitializer init) { return new GrantRandomConditionOnDelivery(init.Self, this); }
 	}
 
 	public class GrantRandomConditionOnDelivery : INotifyCreated, INotifyOwnerChanged, INotifyDelivery

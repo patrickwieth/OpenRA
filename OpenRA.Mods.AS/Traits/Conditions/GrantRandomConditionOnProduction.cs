@@ -16,14 +16,14 @@ namespace OpenRA.Mods.AS.Traits
 {
 	[Desc("Grants a random condition from a predefined list to the actor when created." +
 		"Rerandomized when the actor changes ownership and when the actor produces another actor.")]
-	public class GrantRandomConditionOnProductionInfo : ITraitInfo
+	public class GrantRandomConditionOnProductionInfo : TraitInfo
 	{
 		[FieldLoader.Require]
 		[GrantedConditionReference]
 		[Desc("List of conditions to grant from.")]
 		public readonly string[] Conditions = null;
 
-		public object Create(ActorInitializer init) { return new GrantRandomConditionOnProduction(init.Self, this); }
+		public override object Create(ActorInitializer init) { return new GrantRandomConditionOnProduction(init.Self, this); }
 	}
 
 	public class GrantRandomConditionOnProduction : INotifyCreated, INotifyOwnerChanged, INotifyProduction

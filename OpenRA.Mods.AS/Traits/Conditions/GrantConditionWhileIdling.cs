@@ -13,14 +13,14 @@ using OpenRA.Traits;
 namespace OpenRA.Mods.AS.Traits
 {
 	[Desc("Grants a condition while the actor is idling.")]
-	public class GrantConditionWhileIdlingInfo : ITraitInfo
+	public class GrantConditionWhileIdlingInfo : TraitInfo
 	{
 		[GrantedConditionReference]
 		[FieldLoader.Require]
 		[Desc("The condition to grant.")]
 		public readonly string Condition = null;
 
-		public object Create(ActorInitializer init) { return new GrantConditionWhileIdling(this); }
+		public override object Create(ActorInitializer init) { return new GrantConditionWhileIdling(this); }
 	}
 
 	public class GrantConditionWhileIdling : ITick, INotifyIdle

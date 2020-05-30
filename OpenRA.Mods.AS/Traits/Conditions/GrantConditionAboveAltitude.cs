@@ -13,7 +13,7 @@ using OpenRA.Traits;
 namespace OpenRA.Mods.AS.Traits
 {
 	[Desc("Grants a condition above a certain altitude.")]
-	public class GrantConditionAboveAltitudeInfo : ITraitInfo
+	public class GrantConditionAboveAltitudeInfo : TraitInfo
 	{
 		[GrantedConditionReference]
 		[FieldLoader.Require]
@@ -22,7 +22,7 @@ namespace OpenRA.Mods.AS.Traits
 
 		public readonly int MinAltitude = 1;
 
-		public object Create(ActorInitializer init) { return new GrantConditionAboveAltitude(this); }
+		public override object Create(ActorInitializer init) { return new GrantConditionAboveAltitude(this); }
 	}
 
 	public class GrantConditionAboveAltitude : ITick, INotifyAddedToWorld, INotifyRemovedFromWorld
