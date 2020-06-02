@@ -34,6 +34,12 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Boolean expression defining the condition under which the regular (non-force) enter cursor is disabled.")]
 		public readonly BooleanExpression RequireForceMoveCondition = null;
 
+		[Desc("Cursor to display when able to be repaired near target actor.")]
+		public readonly string EnterCursor = "enter";
+
+		[Desc("Cursor to display when unable to be repaired near target actor.")]
+		public readonly string EnterBlockedCursor = "enter-blocked";
+
 		public override object Create(ActorInitializer init) { return new RepairableNear(init.Self, this); }
 	}
 
@@ -53,8 +59,13 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			get
 			{
-				yield return new EnterAlliedActorTargeter<BuildingInfo>("RepairNear", 5,
-					CanRepairAt, _ => ShouldRepair());
+				yield return new EnterAlliedActorTargeter<BuildingInfo>(
+					"RepairNear",
+					5,
+					Info.EnterCursor,
+					Info.EnterBlockedCursor,
+					CanRepairAt,
+					_ => ShouldRepair());
 			}
 		}
 

@@ -139,6 +139,12 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Boolean expression defining the condition under which the regular (non-force) move cursor is disabled.")]
 		public readonly BooleanExpression RequireForceMoveCondition = null;
 
+		[Desc("Cursor to display when able to land at target building.")]
+		public readonly string EnterCursor = "enter";
+
+		[Desc("Cursor to display when unable to land at target building.")]
+		public readonly string EnterBlockedCursor = "enter-blocked";
+
 		public int GetInitialFacing() { return InitialFacing; }
 		public WDist GetCruiseAltitude() { return CruiseAltitude; }
 
@@ -203,13 +209,21 @@ namespace OpenRA.Mods.Common.Traits
 		IOverrideAircraftLanding overrideAircraftLanding;
 
 		[Sync]
-		public int Facing { get; set; }
+		public WAngle Facing;
+
+		int IFacing.Facing
+		{
+			get { return Facing.Facing; }
+			set { Facing = WAngle.FromFacing(value); }
+		}
 
 		[Sync]
 		public WPos CenterPosition { get; private set; }
 
 		public CPos TopLeft { get { return self.World.Map.CellContaining(CenterPosition); } }
-		public int TurnSpeed { get { return !IsTraitDisabled && !IsTraitPaused ? Info.TurnSpeed : 0; } }
+		public int TurnSpeed { get { return !IsTraitDisabled && !IsTraitPaused ? 4 * Info.TurnSpeed : 0; } }
+		public int IdleTurnSpeed { get { return Info.IdleTurnSpeed != -1 ? 4 * Info.IdleTurnSpeed : -1; } }
+
 		public Actor ReservedActor { get; private set; }
 		public bool MayYieldReservation { get; private set; }
 		public bool ForceLanding { get; private set; }
@@ -234,7 +248,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		MovementType movementTypes;
 		WPos cachedPosition;
-		int cachedFacing;
+		WAngle cachedFacing;
 
 		ICrushResource[] notifyCrushResource;
 
@@ -251,7 +265,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (centerPositionInit != null)
 				SetPosition(self, centerPositionInit.Value);
 
-			Facing = init.GetValue<FacingInit, int>(info, Info.InitialFacing);
+			Facing = WAngle.FromFacing(init.GetValue<FacingInit, int>(info, Info.InitialFacing));
 			creationActivityDelay = init.GetValue<CreationActivityDelayInit, int>(info, 0);
 		}
 
@@ -390,7 +404,7 @@ namespace OpenRA.Mods.Common.Traits
 			// HACK: Prevent updating visibility twice per tick. We really shouldn't be
 			// moving twice in a tick in the first place.
 			notify = false;
-			SetPosition(self, CenterPosition + FlyStep(speed, repulsionForce.Yaw.Facing));
+			SetPosition(self, CenterPosition + FlyStep(speed, repulsionForce.Yaw));
 			notify = true;
 		}
 
@@ -555,14 +569,14 @@ namespace OpenRA.Mods.Common.Traits
 			return new[] { Pair.New(TopLeft, SubCell.FullCell) };
 		}
 
-		public WVec FlyStep(int facing)
+		public WVec FlyStep(WAngle facing)
 		{
 			return FlyStep(MovementSpeed, facing);
 		}
 
-		public WVec FlyStep(int speed, int facing)
+		public WVec FlyStep(int speed, WAngle facing)
 		{
-			var dir = new WVec(0, -1024, 0).Rotate(WRot.FromFacing(facing));
+			var dir = new WVec(0, -1024, 0).Rotate(WRot.FromYaw(facing));
 			return speed * dir / 1024;
 		}
 
@@ -660,7 +674,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		public void ModifyDeathActorInit(Actor self, TypeDictionary init)
 		{
-			init.Add(new FacingInit(Facing));
+			init.Add(new FacingInit(Facing.Facing));
 		}
 
 		void INotifyBecomingIdle.OnBecomingIdle(Actor self)
@@ -943,11 +957,19 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			get
 			{
-				yield return new EnterAlliedActorTargeter<BuildingInfo>("ForceEnter", 6,
+				yield return new EnterAlliedActorTargeter<BuildingInfo>(
+					"ForceEnter",
+					6,
+					Info.EnterCursor,
+					Info.EnterBlockedCursor,
 					(target, modifiers) => Info.CanForceLand && modifiers.HasModifier(TargetModifiers.ForceMove) && AircraftCanEnter(target),
 					target => Reservable.IsAvailableFor(target, self) && AircraftCanResupplyAt(target, true));
 
-				yield return new EnterAlliedActorTargeter<BuildingInfo>("Enter", 5,
+				yield return new EnterAlliedActorTargeter<BuildingInfo>(
+					"Enter",
+					5,
+					Info.EnterCursor,
+					Info.EnterBlockedCursor,
 					AircraftCanEnter,
 					target => Reservable.IsAvailableFor(target, self) && AircraftCanResupplyAt(target, !Info.TakeOffOnResupply));
 
@@ -1168,7 +1190,7 @@ namespace OpenRA.Mods.Common.Traits
 		void IActorPreviewInitModifier.ModifyActorPreviewInit(Actor self, TypeDictionary inits)
 		{
 			if (!inits.Contains<DynamicFacingInit>() && !inits.Contains<FacingInit>())
-				inits.Add(new DynamicFacingInit(() => Facing));
+				inits.Add(new DynamicFacingInit(() => Facing.Facing));
 		}
 
 		Activity ICreationActivity.GetCreationActivity()

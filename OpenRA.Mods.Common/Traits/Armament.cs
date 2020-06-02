@@ -76,9 +76,11 @@ namespace OpenRA.Mods.Common.Traits
 		// TODO: instead of having multiple Armaments and unique AttackBase,
 		// an actor should be able to have multiple AttackBases with
 		// a single corresponding Armament each
+		[Desc("Cursor to display when hovering over a valid target.")]
 		public readonly string Cursor = "attack";
 
 		// TODO: same as above
+		[Desc("Cursor to display when hovering over a valid target that is outside of range.")]
 		public readonly string OutsideRangeCursor = "attackoutsiderange";
 
 		public override object Create(ActorInitializer init) { return new Armament(init.Self, this); }
@@ -279,8 +281,8 @@ namespace OpenRA.Mods.Common.Traits
 				na.PreparingAttack(self, target, this, barrel);
 
 			Func<WPos> muzzlePosition = () => self.CenterPosition + MuzzleOffset(self, barrel);
-			var legacyFacing = MuzzleOrientation(self, barrel).Yaw.Angle / 4;
-			Func<int> legacyMuzzleFacing = () => MuzzleOrientation(self, barrel).Yaw.Angle / 4;
+			Func<WAngle> muzzleFacing = () => MuzzleOrientation(self, barrel).Yaw;
+			var muzzleOrientation = WRot.FromYaw(muzzleFacing());
 
 			var passiveTarget = Weapon.TargetActorCenter ? target.CenterPosition : target.Positions.PositionClosestTo(muzzlePosition());
 			var initialOffset = Weapon.FirstBurstTargetOffset;
@@ -288,7 +290,7 @@ namespace OpenRA.Mods.Common.Traits
 			{
 				// We want this to match Armament.LocalOffset, so we need to convert it to forward, right, up
 				initialOffset = new WVec(initialOffset.Y, -initialOffset.X, initialOffset.Z);
-				passiveTarget += initialOffset.Rotate(WRot.FromFacing(legacyFacing));
+				passiveTarget += initialOffset.Rotate(muzzleOrientation);
 			}
 
 			var followingOffset = Weapon.FollowingBurstTargetOffset;
@@ -296,14 +298,14 @@ namespace OpenRA.Mods.Common.Traits
 			{
 				// We want this to match Armament.LocalOffset, so we need to convert it to forward, right, up
 				followingOffset = new WVec(followingOffset.Y, -followingOffset.X, followingOffset.Z);
-				passiveTarget += ((Weapon.Burst - Burst) * followingOffset).Rotate(WRot.FromFacing(legacyFacing));
+				passiveTarget += ((Weapon.Burst - Burst) * followingOffset).Rotate(muzzleOrientation);
 			}
 
 			var args = new ProjectileArgs
 			{
 				Weapon = Weapon,
-				Facing = legacyFacing,
-				CurrentMuzzleFacing = legacyMuzzleFacing,
+				Facing = muzzleFacing(),
+				CurrentMuzzleFacing = muzzleFacing,
 
 				DamageModifiers = damageModifiers.ToArray(),
 
