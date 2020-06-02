@@ -32,7 +32,7 @@ namespace OpenRA.Mods.AS.Effects
 		[Sync]
 		readonly WPos targetpos, source;
 		[Sync]
-		readonly int facing;
+		readonly WAngle facing;
 
 		readonly int lifespan, estimatedlifespan;
 
@@ -82,14 +82,14 @@ namespace OpenRA.Mods.AS.Effects
 			var at = (float)ticks / (lifespan - 1);
 			var attitude = WAngle.Zero.Tan() * (1 - 2 * at) / (4 * 1024);
 
-			var u = (facing % 128) / 128f;
-			var scale = 512 * u * (1 - u);
+			var u = (facing.Angle % 512) / 512f;
+			var scale = 2048 * u * (1 - u);
 
-			var effective = (int)(facing < 128
-				? facing - scale * attitude
-				: facing + scale * attitude);
+			var effective = (int)(facing.Angle < 512
+				? facing.Angle - scale * attitude
+				: facing.Angle + scale * attitude);
 
-			return WAngle.FromFacing(effective);
+			return new WAngle(effective);
 		}
 
 		public IEnumerable<IRenderable> Render(WorldRenderer wr)

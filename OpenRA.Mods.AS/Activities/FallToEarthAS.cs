@@ -63,7 +63,7 @@ namespace OpenRA.Mods.AS.Activities
 					spinAccelerationDelay = info.SpinAccelerationDelay;
 				}
 
-				aircraft.Facing = (aircraft.Facing + spin) % 256;
+				aircraft.Facing = new WAngle(aircraft.Facing.Angle + 4 * spin);
 			}
 
 			var move = info.Moves ? aircraft.FlyStep(aircraft.Facing) : WVec.Zero;

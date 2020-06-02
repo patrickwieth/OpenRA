@@ -80,7 +80,6 @@ namespace OpenRA.Mods.AS.Projectiles
 		readonly Animation anim, parachute;
 		readonly ProjectileArgs args;
 		readonly WVec acceleration;
-		readonly Func<WAngle> facingFunc;
 
 		[Sync]
 		WVec velocity;
@@ -95,20 +94,19 @@ namespace OpenRA.Mods.AS.Projectiles
 			this.args = args;
 			pos = args.Source;
 			var convertedVelocity = new WVec(info.Velocity.Y, -info.Velocity.X, info.Velocity.Z);
-			velocity = convertedVelocity.Rotate(WRot.FromFacing(args.Facing));
+			velocity = convertedVelocity.Rotate(WRot.FromYaw(args.Facing));
 			acceleration = new WVec(info.Acceleration.Y, -info.Acceleration.X, info.Acceleration.Z);
-			facingFunc = () => WAngle.FromFacing(args.Facing);
 
 			if (!string.IsNullOrEmpty(info.Image))
 			{
-				anim = new Animation(args.SourceActor.World, info.Image, facingFunc);
+				anim = new Animation(args.SourceActor.World, info.Image, () => args.Facing);
 
 				if (!string.IsNullOrEmpty(info.OpenSequence))
 					anim.PlayThen(info.OpenSequence, () => anim.PlayRepeating(info.Sequences.Random(args.SourceActor.World.SharedRandom)));
 				else
 					anim.PlayRepeating(info.Sequences.Random(args.SourceActor.World.SharedRandom));
 
-				parachute = new Animation(args.SourceActor.World, info.Image, facingFunc);
+				parachute = new Animation(args.SourceActor.World, info.Image, () => args.Facing);
 				parachute.PlayThen(info.ParachuteOpeningSequence, () => parachute.PlayRepeating(info.ParachuteSequence));
 			}
 		}

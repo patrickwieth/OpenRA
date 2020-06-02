@@ -138,7 +138,7 @@ namespace OpenRA.Mods.AS.Projectiles
 		{
 			if (hasLaunchEffect && ticks == 0)
 			{
-				Func<WAngle> getMuzzleFacing = () => WAngle.FromFacing(args.CurrentMuzzleFacing());
+				Func<WAngle> getMuzzleFacing = () => args.CurrentMuzzleFacing();
 				world.AddFrameEndTask(w => w.Add(new SpriteEffect(args.CurrentSource, getMuzzleFacing, world,
 					info.LaunchEffectImage, info.LaunchEffectSequence, info.LaunchEffectPalette)));
 			}
