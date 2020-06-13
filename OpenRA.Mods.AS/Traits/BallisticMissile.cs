@@ -64,7 +64,7 @@ namespace OpenRA.Mods.AS.Traits
 		IEnumerable<int> speedModifiers;
 
 		[Sync]
-		public int Facing { get; set; }
+		public WAngle Facing { get; set; }
 
 		[Sync]
 		public WPos CenterPosition { get; private set; }
@@ -88,11 +88,11 @@ namespace OpenRA.Mods.AS.Traits
 				SetPosition(self, centerPositionInit.Value);
 
 			// I need facing but initial facing doesn't matter, they are determined by the spawner's facing.
-			Facing = init.GetValue<FacingInit, int>(info, 0);
+			Facing = WAngle.FromFacing(init.GetValue<FacingInit, int>(info, 0));
 		}
 
 		// This kind of missile will not turn anyway. Hard-coding here.
-		public int TurnSpeed { get { return 10; } }
+		public WAngle TurnSpeed { get { return new WAngle(40); } }
 
 		void INotifyCreated.Created(Actor self)
 		{
@@ -119,14 +119,14 @@ namespace OpenRA.Mods.AS.Traits
 			get { return Util.ApplyPercentageModifiers(Info.Speed, speedModifiers); }
 		}
 
-		public WVec FlyStep(int facing)
+		public WVec FlyStep(WAngle facing)
 		{
 			return FlyStep(MovementSpeed, facing);
 		}
 
-		public WVec FlyStep(int speed, int facing)
+		public WVec FlyStep(int speed, WAngle facing)
 		{
-			var dir = new WVec(0, -1024, 0).Rotate(WRot.FromFacing(facing));
+			var dir = new WVec(0, -1024, 0).Rotate(WRot.FromFacing(facing.Facing));
 			return speed * dir / 1024;
 		}
 

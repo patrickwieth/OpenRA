@@ -62,7 +62,7 @@ namespace OpenRA.Mods.AS.Traits
 		CPos? destination = null;
 		CPos harvestedField;
 		int ticksTillCheck = 0;
-		int dockFacing;
+		WAngle dockFacing;
 		IFacing facing;
 		int token = Actor.InvalidConditionToken;
 
@@ -103,7 +103,7 @@ namespace OpenRA.Mods.AS.Traits
 			if (destination != null && destination.Value != deliverypos)
 				ticksTillCheck = 0;
 
-			dockFacing = refineryActor.Trait<IAcceptResources>().DeliveryAngle;
+			dockFacing = WAngle.FromFacing(refineryActor.Trait<IAcceptResources>().DeliveryAngle);
 
 			harvestedField = self.World.Map.CellContaining(self.CenterPosition);
 

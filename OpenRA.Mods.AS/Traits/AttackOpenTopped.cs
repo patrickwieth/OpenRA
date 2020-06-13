@@ -139,7 +139,7 @@ namespace OpenRA.Mods.AS.Traits
 
 				var port = SelectFirePort(self, a.Actor);
 
-				var muzzleFacing = targetYaw.Facing;
+				var muzzleFacing = targetYaw;
 				paxFacing[a.Actor].Facing = muzzleFacing;
 				paxPos[a.Actor].SetVisualPosition(a.Actor, pos + PortOffset(self, port));
 
