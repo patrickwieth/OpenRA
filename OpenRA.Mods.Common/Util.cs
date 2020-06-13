@@ -35,30 +35,19 @@ namespace OpenRA.Mods.Common
 				return (facing - rot) & 0xFF;
 		}
 
-		public static int GetNearestFacing(int facing, int desiredFacing)
-		{
-			var turn = desiredFacing - facing;
-			if (turn > 128)
-				turn -= 256;
-			if (turn < -128)
-				turn += 256;
-
-			return facing + turn;
-		}
-
 		/// <summary>
 		/// Adds step angle units to facing in the direction that takes it closer to desiredFacing.
 		/// If facing is already within step of desiredFacing then desiredFacing is returned.
 		/// Step is given as an integer to allow negative values (step away from the desired facing)
 		/// </summary>
-		public static WAngle TickFacing(WAngle facing, WAngle desiredFacing, int step)
+		public static WAngle TickFacing(WAngle facing, WAngle desiredFacing, WAngle step)
 		{
 			var leftTurn = (facing - desiredFacing).Angle;
 			var rightTurn = (desiredFacing - facing).Angle;
-			if (leftTurn < step || rightTurn < step)
+			if (leftTurn < step.Angle || rightTurn < step.Angle)
 				return desiredFacing;
 
-			return rightTurn < leftTurn ? new WAngle(facing.Angle + step) : new WAngle(facing.Angle - step);
+			return rightTurn < leftTurn ? facing + step : facing - step;
 		}
 
 		/// <summary>
@@ -97,13 +86,13 @@ namespace OpenRA.Mods.Common
 			return negative == 0 ? 0 : 256 - negative;
 		}
 
-		public static bool FacingWithinTolerance(int facing, int desiredFacing, int facingTolerance)
+		public static bool FacingWithinTolerance(WAngle facing, WAngle desiredFacing, int facingTolerance)
 		{
 			if (facingTolerance == 0 && facing == desiredFacing)
 				return true;
 
-			var delta = Util.NormalizeFacing(desiredFacing - facing);
-			return delta <= facingTolerance || delta >= 256 - facingTolerance;
+			var delta = (desiredFacing - facing).Angle;
+			return delta <= facingTolerance || delta >= 1024 - facingTolerance;
 		}
 
 		public static WPos BetweenCells(World w, CPos from, CPos to)

@@ -317,8 +317,8 @@ namespace OpenRA.Traits
 
 	public interface IFacing
 	{
-		int TurnSpeed { get; }
-		int Facing { get; set; }
+		WAngle TurnSpeed { get; }
+		WAngle Facing { get; set; }
 	}
 
 	public interface IFacingInfo : ITraitInfoInterface { int GetInitialFacing(); }
@@ -327,6 +327,9 @@ namespace OpenRA.Traits
 
 	public abstract class TraitInfo : ITraitInfoInterface
 	{
+		// Value is set using reflection during TraitInfo creation
+		public readonly string InstanceName = null;
+
 		public abstract object Create(ActorInitializer init);
 	}
 

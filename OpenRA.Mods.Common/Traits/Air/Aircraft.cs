@@ -209,20 +209,14 @@ namespace OpenRA.Mods.Common.Traits
 		IOverrideAircraftLanding overrideAircraftLanding;
 
 		[Sync]
-		public WAngle Facing;
-
-		int IFacing.Facing
-		{
-			get { return Facing.Facing; }
-			set { Facing = WAngle.FromFacing(value); }
-		}
+		public WAngle Facing { get; set; }
 
 		[Sync]
 		public WPos CenterPosition { get; private set; }
 
 		public CPos TopLeft { get { return self.World.Map.CellContaining(CenterPosition); } }
-		public int TurnSpeed { get { return !IsTraitDisabled && !IsTraitPaused ? 4 * Info.TurnSpeed : 0; } }
-		public int IdleTurnSpeed { get { return Info.IdleTurnSpeed != -1 ? 4 * Info.IdleTurnSpeed : -1; } }
+		public WAngle TurnSpeed { get { return !IsTraitDisabled && !IsTraitPaused ? new WAngle(4 * Info.TurnSpeed) : WAngle.Zero; } }
+		public WAngle? IdleTurnSpeed { get { return Info.IdleTurnSpeed != -1 ? new WAngle(4 * Info.IdleTurnSpeed) : (WAngle?)null; } }
 
 		public Actor ReservedActor { get; private set; }
 		public bool MayYieldReservation { get; private set; }

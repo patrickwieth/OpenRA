@@ -69,9 +69,9 @@ namespace OpenRA.Mods.Common.Traits
 		public WPos CenterPosition { get; private set; }
 
 		[Sync]
-		public int Facing { get; set; }
+		public WAngle Facing { get; set; }
 
-		public int TurnSpeed { get { return 0; } }
+		public WAngle TurnSpeed { get { return WAngle.Zero; } }
 
 		public Husk(ActorInitializer init, HuskInfo info)
 		{
@@ -80,7 +80,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			TopLeft = init.GetValue<LocationInit, CPos>(info);
 			CenterPosition = init.GetValue<CenterPositionInit, WPos>(info, init.World.Map.CenterOfCell(TopLeft));
-			Facing = init.GetValue<FacingInit, int>(info, 128);
+			Facing = WAngle.FromFacing(init.GetValue<FacingInit, int>(info, 128));
 
 			dragSpeed = init.GetValue<HuskSpeedInit, int>(info, 0);
 			finalPosition = init.World.Map.CenterOfCell(TopLeft);
@@ -163,7 +163,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		void IDeathActorInitModifier.ModifyDeathActorInit(Actor self, TypeDictionary init)
 		{
-			init.Add(new FacingInit(Facing));
+			init.Add(new FacingInit(Facing.Facing));
 		}
 
 		// We return self.Owner if there's no effective owner
@@ -171,13 +171,9 @@ namespace OpenRA.Mods.Common.Traits
 		Player IEffectiveOwner.Owner { get { return effectiveOwner; } }
 	}
 
-	public class HuskSpeedInit : IActorInit<int>
+	public class HuskSpeedInit : ValueActorInit<int>
 	{
-		[FieldFromYamlKey]
-		readonly int value = 0;
-
-		public HuskSpeedInit() { }
-		public HuskSpeedInit(int init) { value = init; }
-		public int Value { get { return value; } }
+		public HuskSpeedInit(int value)
+			: base(value) { }
 	}
 }

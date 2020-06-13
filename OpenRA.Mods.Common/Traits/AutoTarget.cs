@@ -123,7 +123,7 @@ namespace OpenRA.Mods.Common.Traits
 					var stance = init != null ? init.Value : InitialStance;
 					return stances[(int)stance];
 				},
-				(actor, value) => actor.ReplaceInit(new StanceInit((UnitStance)stances.IndexOf(value))));
+				(actor, value) => actor.ReplaceInit(new StanceInit(this, (UnitStance)stances.IndexOf(value))));
 		}
 	}
 
@@ -415,7 +415,7 @@ namespace OpenRA.Mods.Common.Traits
 				if (!armaments.Any())
 					continue;
 
-				if (!allowTurn && !ab.TargetInFiringArc(self, target, ab.Info.FacingTolerance))
+				if (!allowTurn && !ab.TargetInFiringArc(self, target, 4 * ab.Info.FacingTolerance))
 					continue;
 
 				// Evaluate whether we want to target this actor
@@ -445,13 +445,9 @@ namespace OpenRA.Mods.Common.Traits
 		}
 	}
 
-	public class StanceInit : IActorInit<UnitStance>
+	public class StanceInit : ValueActorInit<UnitStance>
 	{
-		[FieldFromYamlKey]
-		readonly UnitStance value = UnitStance.AttackAnything;
-
-		public StanceInit() { }
-		public StanceInit(UnitStance init) { value = init; }
-		public UnitStance Value { get { return value; } }
+		public StanceInit(TraitInfo info, UnitStance value)
+			: base(info, value) { }
 	}
 }

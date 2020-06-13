@@ -11,6 +11,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.Traits;
 using OpenRA.Primitives;
@@ -41,12 +42,22 @@ namespace OpenRA.Mods.Common.Graphics
 			this.dict = dict;
 		}
 
-		public T GetOrDefault<T>(TraitInfo info) where T : IActorInit
+		public T GetOrDefault<T>(TraitInfo info) where T : ActorInit
 		{
-			return dict.GetOrDefault<T>();
+			var inits = dict.WithInterface<T>();
+
+			// Traits tagged with an instance name prefer inits with the same name.
+			// If a more specific init is not available, fall back to an unnamed init.
+			// If duplicate inits are defined, take the last to match standard yaml override expectations
+			if (info != null && !string.IsNullOrEmpty(info.InstanceName))
+				return inits.LastOrDefault(i => i.InstanceName == info.InstanceName) ??
+				       inits.LastOrDefault(i => string.IsNullOrEmpty(i.InstanceName));
+
+			// Untagged traits will only use untagged inits
+			return inits.LastOrDefault(i => string.IsNullOrEmpty(i.InstanceName));
 		}
 
-		public T Get<T>(TraitInfo info) where T : IActorInit
+		public T Get<T>(TraitInfo info) where T : ActorInit
 		{
 			var init = GetOrDefault<T>(info);
 			if (init == null)
@@ -55,18 +66,18 @@ namespace OpenRA.Mods.Common.Graphics
 			return init;
 		}
 
-		public U GetValue<T, U>(TraitInfo info) where T : IActorInit<U>
+		public U GetValue<T, U>(TraitInfo info) where T : ValueActorInit<U>
 		{
 			return Get<T>(info).Value;
 		}
 
-		public U GetValue<T, U>(TraitInfo info, U fallback) where T : IActorInit<U>
+		public U GetValue<T, U>(TraitInfo info, U fallback) where T : ValueActorInit<U>
 		{
 			var init = GetOrDefault<T>(info);
 			return init != null ? init.Value : fallback;
 		}
 
-		public bool Contains<T>(TraitInfo info) where T : IActorInit { return GetOrDefault<T>(info) != null; }
+		public bool Contains<T>(TraitInfo info) where T : ActorInit { return GetOrDefault<T>(info) != null; }
 
 		public Func<WRot> GetOrientation()
 		{
