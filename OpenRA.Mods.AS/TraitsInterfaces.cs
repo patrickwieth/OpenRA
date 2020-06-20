@@ -31,6 +31,8 @@ namespace OpenRA.Mods.AS.Traits
 		WeaponInfo Weapon { get; }
 
 		int TurnRate { get; }
+
+		int RandomRate { get; }
 	}
 
 	[RequireExplicitImplementation]

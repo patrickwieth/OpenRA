@@ -41,6 +41,9 @@ namespace OpenRA.Mods.AS.Traits
 		[Desc("Randomize particle turnrate.")]
 		public readonly int TurnRate = 0;
 
+		[Desc("Rate to reset particle movement properties.")]
+		public readonly int RandomRate = 4;
+
 		[Desc("Which image to use.")]
 		public readonly string Image = "particles";
 
@@ -122,6 +125,11 @@ namespace OpenRA.Mods.AS.Traits
 		int ISmokeParticleInfo.TurnRate
 		{
 			get { return TurnRate; }
+		}
+
+		int ISmokeParticleInfo.RandomRate
+		{
+			get { return RandomRate; }
 		}
 	}
 

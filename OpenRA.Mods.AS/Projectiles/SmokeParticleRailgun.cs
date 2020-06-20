@@ -94,6 +94,9 @@ namespace OpenRA.Mods.AS.Projectiles
 		[Desc("Randomize particle facing.")]
 		public readonly bool HelixRandomFacing = true;
 
+		[Desc("Rate to reset particle movement properties.")]
+		public readonly int HelixRandomRate = 4;
+
 		[WeaponReference]
 		[Desc("Has to be defined in weapons.yaml, if defined, as well.")]
 		public readonly string HelixWeapon = null;
@@ -159,6 +162,11 @@ namespace OpenRA.Mods.AS.Projectiles
 		int ISmokeParticleInfo.TurnRate
 		{
 			get { return HelixTurnRate; }
+		}
+
+		int ISmokeParticleInfo.RandomRate
+		{
+			get { return HelixRandomRate; }
 		}
 
 		void IRulesetLoaded<WeaponInfo>.RulesetLoaded(Ruleset rules, WeaponInfo info)

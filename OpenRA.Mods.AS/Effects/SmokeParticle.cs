@@ -33,8 +33,10 @@ namespace OpenRA.Mods.AS.Effects
 
 		[Sync]
 		WPos pos;
+		WVec offset;
 		int lifetime;
 		int explosionInterval;
+		int randomRate;
 
 		int facing;
 
@@ -72,22 +74,27 @@ namespace OpenRA.Mods.AS.Effects
 				return;
 			}
 
+			if (--randomRate < 0)
+			{
+				var forward = speed.Length == 2
+					? world.SharedRandom.Next(speed[0].Length, speed[1].Length)
+					: speed[0].Length;
+
+				var height = gravity.Length == 2
+					? world.SharedRandom.Next(gravity[0].Length, gravity[1].Length)
+					: gravity[0].Length;
+
+				offset = new WVec(forward, 0, height);
+
+				if (turnRate > 0)
+					facing = (facing + world.SharedRandom.Next(-turnRate, turnRate)) & 0xFF;
+
+				offset = offset.Rotate(WRot.FromFacing(facing));
+
+				randomRate = smoke.RandomRate;
+			}
+
 			anim.Tick();
-
-			var forward = speed.Length == 2
-				? world.SharedRandom.Next(speed[0].Length, speed[1].Length)
-				: speed[0].Length;
-
-			var height = gravity.Length == 2
-				? world.SharedRandom.Next(gravity[0].Length, gravity[1].Length)
-				: gravity[0].Length;
-
-			var offset = new WVec(forward, 0, height);
-
-			if (turnRate > 0)
-				facing = (facing + world.SharedRandom.Next(-turnRate, turnRate)) & 0xFF;
-
-			offset = offset.Rotate(WRot.FromFacing(facing));
 
 			pos += offset;
 
