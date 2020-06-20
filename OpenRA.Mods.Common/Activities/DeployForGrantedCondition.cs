@@ -32,7 +32,15 @@ namespace OpenRA.Mods.Common.Activities
 		{
 			// Turn to the required facing.
 			if (deploy.DeployState == DeployState.Undeployed && deploy.Info.Facing != -1 && canTurn && !moving)
-				QueueChild(new Turn(self, WAngle.FromFacing(deploy.Info.Facing)));
+			{
+				if (deploy.Info.LandOnDeploy)
+					QueueChild(new Land(self, WAngle.FromFacing(deploy.Info.Facing)));
+				else
+					QueueChild(new Turn(self, WAngle.FromFacing(deploy.Info.Facing)));
+			}
+
+			if (deploy.Info.Facing == -1 && deploy.Info.LandOnDeploy)
+				QueueChild(new Land(self));
 		}
 
 		public override bool Tick(Actor self)
@@ -41,6 +49,10 @@ namespace OpenRA.Mods.Common.Activities
 				return true;
 
 			QueueChild(new DeployInner(self, deploy));
+
+			if (deploy.Info.LandOnDeploy && self.TraitOrDefault<Aircraft>() != null && deploy.DeployState != DeployState.Undeploying)
+				QueueChild(new TakeOff(self));
+
 			return true;
 		}
 	}

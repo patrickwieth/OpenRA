@@ -64,6 +64,9 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Undeploy before the actor is picked up by a Carryall?")]
 		public readonly bool UndeployOnPickup = false;
 
+		[Desc("Force the actor to land before deployment takes action.")]
+		public readonly bool LandOnDeploy = false;
+
 		[VoiceReference]
 		public readonly string Voice = "Action";
 
