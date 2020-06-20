@@ -36,28 +36,21 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Display order for the turret facing slider in the map editor")]
 		public readonly int EditorTurretFacingDisplayOrder = 4;
 
-		IEnumerable<object> IActorPreviewInitInfo.ActorPreviewInits(ActorInfo ai, ActorPreviewType type)
+		IEnumerable<ActorInit> IActorPreviewInitInfo.ActorPreviewInits(ActorInfo ai, ActorPreviewType type)
 		{
-			// HACK: The ActorInit system does not support multiple instances of the same type
-			// Make sure that we only return one TurretFacingInit, even for actors with multiple turrets
-			if (ai.TraitInfos<TurretedInfo>().FirstOrDefault() == this)
-				yield return new TurretFacingInit(this, PreviewFacing);
+			yield return new TurretFacingInit(this, PreviewFacing);
 		}
 
 		IEnumerable<EditorActorOption> IEditorActorOptions.ActorOptions(ActorInfo ai, World world)
 		{
-			// TODO: Handle multiple turrets properly (will probably require a rewrite of the Init system)
-			if (ai.TraitInfos<TurretedInfo>().FirstOrDefault() != this)
-				yield break;
-
 			yield return new EditorActorSlider("Turret", EditorTurretFacingDisplayOrder, 0, 255, 8,
 				actor =>
 				{
-					var init = actor.Init<TurretFacingInit>();
+					var init = actor.GetInitOrDefault<TurretFacingInit>(this);
 					if (init != null)
 						return init.Value;
 
-					var facingInit = actor.Init<FacingInit>();
+					var facingInit = actor.GetInitOrDefault<FacingInit>(this);
 					if (facingInit != null)
 						return facingInit.Value;
 
@@ -66,9 +59,7 @@ namespace OpenRA.Mods.Common.Traits
 				(actor, value) =>
 				{
 					actor.RemoveInit<TurretFacingsInit>();
-
-					// Force a single global turret facing for multi-turret actors by not passing this TraitInfo instance
-					actor.ReplaceInit(new TurretFacingInit((int)value));
+					actor.ReplaceInit(new TurretFacingInit(this, (int)value), this);
 				});
 		}
 
@@ -106,12 +97,12 @@ namespace OpenRA.Mods.Common.Traits
 			if (turret != null)
 			{
 				Func<int> getFacing;
-				var dynamicTurretFacingsInit = init.GetOrDefault<DynamicTurretFacingsInit>(info);
+				var dynamicTurretFacingsInit = init.GetOrDefault<DynamicTurretFacingsInit>();
 				if (dynamicTurretFacingsInit != null && dynamicTurretFacingsInit.Value.TryGetValue(turret, out getFacing))
 					return getFacing;
 
 				int facing;
-				var turretFacingsInit = init.GetOrDefault<TurretFacingsInit>(info);
+				var turretFacingsInit = init.GetOrDefault<TurretFacingsInit>();
 				if (turretFacingsInit != null && turretFacingsInit.Value.TryGetValue(turret, out facing))
 					return () => facing;
 			}
@@ -123,11 +114,11 @@ namespace OpenRA.Mods.Common.Traits
 				return () => facing;
 			}
 
-			var dynamicFacingInit = init.GetOrDefault<DynamicFacingInit>(info);
+			var dynamicFacingInit = init.GetOrDefault<DynamicFacingInit>();
 			if (dynamicFacingInit != null)
 				return dynamicFacingInit.Value;
 
-			var facingInit = init.GetOrDefault<FacingInit>(info);
+			var facingInit = init.GetOrDefault<FacingInit>();
 			if (facingInit != null)
 			{
 				var facing = facingInit.Value;
@@ -245,7 +236,7 @@ namespace OpenRA.Mods.Common.Traits
 			var facings = inits.GetOrDefault<DynamicTurretFacingsInit>();
 			if (facings == null)
 			{
-				facings = new DynamicTurretFacingsInit(Info, new Dictionary<string, Func<int>>());
+				facings = new DynamicTurretFacingsInit(new Dictionary<string, Func<int>>());
 				inits.Add(facings);
 			}
 
@@ -274,19 +265,22 @@ namespace OpenRA.Mods.Common.Traits
 		public TurretFacingInit(TraitInfo info, int value)
 			: base(info, value) { }
 
+		public TurretFacingInit(string instanceName, int value)
+			: base(instanceName, value) { }
+
 		public TurretFacingInit(int value)
 			: base(value) { }
 	}
 
-	public class TurretFacingsInit : ValueActorInit<Dictionary<string, int>>
+	public class TurretFacingsInit : ValueActorInit<Dictionary<string, int>>, ISingleInstanceInit
 	{
 		public TurretFacingsInit(Dictionary<string, int> value)
 			: base(value) { }
 	}
 
-	public class DynamicTurretFacingsInit : ValueActorInit<Dictionary<string, Func<int>>>
+	public class DynamicTurretFacingsInit : ValueActorInit<Dictionary<string, Func<int>>>, ISingleInstanceInit
 	{
-		public DynamicTurretFacingsInit(TraitInfo info, Dictionary<string, Func<int>> value)
-			: base(info, value) { }
+		public DynamicTurretFacingsInit(Dictionary<string, Func<int>> value)
+			: base(value) { }
 	}
 }

@@ -63,7 +63,7 @@ namespace OpenRA.Mods.Cnc.Traits
 		{
 			self = init.Self;
 
-			var returnInit = init.GetOrDefault<ChronoshiftReturnInit>(info);
+			var returnInit = init.GetOrDefault<ChronoshiftReturnInit>();
 			if (returnInit != null)
 			{
 				ReturnTicks = returnInit.Ticks;
@@ -187,7 +187,7 @@ namespace OpenRA.Mods.Cnc.Traits
 		void ITransformActorInitModifier.ModifyTransformActorInit(Actor self, TypeDictionary init) { ModifyActorInit(init); }
 	}
 
-	public class ChronoshiftReturnInit : CompositeActorInit
+	public class ChronoshiftReturnInit : CompositeActorInit, ISingleInstanceInit
 	{
 		public readonly int Ticks;
 		public readonly int Duration;

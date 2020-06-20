@@ -78,7 +78,7 @@ namespace OpenRA.Mods.Common.Traits
 			yield return new EditorActorCheckbox("Deployed", EditorDeployedDisplayOrder,
 				actor =>
 				{
-					var init = actor.Init<DeployStateInit>();
+					var init = actor.GetInitOrDefault<DeployStateInit>();
 					if (init != null)
 						return init.Value == DeployState.Deployed;
 
@@ -86,7 +86,7 @@ namespace OpenRA.Mods.Common.Traits
 				},
 				(actor, value) =>
 				{
-					actor.ReplaceInit(new DeployStateInit(this, value ? DeployState.Deployed : DeployState.Undeployed));
+					actor.ReplaceInit(new DeployStateInit(value ? DeployState.Deployed : DeployState.Undeployed));
 				});
 		}
 
@@ -117,7 +117,7 @@ namespace OpenRA.Mods.Common.Traits
 			checkTerrainType = info.AllowedTerrainTypes.Count > 0;
 			canTurn = self.Info.HasTraitInfo<IFacingInfo>();
 			move = self.TraitOrDefault<IMove>();
-			deployState = init.GetValue<DeployStateInit, DeployState>(info, DeployState.Undeployed);
+			deployState = init.GetValue<DeployStateInit, DeployState>(DeployState.Undeployed);
 		}
 
 		protected override void Created(Actor self)
@@ -381,11 +381,8 @@ namespace OpenRA.Mods.Common.Traits
 		}
 	}
 
-	public class DeployStateInit : ValueActorInit<DeployState>
+	public class DeployStateInit : ValueActorInit<DeployState>, ISingleInstanceInit
 	{
-		public DeployStateInit(TraitInfo info, DeployState value)
-			: base(info, value) { }
-
 		public DeployStateInit(DeployState value)
 			: base(value) { }
 	}

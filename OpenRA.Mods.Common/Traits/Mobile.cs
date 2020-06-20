@@ -60,7 +60,7 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Boolean expression defining the condition under which this actor cannot be nudged by other actors.")]
 		public readonly BooleanExpression ImmovableCondition = null;
 
-		IEnumerable<object> IActorPreviewInitInfo.ActorPreviewInits(ActorInfo ai, ActorPreviewType type)
+		IEnumerable<ActorInit> IActorPreviewInitInfo.ActorPreviewInits(ActorInfo ai, ActorPreviewType type)
 		{
 			yield return new FacingInit(PreviewFacing);
 		}
@@ -130,23 +130,24 @@ namespace OpenRA.Mods.Common.Traits
 			yield return new EditorActorSlider("Facing", EditorFacingDisplayOrder, 0, 255, 8,
 				actor =>
 				{
-					var init = actor.Init<FacingInit>();
+					var init = actor.GetInitOrDefault<FacingInit>(this);
 					return init != null ? init.Value : InitialFacing;
 				},
 				(actor, value) =>
 				{
 					// TODO: This can all go away once turrets are properly defined as a relative facing
-					var turretInit = actor.Init<TurretFacingInit>();
-					var turretsInit = actor.Init<TurretFacingsInit>();
-					var facingInit = actor.Init<FacingInit>();
+					var turretsInit = actor.GetInitOrDefault<TurretFacingsInit>();
+					var facingInit = actor.GetInitOrDefault<FacingInit>();
 
 					var oldFacing = facingInit != null ? facingInit.Value : InitialFacing;
 					var newFacing = (int)value;
 
-					if (turretInit != null)
+					var turretInits = actor.GetInits<TurretFacingInit>().ToList();
+					actor.RemoveInits<TurretFacingInit>();
+					foreach (var turretInit in turretInits)
 					{
 						var newTurretFacing = (turretInit.Value + newFacing - oldFacing + 255) % 255;
-						actor.ReplaceInit(new TurretFacingInit(this, newTurretFacing));
+						actor.AddInit(new TurretFacingInit(turretInit.InstanceName, newTurretFacing));
 					}
 
 					if (turretsInit != null)
@@ -269,25 +270,25 @@ namespace OpenRA.Mods.Common.Traits
 
 			ToSubCell = FromSubCell = info.LocomotorInfo.SharesCell ? init.World.Map.Grid.DefaultSubCell : SubCell.FullCell;
 
-			var subCellInit = init.GetOrDefault<SubCellInit>(info);
+			var subCellInit = init.GetOrDefault<SubCellInit>();
 			if (subCellInit != null)
 			{
 				FromSubCell = ToSubCell = subCellInit.Value;
 				returnToCellOnCreationRecalculateSubCell = false;
 			}
 
-			var locationInit = init.GetOrDefault<LocationInit>(info);
+			var locationInit = init.GetOrDefault<LocationInit>();
 			if (locationInit != null)
 			{
 				fromCell = toCell = locationInit.Value;
 				SetVisualPosition(self, init.World.Map.CenterOfSubCell(FromCell, FromSubCell));
 			}
 
-			Facing = oldFacing = WAngle.FromFacing(init.GetValue<FacingInit, int>(info, info.InitialFacing));
+			Facing = oldFacing = WAngle.FromFacing(init.GetValue<FacingInit, int>(info.InitialFacing));
 
 			// Sets the initial visual position
 			// Unit will move into the cell grid (defined by LocationInit) as its initial activity
-			var centerPositionInit = init.GetOrDefault<CenterPositionInit>(info);
+			var centerPositionInit = init.GetOrDefault<CenterPositionInit>();
 			if (centerPositionInit != null)
 			{
 				oldPos = centerPositionInit.Value;
@@ -295,7 +296,7 @@ namespace OpenRA.Mods.Common.Traits
 				returnToCellOnCreation = true;
 			}
 
-			creationActivityDelay = init.GetValue<CreationActivityDelayInit, int>(info, 0);
+			creationActivityDelay = init.GetValue<CreationActivityDelayInit, int>(0);
 		}
 
 		protected override void Created(Actor self)

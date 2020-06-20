@@ -401,7 +401,7 @@ namespace OpenRA.Mods.Common.Traits
 	[RequireExplicitImplementation]
 	public interface IActorPreviewInitInfo : ITraitInfoInterface
 	{
-		IEnumerable<object> ActorPreviewInits(ActorInfo ai, ActorPreviewType type);
+		IEnumerable<ActorInit> ActorPreviewInits(ActorInfo ai, ActorPreviewType type);
 	}
 
 	public interface IMove

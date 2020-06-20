@@ -150,7 +150,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		public override object Create(ActorInitializer init) { return new Aircraft(init, this); }
 
-		IEnumerable<object> IActorPreviewInitInfo.ActorPreviewInits(ActorInfo ai, ActorPreviewType type)
+		IEnumerable<ActorInit> IActorPreviewInitInfo.ActorPreviewInits(ActorInfo ai, ActorPreviewType type)
 		{
 			yield return new FacingInit(PreviewFacing);
 		}
@@ -184,7 +184,7 @@ namespace OpenRA.Mods.Common.Traits
 			yield return new EditorActorSlider("Facing", EditorFacingDisplayOrder, 0, 255, 8,
 				actor =>
 				{
-					var init = actor.Init<FacingInit>();
+					var init = actor.GetInitOrDefault<FacingInit>(this);
 					return init != null ? init.Value : InitialFacing;
 				},
 				(actor, value) => actor.ReplaceInit(new FacingInit((int)value)));
@@ -251,16 +251,16 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			self = init.Self;
 
-			var locationInit = init.GetOrDefault<LocationInit>(info);
+			var locationInit = init.GetOrDefault<LocationInit>();
 			if (locationInit != null)
 				SetPosition(self, locationInit.Value);
 
-			var centerPositionInit = init.GetOrDefault<CenterPositionInit>(info);
+			var centerPositionInit = init.GetOrDefault<CenterPositionInit>();
 			if (centerPositionInit != null)
 				SetPosition(self, centerPositionInit.Value);
 
-			Facing = WAngle.FromFacing(init.GetValue<FacingInit, int>(info, Info.InitialFacing));
-			creationActivityDelay = init.GetValue<CreationActivityDelayInit, int>(info, 0);
+			Facing = WAngle.FromFacing(init.GetValue<FacingInit, int>(Info.InitialFacing));
+			creationActivityDelay = init.GetValue<CreationActivityDelayInit, int>(0);
 		}
 
 		public WDist LandAltitude
