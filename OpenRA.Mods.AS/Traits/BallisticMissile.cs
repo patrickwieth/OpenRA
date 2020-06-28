@@ -64,7 +64,19 @@ namespace OpenRA.Mods.AS.Traits
 		IEnumerable<int> speedModifiers;
 
 		[Sync]
-		public WAngle Facing { get; set; }
+		public WAngle Facing
+		{
+			get { return Orientation.Yaw; }
+			set { Orientation = Orientation.WithYaw(value); }
+		}
+
+		public WAngle Pitch
+		{
+			get { return Orientation.Pitch; }
+			set { Orientation = Orientation.WithPitch(value); }
+		}
+
+		public WRot Orientation { get; private set; }
 
 		[Sync]
 		public WPos CenterPosition { get; private set; }
@@ -97,6 +109,7 @@ namespace OpenRA.Mods.AS.Traits
 		void INotifyCreated.Created(Actor self)
 		{
 			speedModifiers = self.TraitsImplementing<ISpeedModifier>().ToArray().Select(sm => sm.GetSpeedModifier());
+			Pitch = Info.LaunchAngle;
 		}
 
 		void INotifyAddedToWorld.AddedToWorld(Actor self)

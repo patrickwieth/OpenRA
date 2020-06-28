@@ -21,10 +21,9 @@ namespace OpenRA.Mods.AS.Activities
 		readonly BallisticMissile bm;
 		readonly WPos initPos;
 		readonly WPos targetPos;
-		int length;
+		readonly int length;
+		readonly WAngle pitchStep;
 		int ticks;
-		WAngle facing;
-		bool isometricWorld;
 
 		public BallisticMissileFly(Actor self, Target t, BallisticMissile bm)
 		{
@@ -32,33 +31,17 @@ namespace OpenRA.Mods.AS.Activities
 			initPos = self.CenterPosition;
 			targetPos = t.CenterPosition;
 			length = Math.Max((targetPos - initPos).Length / this.bm.Info.Speed, 1);
-			facing = (targetPos - initPos).Yaw;
-			bm.Facing = facing;
-			isometricWorld = self.World.Map.Grid.Type == MapGridType.RectangularIsometric;
-		}
-
-		WAngle GetEffectiveFacing()
-		{
-			var at = (float)ticks / (length - 1);
-			var attitude = bm.Info.LaunchAngle.Tan() * (1 - 2 * at) / (4 * 1024);
-
-			// HACK HACK HACK
-			// BodyOrientation does a 90° rotation on isometric worlds.
-			// This calculation needs to be updated to accomodate that.
-			var u = (facing.Angle % 512) / 512f;
-			var scale = 2048 * u * (1 - u);
-
-			var effective = (int)(facing.Angle < 512
-				? facing.Angle - scale * attitude
-				: facing.Angle + scale * attitude);
-
-			return new WAngle(effective);
+			bm.Facing = (targetPos - initPos).Yaw;
+			pitchStep = new WAngle(2 * bm.Info.LaunchAngle.Angle / length);
 		}
 
 		public override bool Tick(Actor self)
 		{
 			var d = targetPos - self.CenterPosition;
 			var move = bm.FlyStep(bm.Facing);
+
+			// HACK: my math is failing to derivate this properly, this shouldn't be a linear interpolation
+			bm.Pitch -= pitchStep;
 
 			if (d.HorizontalLengthSquared < move.HorizontalLengthSquared)
 			{
@@ -70,8 +53,6 @@ namespace OpenRA.Mods.AS.Activities
 
 			var pos = WPos.LerpQuadratic(initPos, targetPos, bm.Info.LaunchAngle, ticks, length);
 			bm.SetPosition(self, pos);
-
-			//// bm.Facing = GetEffectiveFacing();
 
 			ticks++;
 			return false;

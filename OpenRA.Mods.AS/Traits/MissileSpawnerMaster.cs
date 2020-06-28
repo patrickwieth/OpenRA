@@ -169,5 +169,24 @@ namespace OpenRA.Mods.AS.Traits
 				}
 			}
 		}
+
+		public override void SpawnIntoWorld(Actor self, Actor slave, WPos centerPosition)
+		{
+			var exit = self.RandomExitOrDefault(self.World, null);
+			SetSpawnedFacing(slave, exit);
+
+			self.World.AddFrameEndTask(w =>
+			{
+				if (self.IsDead)
+					return;
+
+				var spawnOffset = exit == null ? WVec.Zero : exit.Info.SpawnOffset;
+				slave.Trait<IPositionable>().SetVisualPosition(slave, centerPosition + spawnOffset);
+
+				var location = self.World.Map.CellContaining(centerPosition + spawnOffset);
+
+				w.Add(slave);
+			});
+		}
 	}
 }

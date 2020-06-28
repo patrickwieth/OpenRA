@@ -226,7 +226,7 @@ namespace OpenRA.Mods.AS.Traits
 			});
 		}
 
-		void SetSpawnedFacing(Actor spawned, Exit exit)
+		protected void SetSpawnedFacing(Actor spawned, Exit exit)
 		{
 			WAngle facingOffset = facing == null ? WAngle.Zero : facing.Facing;
 
