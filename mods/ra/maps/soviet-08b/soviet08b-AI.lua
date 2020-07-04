@@ -9,8 +9,8 @@
 IdlingUnits = { }
 
 DDPatrol = { "dd", "dd" }
-DDPatrol1Path = { DDPatrol1Point1.Location, DDPatrol1Point2.Location, DDPatrol1Point3.Location, DDPatrol1Point4.Location, DDPatrol1Point5.Location, DDPatrol1Point6.Location }
-DDPatrol2Path = { DDPatrol2Point1.Location, DDPatrol2Point2.Location, DDPatrol2Point3.Location, DDPatrol2Point4.Location, DDPatrol2Point5.Location, DDPatrol2Point6.Location, DDPatrol2Point7.Location }
+DDPatrol1Path = { DDPatrol1Point1.Location, DDPatrol1Point2.Location, DDPatrol1Point3.Location, DDPatrol1Point4.Location }
+DDPatrol2Path = { DDPatrol2Point1.Location, DDPatrol2Point2.Location, DDPatrol2Point3.Location, DDPatrol2Point4.Location }
 ShipArrivePath = { DDEntry.Location, DDEntryStop.Location }
 
 WTransWays =
@@ -32,13 +32,13 @@ WTransUnits =
 
 WTransDelays =
 {
-	easy = DateTime.Minutes(5),
-	normal = DateTime.Minutes(3),
-	hard = DateTime.Minutes(2)
+	easy = DateTime.Minutes(4),
+	normal = DateTime.Minutes(2),
+	hard = DateTime.Minutes(1)
 }
 
 AttackGroup = { }
-AttackGroupSize = 8
+AttackGroupSize = 10
 
 ProductionInterval =
 {
@@ -64,7 +64,7 @@ WTransWaves = function()
 	local attackUnits = Reinforcements.ReinforceWithTransport(Greece, "lst", units , way, { way[2], way[1] })[2]
 	Utils.Do(attackUnits, function(a)
 		Trigger.OnAddedToWorld(a, function()
-			a.AttackMove(SovietStart.Location)
+			a.AttackMove(SovietBase.Location)
 			IdleHunt(a)
 		end)
 	end)
@@ -147,7 +147,7 @@ ActivateAI = function()
 
 	Trigger.AfterDelay(DateTime.Minutes(3), WTransWaves)
 
-	Trigger.AfterDelay(AlliedVehiclesUpgradeDelay, function() AlliedVehicleType = "Upgraded" end)
+	Trigger.AfterDelay(AlliedVehiclesUpgradeDelay, function() AlliedVehicleType = "Upgraded" end)	
 
 	ProduceInfantry()
 	ProduceVehicles()
