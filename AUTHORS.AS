@@ -23,6 +23,9 @@ The plugin is maintained by
    > PointDefense logic
    > FlickeringPaletteEffect
 
+ * Dnqbob
+   > Make a trait for AI to cut down/restore power.
+
  * CastleJing
    > Bugfixes on mind controller logic
 
