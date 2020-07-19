@@ -103,7 +103,7 @@ namespace OpenRA.Mods.AS.Traits
 			if (destination != null && destination.Value != deliverypos)
 				ticksTillCheck = 0;
 
-			dockFacing = WAngle.FromFacing(refineryActor.Trait<IAcceptResources>().DeliveryAngle);
+			dockFacing = refineryActor.Trait<IAcceptResources>().DeliveryAngle;
 
 			harvestedField = self.World.Map.CellContaining(self.CenterPosition);
 

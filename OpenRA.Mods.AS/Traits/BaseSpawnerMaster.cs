@@ -230,14 +230,14 @@ namespace OpenRA.Mods.AS.Traits
 		{
 			WAngle facingOffset = facing == null ? WAngle.Zero : facing.Facing;
 
-			var exitFacing = exit != null ? exit.Info.Facing : 0;
+			var exitFacing = exit != null ? exit.Info.Facing : WAngle.Zero;
 
 			var spawnFacing = spawned.TraitOrDefault<IFacing>();
 			if (spawnFacing != null)
-				spawnFacing.Facing = WAngle.FromFacing((facingOffset.Facing + exitFacing) % 256);
+				spawnFacing.Facing = facingOffset + exitFacing.Value;
 
 			foreach (var t in spawned.TraitsImplementing<Turreted>())
-				t.TurretFacing = (facingOffset.Facing + exitFacing) % 256;
+				t.TurretFacing = (facingOffset + exitFacing.Value).Facing;
 		}
 
 		public void StopSlaves()

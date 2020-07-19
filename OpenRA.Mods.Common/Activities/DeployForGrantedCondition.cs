@@ -34,9 +34,9 @@ namespace OpenRA.Mods.Common.Activities
 			if (deploy.DeployState == DeployState.Undeployed && deploy.Info.Facing.HasValue && canTurn && !moving)
 			{
 				if (deploy.Info.LandOnDeploy)
-					QueueChild(new Land(self, WAngle.FromFacing(deploy.Info.Facing)));
+					QueueChild(new Land(self, deploy.Info.Facing));
 				else
-					QueueChild(new Turn(self, WAngle.FromFacing(deploy.Info.Facing)));
+					QueueChild(new Turn(self, deploy.Info.Facing.Value));
 			}
 
 			if (!deploy.Info.Facing.HasValue && deploy.Info.LandOnDeploy)
