@@ -13,7 +13,7 @@ using System.Collections.Generic;
 using System.Linq;
 using OpenRA.GameRules;
 using OpenRA.Graphics;
-using OpenRA.Mods.Common.Traits;
+using OpenRA.Primitives;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Projectiles
@@ -63,7 +63,7 @@ namespace OpenRA.Mods.Common.Projectiles
 		WVec velocity;
 
 		[Sync]
-		WPos pos;
+		WPos pos, lastPos;
 
 		public GravityBomb(GravityBombInfo info, ProjectileArgs args)
 		{
@@ -87,6 +87,7 @@ namespace OpenRA.Mods.Common.Projectiles
 
 		public void Tick(World world)
 		{
+			lastPos = pos;
 			pos += velocity;
 			velocity += acceleration;
 
@@ -95,18 +96,13 @@ namespace OpenRA.Mods.Common.Projectiles
 				pos += new WVec(0, 0, args.PassiveTarget.Z - pos.Z);
 				world.AddFrameEndTask(w => w.Remove(this));
 
-				args.Weapon.Impact(Target.FromPos(pos), new WarheadArgs(args));
-				return;
-			}
-
-			if (!string.IsNullOrEmpty(info.PointDefenseType))
-			{
-				var shouldExplode = world.ActorsWithTrait<IPointDefense>().Any(x => x.Trait.Destroy(pos, args.SourceActor.Owner, info.PointDefenseType));
-				if (shouldExplode)
+				var warheadArgs = new WarheadArgs(args)
 				{
-					args.Weapon.Impact(Target.FromPos(pos), new WarheadArgs(args));
-					world.AddFrameEndTask(w => w.Remove(this));
-				}
+					ImpactOrientation = new WRot(WAngle.Zero, Util.GetVerticalAngle(lastPos, pos), args.Facing),
+					ImpactPosition = pos,
+				};
+
+				args.Weapon.Impact(Target.FromPos(pos), warheadArgs);
 			}
 
 			if (anim != null)
