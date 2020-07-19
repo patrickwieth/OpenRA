@@ -39,7 +39,7 @@ namespace OpenRA.Mods.AS.Effects
 		ContrailRenderable contrail;
 
 		[Sync]
-		WPos projectilepos;
+		WPos projectilepos, lastPos;
 
 		int ticks, smokeTicks;
 		public bool DetonateSelf { get; private set; }
@@ -122,7 +122,7 @@ namespace OpenRA.Mods.AS.Effects
 			if (anim != null)
 				anim.Tick();
 
-			var lastPos = projectilepos;
+			lastPos = projectilepos;
 			projectilepos = WPos.Lerp(source, targetpos, ticks, estimatedlifespan);
 
 			// Check for walls or other blocking obstacles.
@@ -159,12 +159,23 @@ namespace OpenRA.Mods.AS.Effects
 
 		public void Explode(World world)
 		{
-			args.Weapon.Impact(Target.FromPos(projectilepos), new WarheadArgs(args));
+			Impact();
 
 			if (info.ContrailLength > 0)
 				world.AddFrameEndTask(w => w.Add(new ContrailFader(projectilepos, contrail)));
 
 			world.AddFrameEndTask(w => w.Remove(this));
+		}
+
+		public void Impact()
+		{
+			var warheadArgs = new WarheadArgs(args)
+			{
+				ImpactOrientation = new WRot(WAngle.Zero, Common.Util.GetVerticalAngle(lastPos, projectilepos), args.Facing),
+				ImpactPosition = projectilepos,
+			};
+
+			args.Weapon.Impact(Target.FromPos(projectilepos), warheadArgs);
 		}
 	}
 }

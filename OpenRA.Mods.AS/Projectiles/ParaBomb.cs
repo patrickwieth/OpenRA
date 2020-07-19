@@ -84,7 +84,7 @@ namespace OpenRA.Mods.AS.Projectiles
 		[Sync]
 		WVec velocity;
 		[Sync]
-		WPos pos;
+		WPos pos, lastPos;
 
 		bool exploded;
 
@@ -115,13 +115,21 @@ namespace OpenRA.Mods.AS.Projectiles
 		{
 			if (!exploded)
 			{
+				lastPos = pos;
 				pos += velocity;
 				velocity += acceleration;
 
 				if (pos.Z <= args.PassiveTarget.Z)
 				{
 					pos += new WVec(0, 0, args.PassiveTarget.Z - pos.Z);
-					args.Weapon.Impact(Target.FromPos(pos), new WarheadArgs(args));
+
+					var warheadArgs = new WarheadArgs(args)
+					{
+						ImpactOrientation = new WRot(WAngle.Zero, Common.Util.GetVerticalAngle(lastPos, pos), args.Facing),
+						ImpactPosition = pos,
+					};
+
+					args.Weapon.Impact(Target.FromPos(pos), warheadArgs);
 					exploded = true;
 
 					if (!string.IsNullOrEmpty(info.ParachuteClosingSequence))
@@ -135,7 +143,13 @@ namespace OpenRA.Mods.AS.Projectiles
 					var shouldExplode = world.ActorsWithTrait<IPointDefense>().Any(x => x.Trait.Destroy(pos, args.SourceActor.Owner, info.PointDefenseType));
 					if (shouldExplode)
 					{
-						args.Weapon.Impact(Target.FromPos(pos), new WarheadArgs(args));
+						var warheadArgs = new WarheadArgs(args)
+						{
+							ImpactOrientation = new WRot(WAngle.Zero, Common.Util.GetVerticalAngle(lastPos, pos), args.Facing),
+							ImpactPosition = pos,
+						};
+
+						args.Weapon.Impact(Target.FromPos(pos), warheadArgs);
 						exploded = true;
 						world.AddFrameEndTask(w => w.Remove(this));
 					}
