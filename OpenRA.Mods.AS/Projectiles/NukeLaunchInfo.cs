@@ -59,9 +59,6 @@ namespace OpenRA.Mods.AS.Projectiles
 		[Desc("Descend immediately on the target.")]
 		public readonly bool SkipAscent = false;
 
-		[Desc("Corresponds to `Type` from `FlashPaletteEffect` on the world actor.")]
-		public readonly string FlashType = null;
-
 		[Desc("Trail animation.")]
 		public readonly string TrailImage = null;
 
@@ -102,7 +99,7 @@ namespace OpenRA.Mods.AS.Projectiles
 			var palette = IsPlayerPalette ? MissilePalette + args.SourceActor.Owner.InternalName : MissilePalette;
 
 			return new NukeLaunch(args.SourceActor.Owner, MissileImage, WeaponInfo, palette, MissileUp, MissileDown, args.Source, args.PassiveTarget,
-				DetonationAltitude, RemoveMissileOnDetonation, FlightVelocity, 0, FlightDelay, SkipAscent, FlashType,
+				DetonationAltitude, RemoveMissileOnDetonation, FlightVelocity, 0, FlightDelay, SkipAscent,
 				TrailImage, TrailSequences, TrailPalette, TrailUsePlayerPalette, TrailDelay, TrailInterval);
 		}
 	}
