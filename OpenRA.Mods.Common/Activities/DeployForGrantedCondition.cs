@@ -31,7 +31,7 @@ namespace OpenRA.Mods.Common.Activities
 		protected override void OnFirstRun(Actor self)
 		{
 			// Turn to the required facing.
-			if (deploy.DeployState == DeployState.Undeployed && deploy.Info.Facing != -1 && canTurn && !moving)
+			if (deploy.DeployState == DeployState.Undeployed && deploy.Info.Facing.HasValue && canTurn && !moving)
 			{
 				if (deploy.Info.LandOnDeploy)
 					QueueChild(new Land(self, WAngle.FromFacing(deploy.Info.Facing)));
@@ -39,7 +39,7 @@ namespace OpenRA.Mods.Common.Activities
 					QueueChild(new Turn(self, WAngle.FromFacing(deploy.Info.Facing)));
 			}
 
-			if (deploy.Info.Facing == -1 && deploy.Info.LandOnDeploy)
+			if (!deploy.Info.Facing.HasValue && deploy.Info.LandOnDeploy)
 				QueueChild(new Land(self));
 		}
 
