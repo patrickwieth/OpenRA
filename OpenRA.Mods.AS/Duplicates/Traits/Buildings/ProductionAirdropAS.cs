@@ -56,7 +56,7 @@ namespace OpenRA.Mods.AS.Traits
 
 			CPos startPos;
 			CPos endPos;
-			int spawnFacing;
+			WAngle spawnFacing;
 
 			if (info.BaselineSpawn && mpStart != null)
 			{
@@ -67,7 +67,7 @@ namespace OpenRA.Mods.AS.Traits
 				startPos = spawn + spawnVec * (Exts.ISqrt((bounds.Height * bounds.Height + bounds.Width * bounds.Width) / (4 * spawnVec.LengthSquared)));
 				endPos = startPos;
 				var spawnDirection = new WVec((self.Location - startPos).X, (self.Location - startPos).Y, 0);
-				spawnFacing = spawnDirection.Yaw.Facing;
+				spawnFacing = spawnDirection.Yaw;
 			}
 			else
 			{
@@ -77,7 +77,7 @@ namespace OpenRA.Mods.AS.Traits
 				var distance = new WVec(0, map.Bounds.Width * -1024, 0).Rotate(rotation);
 				startPos = self.World.Map.CellContaining(self.CenterPosition - distance);
 				endPos = self.World.Map.CellContaining(self.CenterPosition + distance);
-				spawnFacing = info.Facing;
+				spawnFacing = WAngle.FromFacing(info.Facing);
 			}
 
 			// Assume a single exit point for simplicity
