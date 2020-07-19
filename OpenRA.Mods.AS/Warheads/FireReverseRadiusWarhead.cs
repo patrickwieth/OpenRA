@@ -74,6 +74,7 @@ namespace OpenRA.Mods.AS.Warheads
 				{
 					Weapon = weapon,
 					Facing = (target.CenterPosition - radiusSource.CenterPosition).Yaw,
+					CurrentMuzzleFacing = () => (target.CenterPosition - radiusSource.CenterPosition).Yaw,
 
 					DamageModifiers = args.DamageModifiers,
 
