@@ -67,6 +67,12 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Increase maintained excess power by ExcessPowerIncrement for every N base buildings.")]
 		public readonly int ExcessPowerIncreaseThreshold = 1;
 
+		[Desc("Number of refineries to build before building a barracks.")]
+		public readonly int InititalMinimumRefineryCount = 1;
+
+		[Desc("Number of refineries to build additionally after building a barracks.")]
+		public readonly int AdditionalMinimumRefineryCount = 1;
+
 		[Desc("Additional delay (in ticks) between structure production checks when there is no active production.",
 			"StructureProductionRandomBonusDelay is added to this.")]
 		public readonly int StructureProductionInactiveDelay = 125;
@@ -243,7 +249,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			if (!possibleRallyPoints.Any())
 			{
-				AIUtils.BotDebug("Bot Bug: No possible rallypoint near {0}", producer.Location);
+				AIUtils.BotDebug("{0} has no possible rallypoint near {1}", producer.Owner, producer.Location);
 				return producer.Location;
 			}
 
@@ -260,7 +266,8 @@ namespace OpenRA.Mods.Common.Traits
 			get
 			{
 				// Require at least one refinery, unless we can't build it.
-				return AIUtils.CountBuildingByCommonName(Info.RefineryTypes, player) >= MinimumRefineryCount ||
+				return !Info.RefineryTypes.Any() ||
+					AIUtils.CountBuildingByCommonName(Info.RefineryTypes, player) >= MinimumRefineryCount ||
 					AIUtils.CountBuildingByCommonName(Info.PowerTypes, player) == 0 ||
 					AIUtils.CountBuildingByCommonName(Info.ConstructionYardTypes, player) == 0;
 			}
@@ -270,9 +277,7 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			get
 			{
-				// Unless we have no barracks (higher priority), require a 2nd refinery.
-				// TODO: Possibly unhardcode this, at least the targeted minimum of 2 (the fallback can probably stay at 1).
-				return AIUtils.CountBuildingByCommonName(Info.BarracksTypes, player) > 0 ? 2 : 1;
+				return AIUtils.CountBuildingByCommonName(Info.BarracksTypes, player) > 0 ? Info.InititalMinimumRefineryCount + Info.AdditionalMinimumRefineryCount : Info.InititalMinimumRefineryCount;
 			}
 		}
 
