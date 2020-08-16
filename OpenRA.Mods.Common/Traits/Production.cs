@@ -170,7 +170,6 @@ namespace OpenRA.Mods.Common.Traits
 
 		public virtual bool Produce(Actor self, ActorInfo producee, string productionType, TypeDictionary inits)
 		{
-			Game.Debug("bla");
 			if (IsTraitDisabled || IsTraitPaused || Reservable.IsReserved(self))
 				return false;
 
