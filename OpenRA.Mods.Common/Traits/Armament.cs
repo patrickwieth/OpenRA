@@ -127,7 +127,7 @@ namespace OpenRA.Mods.Common.Traits
 		int currentBarrel;
 		int barrelCount;
 
-		List<Pair<int, Action>> delayedActions = new List<Pair<int, Action>>();
+		List<(int Ticks, Action Func)> delayedActions = new List<(int, Action)>();
 
 		public WDist Recoil;
 		public int FireDelay { get; protected set; }
@@ -211,12 +211,12 @@ namespace OpenRA.Mods.Common.Traits
 			for (var i = 0; i < delayedActions.Count; i++)
 			{
 				var x = delayedActions[i];
-				if (--x.First <= 0)
-					x.Second();
+				if (--x.Ticks <= 0)
+					x.Func();
 				delayedActions[i] = x;
 			}
 
-			delayedActions.RemoveAll(a => a.First <= 0);
+			delayedActions.RemoveAll(a => a.Ticks <= 0);
 		}
 
 		void ITick.Tick(Actor self)
@@ -228,7 +228,7 @@ namespace OpenRA.Mods.Common.Traits
 		protected void ScheduleDelayedAction(int t, Action a)
 		{
 			if (t > 0)
-				delayedActions.Add(Pair.New(t, a));
+				delayedActions.Add((t, a));
 			else
 				a();
 		}
@@ -374,19 +374,18 @@ namespace OpenRA.Mods.Common.Traits
 
 		protected virtual WVec CalculateMuzzleOffset(Actor self, Barrel b)
 		{
-			var bodyOrientation = coords.QuantizeOrientation(self, self.Orientation);
+			// Weapon offset in turret coordinates
 			var localOffset = b.Offset + new WVec(-Recoil, WDist.Zero, WDist.Zero);
-			if (turret != null)
-			{
-				// WorldOrientation is quantized to satisfy the *Fudges.
-				// Need to then convert back to a pseudo-local coordinate space, apply offsets,
-				// then rotate back at the end
-				var turretOrientation = turret.WorldOrientation(self) - bodyOrientation;
-				localOffset = localOffset.Rotate(turretOrientation);
-				localOffset += turret.Offset;
-			}
 
-			return coords.LocalToWorld(localOffset.Rotate(bodyOrientation));
+			// Turret coordinates to body coordinates
+			var bodyOrientation = coords.QuantizeOrientation(self, self.Orientation);
+			if (turret != null)
+				localOffset = localOffset.Rotate(turret.WorldOrientation) + turret.Offset.Rotate(bodyOrientation);
+			else
+				localOffset = localOffset.Rotate(bodyOrientation);
+
+			// Body coordinates to world coordinates
+			return coords.LocalToWorld(localOffset);
 		}
 
 		public WRot MuzzleOrientation(Actor self, Barrel b)
@@ -396,10 +395,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		protected virtual WRot CalculateMuzzleOrientation(Actor self, Barrel b)
 		{
-			var orientation = turret != null ? turret.WorldOrientation(self) :
-				coords.QuantizeOrientation(self, self.Orientation);
-
-			return orientation + WRot.FromYaw(b.Yaw);
+			return WRot.FromYaw(b.Yaw).Rotate(turret != null ? turret.WorldOrientation : self.Orientation);
 		}
 
 		public Actor Actor { get { return self; } }
