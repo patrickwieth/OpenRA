@@ -43,7 +43,7 @@ namespace OpenRA.Mods.AS.Traits
 		readonly Lazy<BodyOrientation> coords;
 		readonly List<Actor> actors;
 		readonly List<Armament> armaments;
-		readonly HashSet<Pair<AnimationWithOffset, string>> muzzles;
+		readonly HashSet<(AnimationWithOffset MuzzleFlash, string Palette)> muzzles;
 		readonly Dictionary<Actor, IFacing> paxFacing;
 		readonly Dictionary<Actor, IPositionable> paxPos;
 		readonly Dictionary<Actor, RenderSprites> paxRender;
@@ -55,7 +55,7 @@ namespace OpenRA.Mods.AS.Traits
 			coords = Exts.Lazy(() => self.Trait<BodyOrientation>());
 			actors = new List<Actor>();
 			armaments = new List<Armament>();
-			muzzles = new HashSet<Pair<AnimationWithOffset, string>>();
+			muzzles = new HashSet<(AnimationWithOffset, string)>();
 			paxFacing = new Dictionary<Actor, IFacing>();
 			paxPos = new Dictionary<Actor, IPositionable>();
 			paxRender = new Dictionary<Actor, RenderSprites>();
@@ -162,7 +162,7 @@ namespace OpenRA.Mods.AS.Traits
 						() => false,
 						p => RenderUtils.ZOffsetFromCenter(self, p, 1024));
 
-					var pair = Pair.New(muzzleFlash, palette);
+					var pair = (muzzleFlash, palette);
 					muzzles.Add(pair);
 					muzzleAnim.PlayThen(sequence, () => muzzles.Remove(pair));
 				}
@@ -176,7 +176,7 @@ namespace OpenRA.Mods.AS.Traits
 		{
 			// Display muzzle flashes
 			foreach (var m in muzzles)
-				foreach (var r in m.First.Render(self, wr, wr.Palette(m.Second), 1f))
+				foreach (var r in m.MuzzleFlash.Render(self, wr, wr.Palette(m.Palette), 1f))
 					yield return r;
 		}
 
@@ -192,7 +192,7 @@ namespace OpenRA.Mods.AS.Traits
 
 			// Take a copy so that Tick() can remove animations
 			foreach (var m in muzzles.ToArray())
-				m.First.Animation.Tick();
+				m.MuzzleFlash.Animation.Tick();
 		}
 	}
 }

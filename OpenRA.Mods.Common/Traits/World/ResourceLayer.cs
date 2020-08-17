@@ -220,7 +220,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			var content = new KeyValuePair<ResourceType, int>(c.Type, c.Density);
 
-			Content[cell] = EmptyCell;
+			Content[cell] = ResourceLayerContents.Empty;
 			world.Map.CustomTerrain[cell] = byte.MaxValue;
 			--resCells;
 
@@ -261,7 +261,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			if (c.Density < density)
 			{
-				Content[cell] = EmptyCell;
+				Content[cell] = ResourceLayerContents.Empty;
 				world.Map.CustomTerrain[cell] = byte.MaxValue;
 				--resCells;
 

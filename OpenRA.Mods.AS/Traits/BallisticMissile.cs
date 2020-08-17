@@ -55,7 +55,7 @@ namespace OpenRA.Mods.AS.Traits
 	public class BallisticMissile : ISync, IFacing, IMove, IPositionable,
 		INotifyCreated, INotifyAddedToWorld, INotifyRemovedFromWorld, IOccupySpace
 	{
-		static readonly Pair<CPos, SubCell>[] NoCells = { };
+		static readonly (CPos, SubCell)[] NoCells = { };
 
 		public readonly BallisticMissileInfo Info;
 		readonly Actor self;
@@ -122,7 +122,7 @@ namespace OpenRA.Mods.AS.Traits
 				OnAirborneAltitudeReached();
 		}
 
-		Pair<CPos, SubCell>[] IOccupySpace.OccupiedCells()
+		public (CPos Cell, SubCell SubCell)[] OccupiedCells()
 		{
 			return NoCells;
 		}

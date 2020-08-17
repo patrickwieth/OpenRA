@@ -69,16 +69,16 @@ namespace OpenRA.Mods.AS.Traits
 				return;
 
 			var target = targetActors
-				.Select(x => Pair.New(x, x.TraitsImplementing<Pluggable>().FirstOrDefault(p => p.AcceptsPlug(x, plugType))))
-				.FirstOrDefault(x => x.Second != null);
+				.Select(x => (x, x.TraitsImplementing<Pluggable>().FirstOrDefault(p => p.AcceptsPlug(x, plugType))))
+				.FirstOrDefault(x => x.Item2 != null);
 
-			if (target != null)
+			if (target.Item1 != null)
 			{
-				var building = target.First.TraitOrDefault<Building>();
+				var building = target.Item1.TraitOrDefault<Building>();
 
 				var offset = building != null
-					? building.TopLeft + target.Second.Info.Offset
-					: world.Map.CellContaining(target.First.CenterPosition) + target.Second.Info.Offset;
+					? building.TopLeft + target.Item2.Info.Offset
+					: world.Map.CellContaining(target.Item1.CenterPosition) + target.Item2.Info.Offset;
 
 				var order = new Order("PlacePlugAI", player.PlayerActor, Target.FromCell(world, offset), false)
 				{
