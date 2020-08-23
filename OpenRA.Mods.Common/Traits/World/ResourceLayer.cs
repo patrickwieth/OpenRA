@@ -206,7 +206,6 @@ namespace OpenRA.Mods.Common.Traits
 
 			CellChanged?.Invoke(cell, c.Type);
 
-
 			return c.Type;
 		}
 
