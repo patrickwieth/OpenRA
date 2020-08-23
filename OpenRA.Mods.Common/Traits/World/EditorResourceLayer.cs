@@ -71,11 +71,10 @@ namespace OpenRA.Mods.Common.Traits
 
 			var tile = Map.Resources[uv];
 			var t = Tiles[uv];
-			ResourceType type;
 
 			var newTile = ResourceLayerContents.Empty;
 			var newTerrain = byte.MaxValue;
-			if (Resources.TryGetValue(tile.Type, out type))
+			if (Resources.TryGetValue(tile.Type, out var type))
 			{
 				newTile = new ResourceLayerContents
 				{
@@ -93,8 +92,7 @@ namespace OpenRA.Mods.Common.Traits
 			UpdateNetWorth(t.Type, t.Density, newTile.Type, newTile.Density);
 			Tiles[uv] = newTile;
 			Map.CustomTerrain[uv] = newTerrain;
-			if (CellChanged != null)
-				CellChanged(cell, type);
+			CellChanged?.Invoke(cell, type);
 
 			// Neighbouring cell density depends on this cell
 			foreach (var d in CVec.Directions)
@@ -112,8 +110,7 @@ namespace OpenRA.Mods.Common.Traits
 				neighbouringTile.Density = density;
 				Tiles[neighbouringCell] = neighbouringTile;
 
-				if (CellChanged != null)
-					CellChanged(neighbouringCell, type);
+				CellChanged?.Invoke(neighbouringCell, type);
 			}
 		}
 

@@ -795,8 +795,7 @@ namespace OpenRA.Mods.Common.Projectiles
 		public void Tick(World world)
 		{
 			ticks++;
-			if (anim != null)
-				anim.Tick();
+			anim?.Tick();
 
 			// Switch from freefall mode to homing mode
 			if (ticks == info.HomingActivationDelay + 1)
@@ -852,9 +851,7 @@ namespace OpenRA.Mods.Common.Projectiles
 
 			// Check for walls or other blocking obstacles
 			var shouldExplode = false;
-			WPos blockedPos;
-			if (info.Blockable && BlocksProjectiles.AnyBlockingActorsBetween(world, lastPos, pos, info.Width,
-				out blockedPos))
+			if (info.Blockable && BlocksProjectiles.AnyBlockingActorsBetween(world, lastPos, pos, info.Width, out var blockedPos))
 			{
 				pos = blockedPos;
 				shouldExplode = true;

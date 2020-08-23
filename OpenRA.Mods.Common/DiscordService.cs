@@ -32,16 +32,21 @@ namespace OpenRA.Mods.Common
 	public sealed class DiscordService : IGlobalModData, IDisposable
 	{
 		public readonly string ApplicationId = null;
-		readonly DiscordRpcClient client;
+		DiscordRpcClient client;
 		DiscordState currentState;
 
-		static readonly Lazy<DiscordService> Service = Exts.Lazy(() =>
+		static DiscordService instance;
+		static DiscordService GetService()
 		{
+			if (instance != null)
+				return instance;
+
 			if (!Game.ModData.Manifest.Contains<DiscordService>())
 				return null;
 
-			return Game.ModData.Manifest.Get<DiscordService>();
-		});
+			instance = Game.ModData.Manifest.Get<DiscordService>();
+			return instance;
+		}
 
 		public DiscordService(MiniYaml yaml)
 		{
@@ -90,7 +95,7 @@ namespace OpenRA.Mods.Common
 			if (currentState == state)
 				return;
 
-			if (Service.Value == null)
+			if (instance == null)
 				return;
 
 			string stateText;
@@ -164,38 +169,36 @@ namespace OpenRA.Mods.Common
 		public void Dispose()
 		{
 			if (client != null)
+			{
 				client.Dispose();
+				client = null;
+				instance = null;
+			}
 		}
 
 		public static void UpdateStatus(DiscordState state, string details = null, string secret = null, int? players = null, int? slots = null)
 		{
-			if (Service.Value != null)
-				Service.Value.SetStatus(state, details, secret, players, slots);
+			GetService()?.SetStatus(state, details, secret, players, slots);
 		}
 
 		public static void SetPlayers(int players, int slots)
 		{
-			if (Service.Value != null)
+			GetService()?.client.UpdateParty(new Party
 			{
-				Service.Value.client.UpdateParty(new Party
-				{
-					ID = Secrets.CreateFriendlySecret(new Random()),
-					Size = players,
-					Max = slots
-				});
-			}
+				ID = Secrets.CreateFriendlySecret(new Random()),
+				Size = players,
+				Max = slots
+			});
 		}
 
 		public static void UpdatePlayers(int players, int slots)
 		{
-			if (Service.Value != null)
-				Service.Value.client.UpdatePartySize(players, slots);
+			GetService()?.client.UpdatePartySize(players, slots);
 		}
 
 		public static void UpdateDetails(string details)
 		{
-			if (Service.Value != null)
-				Service.Value.client.UpdateDetails(details);
+			GetService()?.client.UpdateDetails(details);
 		}
 	}
 }

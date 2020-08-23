@@ -48,8 +48,7 @@ namespace OpenRA
 				// We can't check the internal name of the assembly, so we'll work off the data instead
 				var hash = CryptoUtil.SHA1Hash(File.ReadAllBytes(resolvedPath));
 
-				Assembly assembly;
-				if (!ResolvedAssemblies.TryGetValue(hash, out assembly))
+				if (!ResolvedAssemblies.TryGetValue(hash, out var assembly))
 				{
 					assembly = Assembly.LoadFile(resolvedPath);
 					ResolvedAssemblies.Add(hash, assembly);
@@ -68,10 +67,7 @@ namespace OpenRA
 				if (a.FullName == e.Name)
 					return a;
 
-			if (assemblies == null)
-				return null;
-
-			return assemblies.Select(a => a.Assembly).FirstOrDefault(a => a.FullName == e.Name);
+			return assemblies?.Select(a => a.Assembly).FirstOrDefault(a => a.FullName == e.Name);
 		}
 
 		// Only used by the linter to prevent exceptions from being thrown during a lint run

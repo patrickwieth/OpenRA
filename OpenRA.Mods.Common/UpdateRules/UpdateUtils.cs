@@ -29,9 +29,7 @@ namespace OpenRA.Mods.Common.UpdateRules
 			var yaml = new YamlFileSet();
 			foreach (var filename in files)
 			{
-				string name;
-				IReadOnlyPackage package;
-				if (!modData.ModFiles.TryGetPackageContaining(filename, out package, out name) || !(package is IReadWritePackage))
+				if (!modData.ModFiles.TryGetPackageContaining(filename, out var package, out var name) || !(package is IReadWritePackage))
 				{
 					Console.WriteLine("Failed to load file `{0}` for writing. It will not be updated.", filename);
 					continue;
@@ -265,8 +263,7 @@ namespace OpenRA.Mods.Common.UpdateRules
 		public static void Save(this YamlFileSet files)
 		{
 			foreach (var file in files)
-				if (file.Item1 != null)
-					file.Item1.Update(file.Item2, Encoding.UTF8.GetBytes(file.Item3.WriteToString()));
+				file.Item1?.Update(file.Item2, Encoding.UTF8.GetBytes(file.Item3.WriteToString()));
 		}
 
 		/// <summary>Checks if node is a removal (has '-' prefix)</summary>

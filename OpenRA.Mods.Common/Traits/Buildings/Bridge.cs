@@ -56,9 +56,8 @@ namespace OpenRA.Mods.Common.Traits
 			if (string.IsNullOrEmpty(DemolishWeapon))
 				throw new YamlException("A value for DemolishWeapon of a Bridge trait is missing.");
 
-			WeaponInfo weapon;
 			var weaponToLower = DemolishWeapon.ToLowerInvariant();
-			if (!rules.Weapons.TryGetValue(weaponToLower, out weapon))
+			if (!rules.Weapons.TryGetValue(weaponToLower, out var weapon))
 				throw new YamlException("Weapons Ruleset does not contain an entry '{0}'".F(weaponToLower));
 
 			DemolishWeaponInfo = weapon;
@@ -303,8 +302,7 @@ namespace OpenRA.Mods.Common.Traits
 			// If this bridge repair operation connects two pathfinding domains,
 			// update the domain index.
 			var domainIndex = self.World.WorldActor.TraitOrDefault<DomainIndex>();
-			if (domainIndex != null)
-				domainIndex.UpdateCells(self.World, footprint.Keys);
+			domainIndex?.UpdateCells(self.World, footprint.Keys);
 
 			if (LongBridgeSegmentIsDead() && !killedUnits)
 			{

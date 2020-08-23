@@ -90,8 +90,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			foreach (var cell in w.Map.AllCells)
 			{
-				ResourceType t;
-				if (!resources.TryGetValue(w.Map.Resources[cell].Type, out t))
+				if (!resources.TryGetValue(w.Map.Resources[cell].Type, out var t))
 					continue;
 
 				if (!AllowResourceAt(t, cell))
@@ -170,8 +169,7 @@ namespace OpenRA.Mods.Common.Traits
 			cell.Density = Math.Min(cell.Type.Info.MaxDensity, cell.Density + n);
 			Content[p] = cell;
 
-			if (CellChanged != null)
-				CellChanged(p, cell.Type);
+			CellChanged?.Invoke(p, cell.Type);
 
 			foreach (var rl in resourceLogicLayers)
 				rl.UpdatePosition(p, t, cell.Density);
@@ -206,8 +204,8 @@ namespace OpenRA.Mods.Common.Traits
 					rl.UpdatePosition(cell, c.Type, c.Density);
 			}
 
-			if (CellChanged != null)
-				CellChanged(cell, c.Type);
+			CellChanged?.Invoke(cell, c.Type);
+
 
 			return c.Type;
 		}
@@ -277,8 +275,7 @@ namespace OpenRA.Mods.Common.Traits
 					rl.UpdatePosition(cell, c.Type, c.Density);
 			}
 
-			if (CellChanged != null)
-				CellChanged(cell, c.Type);
+			CellChanged?.Invoke(cell, c.Type);
 		}
 
 		public ResourceType GetResourceType(CPos cell) { return Content[cell].Type; }

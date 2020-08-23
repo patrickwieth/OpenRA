@@ -271,8 +271,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		public bool CanBuild(ActorInfo actor)
 		{
-			ProductionState ps;
-			if (!Producible.TryGetValue(actor, out ps))
+			if (!Producible.TryGetValue(actor, out var ps))
 				return false;
 
 			return ps.Buildable || developerMode.AllTech;
@@ -467,9 +466,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		protected void PauseProduction(string itemName, bool paused)
 		{
-			var item = Queue.FirstOrDefault(a => a.Item == itemName);
-			if (item != null)
-				item.Pause(paused);
+			Queue.FirstOrDefault(a => a.Item == itemName)?.Pause(paused);
 		}
 
 		protected void CancelProduction(string itemName, uint numberToCancel)
@@ -654,8 +651,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			if (Done)
 			{
-				if (OnComplete != null)
-					OnComplete();
+				OnComplete?.Invoke();
 
 				return;
 			}
