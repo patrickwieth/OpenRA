@@ -81,6 +81,5 @@ namespace OpenRA.Mods.AS.Warheads
 
 			return true;
 		}
-
 	}
 }
