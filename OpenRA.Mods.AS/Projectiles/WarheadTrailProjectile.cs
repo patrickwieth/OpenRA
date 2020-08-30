@@ -170,7 +170,7 @@ namespace OpenRA.Mods.AS.Projectiles
 
 			projectiles = new WarheadTrailProjectileEffect[info.Offsets.Count()];
 			var range = Common.Util.ApplyPercentageModifiers(args.Weapon.Range.Length, args.RangeModifiers);
-			var mainFacing = (targetpos - sourcepos).Yaw.Facing;
+			var mainFacing = (targetpos - sourcepos).Yaw.Facing + 64;
 
 			// used for lerping projectiles at the same pace
 			var estimatedLifespan = Math.Max(args.Weapon.Range.Length / speed.Length, 1);
@@ -217,7 +217,7 @@ namespace OpenRA.Mods.AS.Projectiles
 				var facing = (offsetTargetPos - offsetSourcePos).Yaw;
 				var projectileArgs = new ProjectileArgs
 				{
-					Weapon = args.Weapon,
+					Weapon = info.WeaponInfo,
 					DamageModifiers = args.DamageModifiers,
 					Facing = facing,
 					Source = offsetSourcePos,
