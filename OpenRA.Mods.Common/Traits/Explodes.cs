@@ -82,6 +82,7 @@ namespace OpenRA.Mods.Common.Traits
 	{
 		readonly IHealth health;
 		BuildingInfo buildingInfo;
+		Armament[] armaments;
 
 		public Explodes(ExplodesInfo info, Actor self)
 			: base(info)
@@ -92,6 +93,8 @@ namespace OpenRA.Mods.Common.Traits
 		protected override void Created(Actor self)
 		{
 			buildingInfo = self.Info.TraitInfoOrDefault<BuildingInfo>();
+			armaments = self.TraitsImplementing<Armament>().ToArray();
+
 			base.Created(self);
 		}
 
@@ -129,22 +132,22 @@ namespace OpenRA.Mods.Common.Traits
 
 		WeaponInfo ChooseWeaponForExplosion(Actor self)
 		{
-			var armaments = self.TraitsImplementing<Armament>();
-			if (!armaments.Any())
+			if (armaments.Length == 0)
 				return Info.WeaponInfo;
+			else if (self.World.SharedRandom.Next(100) > Info.LoadedChance)
+				return Info.EmptyWeaponInfo;
 
-			// TODO: EmptyWeapon should be removed in favour of conditions
-			var shouldExplode = !armaments.All(a => a.IsReloading);
-			var useFullExplosion = self.World.SharedRandom.Next(100) <= Info.LoadedChance;
-			return (shouldExplode && useFullExplosion) ? Info.WeaponInfo : Info.EmptyWeaponInfo;
+			// PERF: Avoid LINQ
+			foreach (var a in armaments)
+				if (!a.IsReloading)
+					return Info.WeaponInfo;
+
+			return Info.EmptyWeaponInfo;
 		}
 
 		void INotifyDamage.Damaged(Actor self, AttackInfo e)
 		{
-			if (IsTraitDisabled || !self.IsInWorld)
-				return;
-
-			if (Info.DamageThreshold == 0)
+			if (Info.DamageThreshold == 0 || IsTraitDisabled || !self.IsInWorld)
 				return;
 
 			if (!Info.DeathTypes.IsEmpty && !e.Damage.DamageTypes.Overlaps(Info.DeathTypes))
