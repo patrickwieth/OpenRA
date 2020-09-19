@@ -60,7 +60,7 @@ namespace OpenRA.Mods.AS.Traits
 		public override object Create(ActorInitializer init) { return new AirstrikeMaster(init, this); }
 	}
 
-	public class AirstrikeMaster : BaseSpawnerMaster, ITick, INotifyAttack
+	public class AirstrikeMaster : BaseSpawnerMaster, ITick, INotifyAttack, IResolveOrder
 	{
 		class AirstrikeSlaveEntry : BaseSpawnerSlaveEntry
 		{
@@ -288,6 +288,12 @@ namespace OpenRA.Mods.AS.Traits
 		protected override void TraitPaused(Actor self)
 		{
 			Recall();
+		}
+
+		public void ResolveOrder(Actor self, Order order)
+		{
+			if (order.OrderString == "Stop")
+				Recall();
 		}
 	}
 }
