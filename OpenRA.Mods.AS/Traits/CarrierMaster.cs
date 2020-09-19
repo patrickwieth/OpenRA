@@ -107,7 +107,7 @@ namespace OpenRA.Mods.AS.Traits
 		public void ResolveOrder(Actor self, Order order)
 		{
 			if (order.OrderString == "Stop")
-				Recall(self);
+				Recall();
 		}
 
 		void INotifyAttack.PreparingAttack(Actor self, Target target, Armament a, Barrel barrel) { }
