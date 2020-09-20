@@ -70,7 +70,7 @@ namespace OpenRA.Mods.Common.Traits
 			var trait = self.Info.TraitInfoOrDefault<TeleportNetworkInfo>();
 			manager = self.Owner.PlayerActor.TraitsImplementing<TeleportNetworkManager>().Where(x => x.Type == trait.Type).First();
 
-			conditionManager = self.TraitOrDefault<ConditionManager>();
+			conditionManager = self.TraitOrDefault<ConditionManager>();				// this might be wrong here, it was originally in created()
 		}
 
 		public IEnumerable<IOrderTargeter> Orders
