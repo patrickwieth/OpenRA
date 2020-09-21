@@ -37,6 +37,10 @@ namespace OpenRA.Mods.Common.Traits
 
 		public readonly int Speed = 1;
 
+		// OP Mod extension
+		[Desc("Occupy space? Units such as Mob spawners doesn't occupy space, letting others to enter.")]
+		public readonly bool OccupySpace = true;
+
 		public readonly string Cursor = "move";
 		public readonly string BlockedCursor = "move-blocked";
 
@@ -117,7 +121,10 @@ namespace OpenRA.Mods.Common.Traits
 
 		public IReadOnlyDictionary<CPos, SubCell> OccupiedCells(ActorInfo info, CPos location, SubCell subCell = SubCell.Any)
 		{
-			return new ReadOnlyDictionary<CPos, SubCell>(new Dictionary<CPos, SubCell>() { { location, subCell } });
+			if (OccupySpace)
+				return new ReadOnlyDictionary<CPos, SubCell>(new Dictionary<CPos, SubCell>() { { location, subCell } });
+			else
+				return new ReadOnlyDictionary<CPos, SubCell>(); // like aircraft!
 		}
 
 		bool IOccupySpaceInfo.SharesCell { get { return LocomotorInfo.SharesCell; } }
@@ -244,6 +251,9 @@ namespace OpenRA.Mods.Common.Traits
 
 		public Pair<CPos, SubCell>[] OccupiedCells()
 		{
+			if (!Info.OccupySpace)
+				return new Pair<CPos, SubCell>[] { };
+
 			if (FromCell == ToCell)
 				return new[] { Pair.New(FromCell, FromSubCell) };
 
