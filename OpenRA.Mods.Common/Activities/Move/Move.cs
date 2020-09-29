@@ -216,7 +216,6 @@ namespace OpenRA.Mods.Common.Activities
 				(map.Grid.OffsetOfSubCell(mobile.FromSubCell) + map.Grid.OffsetOfSubCell(mobile.ToSubCell)) / 2;
 
 			QueueChild(new MoveFirstHalf(this, from, to, mobile.Facing, mobile.Facing, 0));
-
 			return false;
 		}
 
@@ -347,6 +346,10 @@ namespace OpenRA.Mods.Common.Activities
 			return true;
 		}
 
+		public override void Cancel(Actor self, bool keepQueue = false)
+		{
+			Cancel(self, keepQueue, false);
+		}
 
 		public void Cancel(Actor self, bool keepQueue, bool forceClearPath)
 		{
