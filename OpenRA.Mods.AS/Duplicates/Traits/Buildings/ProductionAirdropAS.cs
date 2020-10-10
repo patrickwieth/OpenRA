@@ -43,7 +43,7 @@ namespace OpenRA.Mods.AS.Traits
 		public ProductionAirdropAS(ActorInitializer init, ProductionAirdropASInfo info)
 			: base(init, info) { }
 
-		public override bool Produce(Actor self, ActorInfo producee, string productionType, TypeDictionary inits)
+		public override bool Produce(Actor self, ActorInfo producee, string productionType, TypeDictionary inits, int refundableValue)
 		{
 			if (IsTraitDisabled || IsTraitPaused)
 				return false;
@@ -103,7 +103,10 @@ namespace OpenRA.Mods.AS.Traits
 				actor.QueueActivity(new CallFunc(() =>
 				{
 					if (!self.IsInWorld || self.IsDead)
+					{
+						owner.PlayerActor.Trait<PlayerResources>().GiveCash(refundableValue);
 						return;
+					}
 
 					foreach (var cargo in self.TraitsImplementing<INotifyDelivery>())
 						cargo.Delivered(self);
