@@ -89,6 +89,9 @@ namespace OpenRA
 		[Desc("Allow clients to see anonymised IPs for other clients.")]
 		public bool ShareAnonymizedIPs = false;
 
+		[Desc("For dedicated servers only, save replays for all games played.")]
+		public bool RecordReplays = false;
+
 		public ServerSettings Clone()
 		{
 			return (ServerSettings)MemberwiseClone();
