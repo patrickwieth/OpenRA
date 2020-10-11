@@ -10,6 +10,7 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using OpenRA.Graphics;
 using OpenRA.Mods.Common;
 using OpenRA.Mods.Common.Effects;
 using OpenRA.Mods.Common.Traits;
@@ -18,7 +19,7 @@ using OpenRA.Traits;
 namespace OpenRA.Mods.AS.Traits
 {
 	[Desc("Allows to play twinkle animations on resources.", "Attach this to the world actor.")]
-	public class ResourceTwinkleLayerInfo : TraitInfo
+	public class ResourceTwinkleLayerInfo : TraitInfo, Requires<IResourceLayerInfo>
 	{
 		[FieldLoader.Require]
 		[Desc("Resource types to twinkle.")]
@@ -45,12 +46,13 @@ namespace OpenRA.Mods.AS.Traits
 		public override object Create(ActorInitializer init) { return new ResourceTwinkleLayer(init.Self, this); }
 	}
 
-	class ResourceTwinkleLayer : ITick, IResourceLogicLayer
+	class ResourceTwinkleLayer : ITick, IWorldLoaded
 	{
+		readonly IResourceLayer resourceLayer;
 		readonly ResourceTwinkleLayerInfo info;
 
 		readonly World world;
-		readonly HashSet<CPos> cells;
+		readonly HashSet<CPos> cells = new HashSet<CPos>();
 
 		int ticks;
 
@@ -58,11 +60,41 @@ namespace OpenRA.Mods.AS.Traits
 		{
 			world = self.World;
 			this.info = info;
-			cells = new HashSet<CPos>();
 
 			ticks = info.Interval.Length == 2
 				? world.SharedRandom.Next(info.Interval[0], info.Interval[1])
 				: info.Interval[0];
+
+			resourceLayer = self.Trait<IResourceLayer>();
+			resourceLayer.CellChanged += UpdateCells;
+		}
+
+		void UpdateCells(CPos cell, ResourceType resType)
+		{
+			if (resType == null)
+			{
+				cells.Remove(cell);
+				return;
+			}
+
+			if (info.Types.Contains(resType.Info.Type))
+			{
+				var resourceContent = resourceLayer.GetResource(cell);
+				if (resourceContent.Density > 0)
+					cells.Add(cell);
+				else
+					cells.Remove(cell);
+			}
+		}
+
+		void IWorldLoaded.WorldLoaded(World w, WorldRenderer wr)
+		{
+			foreach (var cell in w.Map.AllCells)
+			{
+				var type = resourceLayer.GetResource(cell).Type;
+				if (type != null && info.Types.Contains(type.Info.Type))
+					cells.Add(cell);
+			}
 		}
 
 		void ITick.Tick(Actor self)
@@ -84,17 +116,6 @@ namespace OpenRA.Mods.AS.Traits
 			ticks = info.Interval.Length == 2
 				? world.SharedRandom.Next(info.Interval[0], info.Interval[1])
 				: info.Interval[0];
-		}
-
-		void IResourceLogicLayer.UpdatePosition(CPos cell, ResourceType type, int density)
-		{
-			if (info.Types.Contains(type.Info.Type))
-			{
-				if (density == 0)
-					cells.Remove(cell);
-				else
-					cells.Add(cell);
-			}
 		}
 	}
 }

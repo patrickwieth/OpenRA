@@ -41,7 +41,7 @@ namespace OpenRA.Mods.Common.Traits
 		public override object Create(ActorInitializer init) { return new ResourceLayer(init.Self); }
 	}
 
-	public class ResourceLayer : IResourceLayer, IWorldLoaded, INotifyCreated
+	public class ResourceLayer : IResourceLayer, IWorldLoaded
 	{
 		readonly World world;
 		readonly BuildingInfluence buildingInfluence;
@@ -49,8 +49,6 @@ namespace OpenRA.Mods.Common.Traits
 		protected readonly CellLayer<ResourceLayerContents> Content;
 
 		public bool IsResourceLayerEmpty { get { return resCells < 1; } }
-
-		IResourceLogicLayer[] resourceLogicLayers;
 
 		int resCells;
 
@@ -62,11 +60,6 @@ namespace OpenRA.Mods.Common.Traits
 			buildingInfluence = self.Trait<BuildingInfluence>();
 
 			Content = new CellLayer<ResourceLayerContents>(world.Map);
-		}
-
-		void INotifyCreated.Created(Actor self)
-		{
-			resourceLogicLayers = self.TraitsImplementing<IResourceLogicLayer>().ToArray();
 		}
 
 		int GetAdjacentCellsWith(ResourceType t, CPos cell)
@@ -112,9 +105,6 @@ namespace OpenRA.Mods.Common.Traits
 					temp.Density = Math.Max(density, 1);
 
 					Content[cell] = temp;
-
-					foreach (var rl in resourceLogicLayers)
-						rl.UpdatePosition(cell, type, temp.Density);
 				}
 			}
 		}
@@ -170,9 +160,6 @@ namespace OpenRA.Mods.Common.Traits
 			Content[p] = cell;
 
 			CellChanged?.Invoke(p, cell.Type);
-
-			foreach (var rl in resourceLogicLayers)
-				rl.UpdatePosition(p, t, cell.Density);
 		}
 
 		public bool IsFull(CPos cell)
@@ -192,17 +179,9 @@ namespace OpenRA.Mods.Common.Traits
 				Content[cell] = ResourceLayerContents.Empty;
 				world.Map.CustomTerrain[cell] = byte.MaxValue;
 				--resCells;
-
-				foreach (var rl in resourceLogicLayers)
-					rl.UpdatePosition(cell, c.Type, 0);
 			}
 			else
-			{
 				Content[cell] = c;
-
-				foreach (var rl in resourceLogicLayers)
-					rl.UpdatePosition(cell, c.Type, c.Density);
-			}
 
 			CellChanged?.Invoke(cell, c.Type);
 
@@ -221,11 +200,7 @@ namespace OpenRA.Mods.Common.Traits
 			world.Map.CustomTerrain[cell] = byte.MaxValue;
 			--resCells;
 
-			foreach (var rl in resourceLogicLayers)
-				rl.UpdatePosition(cell, c.Type, 0);
-
-			if (CellChanged != null)
-				CellChanged(cell, c.Type);
+			CellChanged?.Invoke(cell, c.Type);
 
 			return content;
 		}
@@ -238,9 +213,6 @@ namespace OpenRA.Mods.Common.Traits
 				return;
 
 			--resCells;
-
-			foreach (var rl in resourceLogicLayers)
-				rl.UpdatePosition(cell, Content[cell].Type, 0);
 
 			// Clear cell
 			Content[cell] = ResourceLayerContents.Empty;
@@ -261,17 +233,11 @@ namespace OpenRA.Mods.Common.Traits
 				Content[cell] = ResourceLayerContents.Empty;
 				world.Map.CustomTerrain[cell] = byte.MaxValue;
 				--resCells;
-
-				foreach (var rl in resourceLogicLayers)
-					rl.UpdatePosition(cell, c.Type, 0);
 			}
 			else
 			{
 				c.Density -= density;
 				Content[cell] = c;
-
-				foreach (var rl in resourceLogicLayers)
-					rl.UpdatePosition(cell, c.Type, c.Density);
 			}
 
 			CellChanged?.Invoke(cell, c.Type);

@@ -16,12 +16,6 @@ using OpenRA.Traits;
 namespace OpenRA.Mods.Common.Traits
 {
 	[RequireExplicitImplementation]
-	public interface IResourceLogicLayer
-	{
-		void UpdatePosition(CPos cell, ResourceType type, int density);
-	}
-
-	[RequireExplicitImplementation]
 	public interface IRefineryResourceDelivered
 	{
 		void ResourceDelivered(Actor self, int amount);
