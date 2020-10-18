@@ -33,7 +33,7 @@ namespace OpenRA.Mods.AS.Traits
 		public readonly bool BaselineSpawn = false;
 
 		[Desc("Direction the aircraft should face to land.")]
-		public readonly int Facing = 64;
+		public readonly WAngle Facing = new WAngle(256);
 
 		public override object Create(ActorInitializer init) { return new ProductionAirdropAS(init, this); }
 	}
@@ -52,19 +52,17 @@ namespace OpenRA.Mods.AS.Traits
 			var owner = self.Owner;
 			var map = owner.World.Map;
 			var aircraftInfo = self.World.Map.Rules.Actors[info.ActorType].TraitInfo<AircraftInfo>();
-			var mpStart = owner.World.WorldActor.TraitOrDefault<MPStartLocations>();
 
 			CPos startPos;
 			CPos endPos;
 			WAngle spawnFacing;
 
-			if (info.BaselineSpawn && mpStart != null)
+			if (info.BaselineSpawn)
 			{
-				var spawn = mpStart.Start[owner];
 				var bounds = map.Bounds;
 				var center = new MPos(bounds.Left + bounds.Width / 2, bounds.Top + bounds.Height / 2).ToCPos(map);
-				var spawnVec = spawn - center;
-				startPos = spawn + spawnVec * (Exts.ISqrt((bounds.Height * bounds.Height + bounds.Width * bounds.Width) / (4 * spawnVec.LengthSquared)));
+				var spawnVec = owner.HomeLocation - center;
+				startPos = owner.HomeLocation + spawnVec * (Exts.ISqrt((bounds.Height * bounds.Height + bounds.Width * bounds.Width) / (4 * spawnVec.LengthSquared)));
 				endPos = startPos;
 				var spawnDirection = new WVec((self.Location - startPos).X, (self.Location - startPos).Y, 0);
 				spawnFacing = spawnDirection.Yaw;
@@ -73,11 +71,11 @@ namespace OpenRA.Mods.AS.Traits
 			{
 				// Start a fixed distance away: the width of the map.
 				// This makes the production timing independent of spawnpoint
-				var rotation = WRot.FromFacing(info.Facing);
+				var rotation = WRot.FromYaw(info.Facing);
 				var distance = new WVec(0, map.Bounds.Width * -1024, 0).Rotate(rotation);
 				startPos = self.World.Map.CellContaining(self.CenterPosition - distance);
 				endPos = self.World.Map.CellContaining(self.CenterPosition + distance);
-				spawnFacing = WAngle.FromFacing(info.Facing);
+				spawnFacing = info.Facing;
 			}
 
 			// Assume a single exit point for simplicity
