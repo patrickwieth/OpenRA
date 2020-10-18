@@ -217,7 +217,7 @@ namespace OpenRA.Server
 
 			GeoIP.Initialize(settings.GeoIPDatabase);
 
-			if (UPnP.Status == UPnPStatus.Enabled)
+			if (type != ServerType.Local && UPnP.Status == UPnPStatus.Enabled)
 				UPnP.ForwardPort(Settings.ListenPort, Settings.ListenPort).Wait();
 
 			foreach (var trait in modData.Manifest.ServerTraits)
@@ -309,7 +309,7 @@ namespace OpenRA.Server
 					if (State == ServerState.ShuttingDown)
 					{
 						EndGame();
-						if (UPnP.Status == UPnPStatus.Enabled)
+						if (type != ServerType.Local && UPnP.Status == UPnPStatus.Enabled)
 							UPnP.RemovePortForward().Wait();
 						break;
 					}
@@ -783,8 +783,13 @@ namespace OpenRA.Server
 			{
 				recorder.ReceiveFrame(from, frame, data);
 
-				if (data.Length == 1 + 4 + 8 && data[0] == (byte)OrderType.SyncHash)
-					HandleSyncOrder(frame, data);
+				if (data.Length > 0 && data[0] == (byte)OrderType.SyncHash)
+				{
+					if (data.Length == Order.SyncHashOrderLength)
+						HandleSyncOrder(frame, data);
+					else
+						Log.Write("server", "Dropped sync order with length {0} from client {1}. Expected length {2}.".F(data.Length, from, Order.SyncHashOrderLength));
+				}
 			}
 		}
 
