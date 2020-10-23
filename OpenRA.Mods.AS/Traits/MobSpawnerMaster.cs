@@ -216,6 +216,28 @@ namespace OpenRA.Mods.AS.Traits
 					SpawnIntoWorld(self, se.Actor, centerPosition);
 		}
 
+		public override void SpawnIntoWorld(Actor self, Actor slave, WPos centerPosition)
+		{
+			var exit = self.RandomExitOrDefault(self.World, null);
+			SetSpawnedFacing(slave, exit);
+
+			self.World.AddFrameEndTask(w =>
+			{
+				if (self.IsDead)
+					return;
+
+				var spawnOffset = exit == null ? WVec.Zero : exit.Info.SpawnOffset;
+				slave.Trait<IPositionable>().SetPosition(slave, centerPosition + spawnOffset);
+
+				var location = self.World.Map.CellContaining(centerPosition + spawnOffset);
+
+				w.Add(slave);
+				var mobile = slave.TraitOrDefault<Mobile>();
+				if (mobile != null)
+					mobile.Nudge(slave);
+			});
+		}
+
 		public override void OnSlaveKilled(Actor self, Actor slave)
 		{
 			// No need to update mobs entry because Actor.IsDead marking is done automatically by the engine.
