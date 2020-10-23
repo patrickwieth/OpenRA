@@ -319,15 +319,15 @@ namespace OpenRA.Mods.AS.Traits
 						i.Item1.Self.CenterPosition,
 						i.Item2,
 						0,
-						Color.Red,
-						Color.FromArgb(96, Color.Black));
+						Color.Red, 1,
+						Color.FromArgb(96, Color.Black), 3);
 
 					yield return new RangeCircleAnnotationRenderable(
 						i.Item1.Self.CenterPosition,
 						i.Item3,
 						0,
-						Color.Red,
-						Color.FromArgb(96, Color.Black));
+						Color.Red, 1,
+						Color.FromArgb(96, Color.Black), 3);
 				}
 			}
 
@@ -342,8 +342,8 @@ namespace OpenRA.Mods.AS.Traits
 					world.Map.CenterOfCell(xy),
 					power.FireArmamentPowerInfo.TargetCircleRange,
 					0,
-					targetRangeColor,
-					Color.FromArgb(96, Color.Black));
+					targetRangeColor, 1,
+					Color.FromArgb(96, Color.Black), 3);
 			}
 		}
 
