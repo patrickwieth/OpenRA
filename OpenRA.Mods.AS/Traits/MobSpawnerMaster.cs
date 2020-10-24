@@ -115,7 +115,7 @@ namespace OpenRA.Mods.AS.Traits
 
 		protected override void TraitEnabled(Actor self)
 		{
-			base.Created(self);
+			base.TraitEnabled(self);
 
 			SpawnReplenishedSlaves(self);
 		}
