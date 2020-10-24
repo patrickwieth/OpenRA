@@ -9,6 +9,7 @@
 #endregion
 
 using System.Linq;
+using OpenRA.Mods.Common.Activities;
 using OpenRA.Mods.Common.Traits;
 using OpenRA.Primitives;
 using OpenRA.Traits;
@@ -28,6 +29,14 @@ namespace OpenRA.Mods.AS.Traits
 		[Desc("Types of damage this actor explodes with due to an unallowed slave action. Leave empty for no damage types.")]
 		public readonly BitSet<DamageType> DamageTypes = default(BitSet<DamageType>);
 
+		[GrantedConditionReference]
+		[Desc("The condition to grant when the master trait is disabled.")]
+		public readonly string GrantConditionWhenMasterIsDisabled = null;
+
+		[GrantedConditionReference]
+		[Desc("The condition to grant when the master trait is paused.")]
+		public readonly string GrantConditionWhenMasterIsPaused = null;
+
 		public override object Create(ActorInitializer init) { return new BaseSpawnerSlave(init, this); }
 	}
 
@@ -45,6 +54,9 @@ namespace OpenRA.Mods.AS.Traits
 
 		// Make this actor attack a target.
 		Target lastTarget;
+
+		int masterTraitDisabledConditionToken = Actor.InvalidConditionToken;
+		int masterTraitPausedConditionToken = Actor.InvalidConditionToken;
 
 		public BaseSpawnerSlave(ActorInitializer init, BaseSpawnerSlaveInfo info)
 		{
@@ -180,6 +192,30 @@ namespace OpenRA.Mods.AS.Traits
 				return;
 
 			self.Kill(self, info.DamageTypes);
+		}
+
+		public void GrantMasterPausedCondition(Actor self)
+		{
+			if (masterTraitPausedConditionToken == Actor.InvalidConditionToken)
+				masterTraitPausedConditionToken = self.GrantCondition(info.GrantConditionWhenMasterIsPaused);
+		}
+
+		public void RevokeMasterPausedCondition(Actor self)
+		{
+			if (masterTraitPausedConditionToken != Actor.InvalidConditionToken)
+				masterTraitPausedConditionToken = self.RevokeCondition(masterTraitPausedConditionToken);
+		}
+
+		public void GrantMasterDisabledCondition(Actor self)
+		{
+			if (masterTraitDisabledConditionToken == Actor.InvalidConditionToken)
+				masterTraitDisabledConditionToken = self.GrantCondition(info.GrantConditionWhenMasterIsDisabled);
+		}
+
+		public void RevokeMasterDisabledCondition(Actor self)
+		{
+			if (masterTraitDisabledConditionToken != Actor.InvalidConditionToken)
+				masterTraitDisabledConditionToken = self.RevokeCondition(masterTraitDisabledConditionToken);
 		}
 	}
 }

@@ -174,6 +174,12 @@ namespace OpenRA.Mods.AS.Traits
 		{
 			entry.Actor = slave;
 			entry.SpawnerSlave = slave.Trait<BaseSpawnerSlave>();
+
+			if (IsTraitDisabled)
+				entry.SpawnerSlave.GrantMasterDisabledCondition(entry.Actor);
+
+			if (IsTraitPaused)
+				entry.SpawnerSlave.GrantMasterPausedCondition(entry.Actor);
 		}
 
 		protected BaseSpawnerSlaveEntry SelectEntryToSpawn(BaseSpawnerSlaveEntry[] slaveEntries)
@@ -267,6 +273,42 @@ namespace OpenRA.Mods.AS.Traits
 			{
 				if (slaveEntry.IsValid)
 					slaveEntry.SpawnerSlave.OnMasterKilled(slaveEntry.Actor, e.Attacker, Info.SlaveDisposalOnKill);
+			}
+		}
+
+		protected override void TraitEnabled(Actor self)
+		{
+			foreach (var slaveEntry in SlaveEntries)
+			{
+				if (slaveEntry.IsValid)
+					slaveEntry.SpawnerSlave.RevokeMasterDisabledCondition(slaveEntry.Actor);
+			}
+		}
+
+		protected override void TraitDisabled(Actor self)
+		{
+			foreach (var slaveEntry in SlaveEntries)
+			{
+				if (slaveEntry.IsValid)
+					slaveEntry.SpawnerSlave.GrantMasterDisabledCondition(slaveEntry.Actor);
+			}
+		}
+
+		protected override void TraitResumed(Actor self)
+		{
+			foreach (var slaveEntry in SlaveEntries)
+			{
+				if (slaveEntry.IsValid)
+					slaveEntry.SpawnerSlave.RevokeMasterPausedCondition(slaveEntry.Actor);
+			}
+		}
+
+		protected override void TraitPaused(Actor self)
+		{
+			foreach (var slaveEntry in SlaveEntries)
+			{
+				if (slaveEntry.IsValid)
+					slaveEntry.SpawnerSlave.GrantMasterPausedCondition(slaveEntry.Actor);
 			}
 		}
 	}
