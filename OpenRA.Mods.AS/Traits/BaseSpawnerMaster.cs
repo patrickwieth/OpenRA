@@ -108,7 +108,7 @@ namespace OpenRA.Mods.AS.Traits
 		{
 			var slaveEntries = new BaseSpawnerSlaveEntry[info.Actors.Length];
 
-			for (int i = 0; i < slaveEntries.Length; i++)
+			for (var i = 0; i < slaveEntries.Length; i++)
 				slaveEntries[i] = new BaseSpawnerSlaveEntry();
 
 			return slaveEntries;
@@ -132,12 +132,14 @@ namespace OpenRA.Mods.AS.Traits
 			if (Info.SpawnAllAtOnce)
 			{
 				foreach (var se in slaveEntries)
+				{
 					if (!se.IsValid)
 						Replenish(self, se);
+				}
 			}
 			else
 			{
-				BaseSpawnerSlaveEntry entry = SelectEntryToSpawn(slaveEntries);
+				var entry = SelectEntryToSpawn(slaveEntries);
 
 				// All are alive and well.
 				if (entry == null)
@@ -189,17 +191,20 @@ namespace OpenRA.Mods.AS.Traits
 			self.World.AddFrameEndTask(w =>
 			{
 				foreach (var slaveEntry in SlaveEntries)
+				{
 					if (slaveEntry.IsValid)
 						slaveEntry.SpawnerSlave.OnMasterOwnerChanged(slaveEntry.Actor, oldOwner, newOwner, Info.SlaveDisposalOnOwnerChange);
+				}
 			});
 		}
 
 		void INotifyActorDisposing.Disposing(Actor self)
 		{
-			// Just dispose them regardless of slave disposal options.
 			foreach (var slaveEntry in SlaveEntries)
+			{
 				if (slaveEntry.IsValid)
-					slaveEntry.Actor.Dispose();
+					slaveEntry.SpawnerSlave.OnMasterKilled(slaveEntry.Actor, self.Owner.PlayerActor, Info.SlaveDisposalOnKill);
+			}
 		}
 
 		public virtual void SpawnIntoWorld(Actor self, Actor slave, WPos centerPosition)
@@ -259,8 +264,10 @@ namespace OpenRA.Mods.AS.Traits
 		{
 			// Notify slaves.
 			foreach (var slaveEntry in SlaveEntries)
+			{
 				if (slaveEntry.IsValid)
 					slaveEntry.SpawnerSlave.OnMasterKilled(slaveEntry.Actor, e.Attacker, Info.SlaveDisposalOnKill);
+			}
 		}
 	}
 }

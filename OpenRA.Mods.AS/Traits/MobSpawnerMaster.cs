@@ -84,7 +84,6 @@ namespace OpenRA.Mods.AS.Traits
 
 		MobSpawnerSlaveEntry[] slaveEntries;
 
-		bool hasSpawnedInitialLoad = false;
 		int spawnReplaceTicks = 0;
 
 		IPositionable position;
@@ -106,22 +105,26 @@ namespace OpenRA.Mods.AS.Traits
 			base.Created(self);
 
 			// Spawn initial load.
-			int burst = Info.InitialActorCount == -1 ? Info.Actors.Length : Info.InitialActorCount;
-			for (int i = 0; i < burst; i++)
+			var burst = Info.InitialActorCount == -1 ? Info.Actors.Length : Info.InitialActorCount;
+			for (var i = 0; i < burst; i++)
 				Replenish(self, SlaveEntries);
 
-			// The base class creates the slaves but doesn't move them into world.
-			// Let's do it here.
-			SpawnReplenishedSlaves(self);
+			if (!IsTraitDisabled)
+				SpawnReplenishedSlaves(self);
+		}
 
-			hasSpawnedInitialLoad = true;
+		protected override void TraitEnabled(Actor self)
+		{
+			base.Created(self);
+
+			SpawnReplenishedSlaves(self);
 		}
 
 		public override BaseSpawnerSlaveEntry[] CreateSlaveEntries(BaseSpawnerMasterInfo info)
 		{
 			slaveEntries = new MobSpawnerSlaveEntry[info.Actors.Length]; // For this class to use
 
-			for (int i = 0; i < slaveEntries.Length; i++)
+			for (var i = 0; i < slaveEntries.Length; i++)
 				slaveEntries[i] = new MobSpawnerSlaveEntry();
 
 			return slaveEntries; // For the base class to use
@@ -163,20 +166,16 @@ namespace OpenRA.Mods.AS.Traits
 
 		void ITick.Tick(Actor self)
 		{
-			if (spawnReplaceTicks > 0)
+			if (!IsTraitDisabled && !IsTraitPaused)
 			{
-				spawnReplaceTicks--;
-
 				// Time to respawn someting.
-				if (spawnReplaceTicks <= 0)
+				if (--spawnReplaceTicks <= 0)
 				{
 					Replenish(self, slaveEntries);
 
 					SpawnReplenishedSlaves(self);
 
-					// If there's something left to spawn, restart the timer.
-					if (SelectEntryToSpawn(slaveEntries) != null)
-						spawnReplaceTicks = Util.ApplyPercentageModifiers(Info.RespawnTicks, reloadModifiers.Select(rm => rm.GetReloadModifier()));
+					spawnReplaceTicks = Util.ApplyPercentageModifiers(Info.RespawnTicks, reloadModifiers.Select(rm => rm.GetReloadModifier()));
 				}
 			}
 
@@ -193,13 +192,11 @@ namespace OpenRA.Mods.AS.Traits
 
 		void SpawnReplenishedSlaves(Actor self)
 		{
-			WPos centerPosition = WPos.Zero;
-			if (!hasSpawnedInitialLoad || !Info.ExitByBudding)
-			{
-				// Spawning from a solid actor...
-				centerPosition = self.CenterPosition;
-			}
-			else
+			if (self.IsDead || !self.IsInWorld)
+				return;
+
+			var centerPosition = self.CenterPosition;
+			if (Info.ExitByBudding)
 			{
 				// Spawning from a virtual nexus: exit by an existing member.
 				var se = slaveEntries.FirstOrDefault(s => s.IsValid && s.Actor.IsInWorld);
@@ -207,13 +204,13 @@ namespace OpenRA.Mods.AS.Traits
 					centerPosition = se.Actor.CenterPosition;
 			}
 
-			// WPos.Zero implies this mob spawner master is dead or something.
-			if (centerPosition == WPos.Zero)
-				return;
-
 			foreach (var se in slaveEntries)
+			{
 				if (se.IsValid && !se.Actor.IsInWorld)
 					SpawnIntoWorld(self, se.Actor, centerPosition);
+			}
+
+			spawnReplaceTicks = Util.ApplyPercentageModifiers(Info.RespawnTicks, reloadModifiers.Select(rm => rm.GetReloadModifier()));
 		}
 
 		public override void SpawnIntoWorld(Actor self, Actor slave, WPos centerPosition)
@@ -309,7 +306,7 @@ namespace OpenRA.Mods.AS.Traits
 
 		void SetNexusPosition(Actor self)
 		{
-			int x = 0, y = 0, cnt = 0;
+			int x = 0, y = 0, count = 0;
 			foreach (var se in slaveEntries)
 			{
 				if (!se.IsValid || !se.Actor.IsInWorld)
@@ -318,13 +315,13 @@ namespace OpenRA.Mods.AS.Traits
 				var pos = se.Actor.CenterPosition;
 				x += pos.X;
 				y += pos.Y;
-				cnt++;
+				count++;
 			}
 
-			if (cnt == 0)
+			if (count == 0)
 				return;
 
-			var newPos = new WPos(x / cnt, y / cnt, aircraft != null ? aircraft.Info.CruiseAltitude.Length : 0);
+			var newPos = new WPos(x / count, y / count, aircraft != null ? aircraft.Info.CruiseAltitude.Length : 0);
 			if (aircraft == null)
 				position.SetPosition(self, newPos); // breaks arrival detection of the aircraft if we set position.
 
@@ -347,8 +344,8 @@ namespace OpenRA.Mods.AS.Traits
 			aggregateHealthUpdateTicks = Info.AggregateHealthUpdateDelay;
 
 			// Time to aggregate health.
-			int maxHealth = 0;
-			int h = 0;
+			var maxHealth = 0;
+			var h = 0;
 
 			foreach (var se in slaveEntries)
 			{
