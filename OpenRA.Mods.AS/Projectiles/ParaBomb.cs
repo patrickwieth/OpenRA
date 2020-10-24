@@ -20,14 +20,15 @@ namespace OpenRA.Mods.AS.Projectiles
 {
 	public class ParaBombInfo : IProjectileInfo
 	{
+		[FieldLoader.Require]
 		public readonly string Image = null;
 
 		[Desc("Loop a randomly chosen sequence of Image from this list while falling.")]
-		[SequenceReference("Image")]
+		[SequenceReference(nameof(Image))]
 		public readonly string[] Sequences = { "idle" };
 
 		[Desc("Sequence to play when launched. Skipped if null or empty.")]
-		[SequenceReference("Image")]
+		[SequenceReference(nameof(Image))]
 		public readonly string OpenSequence = null;
 
 		[Desc("The palette used to draw this projectile.")]
@@ -38,15 +39,15 @@ namespace OpenRA.Mods.AS.Projectiles
 		public readonly bool IsPlayerPalette = false;
 
 		[Desc("Parachute opening sequence.")]
-		[SequenceReference("Image")]
+		[SequenceReference(nameof(Image))]
 		public readonly string ParachuteOpeningSequence = null;
 
 		[Desc("Parachute idle sequence.")]
-		[SequenceReference("Image")]
+		[SequenceReference(nameof(Image))]
 		public readonly string ParachuteSequence = null;
 
 		[Desc("Parachute closing sequence. Defaults to opening sequence played backwards.")]
-		[SequenceReference("Image")]
+		[SequenceReference(nameof(Image))]
 		public readonly string ParachuteClosingSequence = null;
 
 		[Desc("Palette used to render the parachute.")]

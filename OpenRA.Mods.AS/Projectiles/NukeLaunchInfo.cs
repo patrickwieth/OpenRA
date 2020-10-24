@@ -28,11 +28,11 @@ namespace OpenRA.Mods.AS.Projectiles
 		[Desc("Image to use for the missile.")]
 		public readonly string MissileImage = "";
 
-		[SequenceReference("MissileWeapon")]
+		[SequenceReference(nameof(MissileImage))]
 		[Desc("Sprite sequence for the ascending missile.")]
 		public readonly string MissileUp = "up";
 
-		[SequenceReference("MissileWeapon")]
+		[SequenceReference(nameof(MissileImage))]
 		[Desc("Sprite sequence for the descending missile.")]
 		public readonly string MissileDown = "down";
 
@@ -62,7 +62,7 @@ namespace OpenRA.Mods.AS.Projectiles
 		[Desc("Trail animation.")]
 		public readonly string TrailImage = null;
 
-		[SequenceReference("TrailImage")]
+		[SequenceReference(nameof(TrailImage), allowNullImage: true)]
 		[Desc("Loop a randomly chosen sequence of TrailImage from this list while this projectile is moving.")]
 		public readonly string[] TrailSequences = { };
 

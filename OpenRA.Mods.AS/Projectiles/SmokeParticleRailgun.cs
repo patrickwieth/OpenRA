@@ -70,7 +70,7 @@ namespace OpenRA.Mods.AS.Projectiles
 
 		[FieldLoader.Require]
 		[Desc("Sequence of helix animation to use.")]
-		[SequenceReference("HelixImage")]
+		[SequenceReference(nameof(HelixImage))]
 		public readonly string[] HelixSequences;
 
 		[PaletteReference("IsHelixPlayerPalette")]
@@ -105,7 +105,7 @@ namespace OpenRA.Mods.AS.Projectiles
 		public readonly string HitAnim = null;
 
 		[Desc("Sequence of impact animation to use.")]
-		[SequenceReference("HitAnim")]
+		[SequenceReference(nameof(HitAnim), allowNullImage: true)]
 		public readonly string HitAnimSequence = "idle";
 
 		[PaletteReference]

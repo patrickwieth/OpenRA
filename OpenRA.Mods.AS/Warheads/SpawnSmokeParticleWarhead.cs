@@ -40,7 +40,7 @@ namespace OpenRA.Mods.AS.Warheads
 		public readonly string Image = "particles";
 
 		[FieldLoader.Require]
-		[SequenceReference("Image")]
+		[SequenceReference(nameof(Image))]
 		[Desc("Which sequence to use.")]
 		public readonly string[] Sequences = null;
 
