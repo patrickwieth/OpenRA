@@ -113,7 +113,8 @@ namespace OpenRA.Mods.AS.Traits
 					DamageModifiers = self.TraitsImplementing<IFirepowerModifier>().Select(a => a.GetFirepowerModifier()).ToArray(),
 					Source = self.CenterPosition,
 					SourceActor = self,
-					WeaponTarget = Target.FromPos(self.CenterPosition + localoffset)
+					WeaponTarget = Target.FromPos(self.CenterPosition + localoffset),
+					ImpactOrientation = self.Orientation
 				};
 
 				weapon.Impact(Target.FromPos(self.CenterPosition + localoffset), args);
