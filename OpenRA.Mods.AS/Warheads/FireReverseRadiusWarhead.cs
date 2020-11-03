@@ -37,7 +37,7 @@ namespace OpenRA.Mods.AS.Warheads
 				throw new YamlException("Weapons Ruleset does not contain an entry '{0}'".F(Weapon.ToLowerInvariant()));
 		}
 
-		public override void DoImpact(Target target, WarheadArgs args)
+		public override void DoImpact(in Target target, WarheadArgs args)
 		{
 			var firedBy = args.SourceActor;
 			if (!target.IsValidFor(firedBy))
@@ -70,11 +70,14 @@ namespace OpenRA.Mods.AS.Warheads
 				if (radiusSource.Type == TargetType.Invalid)
 					continue;
 
+				// Lambdas can't use 'in' variables, so capture a copy for later
+				var centerPosition = target.CenterPosition;
+
 				var projectileArgs = new ProjectileArgs
 				{
 					Weapon = weapon,
 					Facing = (target.CenterPosition - radiusSource.CenterPosition).Yaw,
-					CurrentMuzzleFacing = () => (target.CenterPosition - radiusSource.CenterPosition).Yaw,
+					CurrentMuzzleFacing = () => (centerPosition - radiusSource.CenterPosition).Yaw,
 
 					DamageModifiers = args.DamageModifiers,
 

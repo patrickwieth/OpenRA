@@ -28,7 +28,7 @@ namespace OpenRA.Mods.AS.Warheads
 		[Desc("Range where the warhead look for actors owned by the players. If set to 0, it applies to all.")]
 		public readonly WDist Range = WDist.FromCells(1);
 
-		public override void DoImpact(Target target, WarheadArgs args)
+		public override void DoImpact(in Target target, WarheadArgs args)
 		{
 			var firedBy = args.SourceActor;
 			if (!target.IsValidFor(firedBy))

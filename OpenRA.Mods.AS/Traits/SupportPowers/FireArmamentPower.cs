@@ -209,7 +209,7 @@ namespace OpenRA.Mods.AS.Traits
 				enabled = false;
 		}
 
-		void INotifyBurstComplete.FiredBurst(Actor self, Target target, Armament a)
+		void INotifyBurstComplete.FiredBurst(Actor self, in Target target, Armament a)
 		{
 			self.World.AddFrameEndTask(w => activeArmaments.Remove(a));
 		}

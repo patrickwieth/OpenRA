@@ -74,7 +74,7 @@ namespace OpenRA.Mods.AS.Traits
 			get { yield return new DeployOrderTargeter("TeleportNetworkPrimaryExit", 1); }
 		}
 
-		public Order IssueOrder(Actor self, IOrderTargeter order, Target target, bool queued)
+		public Order IssueOrder(Actor self, IOrderTargeter order, in Target target, bool queued)
 		{
 			if (order.OrderID == "TeleportNetworkPrimaryExit")
 				return new Order(order.OrderID, self, false);

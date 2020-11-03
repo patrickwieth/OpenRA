@@ -206,12 +206,12 @@ namespace OpenRA.Mods.AS.Traits
 				TryEnableCondition();
 		}
 
-		void INotifyAttack.Attacking(Actor self, Target target, Armament a, Barrel barrel)
+		void INotifyAttack.Attacking(Actor self, in Target target, Armament a, Barrel barrel)
 		{
 			if (Info.Triggers.HasFlag(PeriodicConditionTrigger.Attack))
 				TryEnableCondition();
 		}
 
-		void INotifyAttack.PreparingAttack(Actor self, Target target, Armament a, Barrel barrel) { }
+		void INotifyAttack.PreparingAttack(Actor self, in Target target, Armament a, Barrel barrel) { }
 	}
 }

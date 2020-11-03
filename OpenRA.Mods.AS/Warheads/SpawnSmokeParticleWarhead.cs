@@ -118,7 +118,7 @@ namespace OpenRA.Mods.AS.Warheads
 				throw new YamlException("Weapons Ruleset does not contain an entry '{0}'".F(Weapon.ToLowerInvariant()));
 		}
 
-		public override void DoImpact(Target target, WarheadArgs args)
+		public override void DoImpact(in Target target, WarheadArgs args)
 		{
 			var firedBy = args.SourceActor;
 			if (!target.IsValidFor(firedBy))
@@ -131,8 +131,11 @@ namespace OpenRA.Mods.AS.Warheads
 				? firedBy.World.SharedRandom.Next(Count[0], Count[1])
 				: Count[0];
 
-			for (int i = 0; i < count; i++)
-				firedBy.World.AddFrameEndTask(w => w.Add(new SmokeParticle(Neutral || firedBy.IsDead ? firedBy.World.WorldActor : firedBy, this, target.CenterPosition)));
+			// Lambdas can't use 'in' variables, so capture a copy for later
+			var delayedTarget = target;
+
+			for (var i = 0; i < count; i++)
+				firedBy.World.AddFrameEndTask(w => w.Add(new SmokeParticle(Neutral || firedBy.IsDead ? firedBy.World.WorldActor : firedBy, this, delayedTarget.CenterPosition)));
 		}
 	}
 }

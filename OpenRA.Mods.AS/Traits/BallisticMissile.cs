@@ -190,19 +190,19 @@ namespace OpenRA.Mods.AS.Traits
 			return new BallisticMissileFly(self, Target.FromCell(self.World, cell), this);
 		}
 
-		public Activity MoveWithinRange(Target target, WDist range,
+		public Activity MoveWithinRange(in Target target, WDist range,
 			WPos? initialTargetPosition = null, Color? targetLineColor = null)
 		{
 			return new BallisticMissileFly(self, target, this);
 		}
 
-		public Activity MoveWithinRange(Target target, WDist minRange, WDist maxRange,
+		public Activity MoveWithinRange(in Target target, WDist minRange, WDist maxRange,
 			WPos? initialTargetPosition = null, Color? targetLineColor = null)
 		{
 			return new BallisticMissileFly(self, target, this);
 		}
 
-		public Activity MoveFollow(Actor self, Target target, WDist minRange, WDist maxRange,
+		public Activity MoveFollow(Actor self, in Target target, WDist minRange, WDist maxRange,
 			WPos? initialTargetPosition = null, Color? targetLineColor = null)
 		{
 			return null;
@@ -213,13 +213,13 @@ namespace OpenRA.Mods.AS.Traits
 			return null;
 		}
 
-		public Activity MoveToTarget(Actor self, Target target,
+		public Activity MoveToTarget(Actor self, in Target target,
 			WPos? initialTargetPosition = null, Color? targetLineColor = null)
 		{
 			return new BallisticMissileFly(self, target, this);
 		}
 
-		public Activity MoveIntoTarget(Actor self, Target target)
+		public Activity MoveIntoTarget(Actor self, in Target target)
 		{
 			return new BallisticMissileFly(self, target, this);
 		}
@@ -240,7 +240,7 @@ namespace OpenRA.Mods.AS.Traits
 		// Actors with BallisticMissile always move
 		public MovementType CurrentMovementTypes { get { return MovementType.Horizontal | MovementType.Vertical; } set { } }
 
-		public bool CanEnterTargetNow(Actor self, Target target)
+		public bool CanEnterTargetNow(Actor self, in Target target)
 		{
 			// you can never control ballistic missiles anyway
 			return false;

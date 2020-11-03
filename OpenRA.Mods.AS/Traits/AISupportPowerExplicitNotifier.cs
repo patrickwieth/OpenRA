@@ -75,7 +75,7 @@ namespace OpenRA.Mods.AS.Traits
 			botModule.AddEntry(new TraitPair<AISupportPowerExplicitNotifier>(self, this));
 		}
 
-		void INotifyAttack.Attacking(Actor self, Target target, Armament a, Barrel barrel)
+		void INotifyAttack.Attacking(Actor self, in Target target, Armament a, Barrel barrel)
 		{
 			if (!self.Owner.IsBot || IsTraitDisabled)
 				return;
@@ -84,7 +84,7 @@ namespace OpenRA.Mods.AS.Traits
 				TryActivation(self);
 		}
 
-		void INotifyAttack.PreparingAttack(Actor self, Target target, Armament a, Barrel barrel) { }
+		void INotifyAttack.PreparingAttack(Actor self, in Target target, Armament a, Barrel barrel) { }
 
 		void ITick.Tick(Actor self)
 		{

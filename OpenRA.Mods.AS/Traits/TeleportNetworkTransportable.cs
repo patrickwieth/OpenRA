@@ -44,7 +44,7 @@ namespace OpenRA.Mods.AS.Traits
 			get { yield return new TeleportNetworkTransportOrderTargeter(info); }
 		}
 
-		public Order IssueOrder(Actor self, IOrderTargeter order, Target target, bool queued)
+		public Order IssueOrder(Actor self, IOrderTargeter order, in Target target, bool queued)
 		{
 			if (order.OrderID != "TeleportNetworkTransport")
 				return null;

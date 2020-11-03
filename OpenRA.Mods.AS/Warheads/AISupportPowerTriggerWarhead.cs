@@ -28,7 +28,7 @@ namespace OpenRA.Mods.AS.Warheads
 		[Desc("Range used to find actors with AI ownership.")]
 		public readonly WDist Range = WDist.FromCells(3);
 
-		public override void DoImpact(Target target, WarheadArgs args)
+		public override void DoImpact(in Target target, WarheadArgs args)
 		{
 			var firedBy = args.SourceActor;
 			if (firedBy.World.SharedRandom.Next(100) > ActivationChance)
