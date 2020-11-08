@@ -14,7 +14,6 @@ using System.Linq;
 using OpenRA.GameRules;
 using OpenRA.Mods.Common;
 using OpenRA.Mods.Common.Traits;
-using OpenRA.Primitives;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.AS.Traits
@@ -111,10 +110,11 @@ namespace OpenRA.Mods.AS.Traits
 				{
 					Weapon = weapon,
 					DamageModifiers = self.TraitsImplementing<IFirepowerModifier>().Select(a => a.GetFirepowerModifier()).ToArray(),
-					Source = self.CenterPosition,
+					Source = self.CenterPosition + localoffset,
 					SourceActor = self,
 					WeaponTarget = Target.FromPos(self.CenterPosition + localoffset),
-					ImpactOrientation = self.Orientation
+					ImpactOrientation = new WRot(WAngle.Zero, WAngle.Zero, self.Orientation.Yaw),
+					ImpactPosition = self.CenterPosition + localoffset,
 				};
 
 				weapon.Impact(Target.FromPos(self.CenterPosition + localoffset), args);
