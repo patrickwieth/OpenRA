@@ -63,8 +63,8 @@ namespace OpenRA.Mods.AS.Traits
 			base.Created(self);
 
 			// Spawn initial load.
-			int burst = Info.InitialActorCount == -1 ? Info.Actors.Length : Info.InitialActorCount;
-			for (int i = 0; i < burst; i++)
+			var burst = Info.InitialActorCount == -1 ? Info.Actors.Length : Info.InitialActorCount;
+			for (var i = 0; i < burst; i++)
 				Replenish(self, SlaveEntries);
 		}
 

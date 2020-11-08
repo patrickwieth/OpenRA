@@ -63,7 +63,7 @@ namespace OpenRA.Mods.AS.Warheads
 
 			for (var i = 0; i < amount; i++)
 			{
-				Target radiusTarget = Target.Invalid;
+				var radiusTarget = Target.Invalid;
 
 				var rotation = WRot.FromFacing(i * offset);
 				var targetpos = epicenter + new WVec(weapon.Range.Length, 0, 0).Rotate(rotation);

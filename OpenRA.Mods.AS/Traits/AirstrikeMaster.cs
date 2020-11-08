@@ -75,7 +75,6 @@ namespace OpenRA.Mods.AS.Traits
 
 		WPos finishEdge;
 		WVec spawnOffset;
-		WPos targetPos;
 
 		int launchCondition = Actor.InvalidConditionToken;
 		int launchConditionTicks;
@@ -93,8 +92,8 @@ namespace OpenRA.Mods.AS.Traits
 			base.Created(self);
 
 			// Spawn initial load.
-			int burst = Info.InitialActorCount == -1 ? Info.Actors.Length : Info.InitialActorCount;
-			for (int i = 0; i < burst; i++)
+			var burst = Info.InitialActorCount == -1 ? Info.Actors.Length : Info.InitialActorCount;
+			for (var i = 0; i < burst; i++)
 				Replenish(self, SlaveEntries);
 		}
 
@@ -102,7 +101,7 @@ namespace OpenRA.Mods.AS.Traits
 		{
 			var slaveEntries = new AirstrikeSlaveEntry[info.Actors.Length]; // For this class to use
 
-			for (int i = 0; i < slaveEntries.Length; i++)
+			for (var i = 0; i < slaveEntries.Length; i++)
 				slaveEntries[i] = new AirstrikeSlaveEntry();
 
 			return slaveEntries; // For the base class to use
@@ -170,13 +169,13 @@ namespace OpenRA.Mods.AS.Traits
 
 		public override void SpawnIntoWorld(Actor self, Actor slave, WPos centerPosition)
 		{
-			World w = self.World;
+			var w = self.World;
 
-			WPos target = centerPosition;
+			var target = centerPosition;
 
 			for (var i = -AirstrikeMasterInfo.SquadSize / 2; i <= AirstrikeMasterInfo.SquadSize / 2; i++)
 			{
-				int attackFacing = 256 * self.World.SharedRandom.Next(AirstrikeMasterInfo.QuantizedFacings) / AirstrikeMasterInfo.QuantizedFacings;
+				var attackFacing = 256 * self.World.SharedRandom.Next(AirstrikeMasterInfo.QuantizedFacings) / AirstrikeMasterInfo.QuantizedFacings;
 
 				var altitude = self.World.Map.Rules.Actors[slave.Info.Name].TraitInfo<AircraftInfo>().CruiseAltitude.Length;
 				var attackRotation = WRot.FromFacing(attackFacing);
@@ -191,7 +190,6 @@ namespace OpenRA.Mods.AS.Traits
 
 				this.spawnOffset = spawnOffset;
 				this.finishEdge = finishEdge;
-				targetPos = target;
 
 				w.AddFrameEndTask(_ =>
 				{
@@ -252,8 +250,7 @@ namespace OpenRA.Mods.AS.Traits
 			// setup rearm
 			slaveEntry.RearmTicks = Util.ApplyPercentageModifiers(AirstrikeMasterInfo.RearmTicks, reloadModifiers.Select(rm => rm.GetReloadModifier()));
 
-			string spawnContainCondition;
-			if (AirstrikeMasterInfo.SpawnContainConditions.TryGetValue(a.Info.Name, out spawnContainCondition))
+			if (AirstrikeMasterInfo.SpawnContainConditions.TryGetValue(a.Info.Name, out var spawnContainCondition))
 				spawnContainTokens.GetOrAdd(a.Info.Name).Push(self.GrantCondition(spawnContainCondition));
 
 			loadedTokens.Push(self.GrantCondition(AirstrikeMasterInfo.LoadedCondition));

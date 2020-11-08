@@ -24,7 +24,7 @@ namespace OpenRA.Mods.AS.Warheads
 		public readonly WDist Range = new WDist(64);
 
 		[Desc("Types of actors that it can capture, as long as the type also exists in the Capturable Type: trait.")]
-		public readonly BitSet<CaptureType> CaptureTypes = default(BitSet<CaptureType>);
+		public readonly BitSet<CaptureType> CaptureTypes = default;
 
 		[Desc("Targets with health above this percentage will be sabotaged instead of captured.",
 			"Set to 0 to disable sabotaging.")]

@@ -43,10 +43,8 @@ namespace OpenRA.Mods.AS.Traits
 		{
 			base.RulesetLoaded(rules, ai);
 
-			WeaponInfo weaponInfo;
-
 			var weaponToLower = Weapon.ToLowerInvariant();
-			if (!rules.Weapons.TryGetValue(weaponToLower, out weaponInfo))
+			if (!rules.Weapons.TryGetValue(weaponToLower, out var weaponInfo))
 				throw new YamlException("Weapons Ruleset does not contain an entry '{0}'".F(weaponToLower));
 
 			WeaponInfo = weaponInfo;
@@ -58,12 +56,11 @@ namespace OpenRA.Mods.AS.Traits
 		readonly ExplodeWeaponInfo info;
 		readonly WeaponInfo weapon;
 		readonly BodyOrientation body;
+		readonly List<(int Tick, Action Action)> delayedActions = new List<(int, Action)>();
 
 		int fireDelay;
 		int burst;
 		AmmoPool ammoPool;
-
-		List<(int Tick, Action Action)> delayedActions = new List<(int, Action)>();
 
 		public ExplodeWeapon(Actor self, ExplodeWeaponInfo info)
 			: base(info)
@@ -92,7 +89,7 @@ namespace OpenRA.Mods.AS.Traits
 				delayedActions[i] = x;
 			}
 
-			delayedActions.RemoveAll(a => a.Item1 <= 0);
+			delayedActions.RemoveAll(a => a.Tick <= 0);
 
 			if (IsTraitDisabled)
 				return;

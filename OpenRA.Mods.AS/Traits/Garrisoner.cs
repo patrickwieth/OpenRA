@@ -163,10 +163,6 @@ namespace OpenRA.Mods.AS.Traits
 				if (!IsCorrectGarrisonType(targetActor))
 					return;
 			}
-			else
-			{
-				var targetActor = order.Target.FrozenActor;
-			}
 
 			self.QueueActivity(order.Queued, new EnterGarrison(self, order.Target, Color.Green));
 			self.ShowTargetLines();

@@ -39,7 +39,7 @@ namespace OpenRA.Mods.AS.Traits
 		public readonly int ActivationChance = 100;
 
 		[Desc("DamageType(s) that trigger activation when when `Trigger` is set to `Damage` or `Heal`. Leave empty to always trigger.")]
-		public readonly BitSet<DamageType> DamageTypes = default(BitSet<DamageType>);
+		public readonly BitSet<DamageType> DamageTypes = default;
 
 		[Desc("Delay between two activation tries when `Trigger` is set to `Periodically`.")]
 		public readonly int Ticks = 1000;

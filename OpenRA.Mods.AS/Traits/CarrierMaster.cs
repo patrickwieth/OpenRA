@@ -79,8 +79,8 @@ namespace OpenRA.Mods.AS.Traits
 			base.Created(self);
 
 			// Spawn initial load.
-			int burst = Info.InitialActorCount == -1 ? Info.Actors.Length : Info.InitialActorCount;
-			for (int i = 0; i < burst; i++)
+			var burst = Info.InitialActorCount == -1 ? Info.Actors.Length : Info.InitialActorCount;
+			for (var i = 0; i < burst; i++)
 				Replenish(self, SlaveEntries);
 		}
 
@@ -88,7 +88,7 @@ namespace OpenRA.Mods.AS.Traits
 		{
 			var slaveEntries = new CarrierSlaveEntry[info.Actors.Length]; // For this class to use
 
-			for (int i = 0; i < slaveEntries.Length; i++)
+			for (var i = 0; i < slaveEntries.Length; i++)
 				slaveEntries[i] = new CarrierSlaveEntry();
 
 			return slaveEntries; // For the base class to use
@@ -140,8 +140,7 @@ namespace OpenRA.Mods.AS.Traits
 
 			SpawnIntoWorld(self, carrierSlaveEntry.Actor, self.CenterPosition);
 
-			Stack<int> spawnContainToken;
-			if (spawnContainTokens.TryGetValue(a.Info.Name, out spawnContainToken) && spawnContainToken.Any())
+			if (spawnContainTokens.TryGetValue(a.Info.Name, out var spawnContainToken) && spawnContainToken.Any())
 				self.RevokeCondition(spawnContainToken.Pop());
 
 			if (loadedTokens.Any())
@@ -209,8 +208,7 @@ namespace OpenRA.Mods.AS.Traits
 			// setup rearm
 			slaveEntry.RearmTicks = Util.ApplyPercentageModifiers(CarrierMasterInfo.RearmTicks, reloadModifiers.Select(rm => rm.GetReloadModifier()));
 
-			string spawnContainCondition;
-			if (CarrierMasterInfo.SpawnContainConditions.TryGetValue(a.Info.Name, out spawnContainCondition))
+			if (CarrierMasterInfo.SpawnContainConditions.TryGetValue(a.Info.Name, out var spawnContainCondition))
 				spawnContainTokens.GetOrAdd(a.Info.Name).Push(self.GrantCondition(spawnContainCondition));
 
 			loadedTokens.Push(self.GrantCondition(CarrierMasterInfo.LoadedCondition));
@@ -220,9 +218,7 @@ namespace OpenRA.Mods.AS.Traits
 		{
 			base.Replenish(self, entry);
 
-			string spawnContainCondition;
-
-			if (CarrierMasterInfo.SpawnContainConditions.TryGetValue(entry.Actor.Info.Name, out spawnContainCondition))
+			if (CarrierMasterInfo.SpawnContainConditions.TryGetValue(entry.Actor.Info.Name, out var spawnContainCondition))
 				spawnContainTokens.GetOrAdd(entry.Actor.Info.Name).Push(self.GrantCondition(spawnContainCondition));
 
 			loadedTokens.Push(self.GrantCondition(CarrierMasterInfo.LoadedCondition));

@@ -26,7 +26,7 @@ namespace OpenRA.Mods.AS.Traits
 		public readonly WAngle Angle = WAngle.FromDegrees(20);
 
 		[Desc("Types of damage that this trait causes. Leave empty for no damage types.")]
-		public readonly BitSet<DamageType> DamageTypes = default(BitSet<DamageType>);
+		public readonly BitSet<DamageType> DamageTypes = default;
 
 		[Desc("The condition to apply to the target while leaping. Must be included in the target actor's ExternalConditions list.")]
 		public readonly string LeapTargetCondition = null;
