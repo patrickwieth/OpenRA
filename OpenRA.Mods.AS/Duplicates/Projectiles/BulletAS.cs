@@ -69,6 +69,12 @@ namespace OpenRA.Mods.AS.Projectiles
 			"0 implies exploding on contact with the originally targeted position.")]
 		public readonly int BounceCount = 0;
 
+		[Desc("Sound to play when the projectile hits the ground, but not the target.")]
+		public readonly string BounceSound = null;
+
+		[Desc("Terrain where the projectile explodes instead of bouncing.")]
+		public readonly HashSet<string> InvalidBounceTerrain = new HashSet<string>();
+
 		[Desc("Modify distance of each bounce by this percentage of previous distance.")]
 		public readonly int BounceRangeModifier = 60;
 
@@ -217,14 +223,17 @@ namespace OpenRA.Mods.AS.Projectiles
 			lastPos = pos;
 			pos = WPos.LerpQuadratic(source, target, angle, ticks, length);
 
-			// Check for walls or other blocking obstacles
-			var shouldExplode = false;
-			WPos blockedPos;
+			if (ShouldExplode(world))
+				Explode(world);
+		}
+
+		bool ShouldExplode(World world)
+		{
 			if (info.Blockable && BlocksProjectiles.AnyBlockingActorsBetween(world, lastPos, pos, info.Width,
-				out blockedPos))
+				out var blockedPos))
 			{
 				pos = blockedPos;
-				shouldExplode = true;
+				return true;
 			}
 
 			if (!string.IsNullOrEmpty(info.TrailImage) && --smokeTicks < 0)
@@ -244,31 +253,43 @@ namespace OpenRA.Mods.AS.Projectiles
 
 			if (flightLengthReached && shouldBounce)
 			{
-				shouldExplode |= AnyValidTargetsInRadius(world, pos, info.Width, args.SourceActor, true);
+				var cell = world.Map.CellContaining(pos);
+				if (!world.Map.Contains(cell))
+					return true;
+
+				if (info.InvalidBounceTerrain.Contains(world.Map.GetTerrainInfo(cell).Type))
+					return true;
+
+				if (AnyValidTargetsInRadius(world, pos, info.Width, args.SourceActor, true))
+					return true;
+
 				target += (pos - source) * info.BounceRangeModifier / 100;
 				var dat = world.Map.DistanceAboveTerrain(target);
 				target += new WVec(0, 0, -dat.Length);
 				length = Math.Max((target - pos).Length / speed.Length, 1);
+
 				ticks = 0;
 				source = pos;
+				Game.Sound.Play(SoundType.World, info.BounceSound, source);
 				remainingBounces--;
 			}
 
 			// Flight length reached / exceeded
-			shouldExplode |= flightLengthReached && !shouldBounce;
+			if (flightLengthReached && !shouldBounce)
+				return true;
 
 			// Driving into cell with different height level
-			shouldExplode |= world.Map.DistanceAboveTerrain(pos) < info.ExplodeUnderThisAltitude;
+			if (world.Map.DistanceAboveTerrain(pos) < info.ExplodeUnderThisAltitude)
+				return true;
 
 			// After first bounce, check for targets each tick
-			if (remainingBounces < info.BounceCount)
-				shouldExplode |= AnyValidTargetsInRadius(world, pos, info.Width, args.SourceActor, true);
+			if (remainingBounces < info.BounceCount && AnyValidTargetsInRadius(world, pos, info.Width, args.SourceActor, true))
+				return true;
 
-			if (!shouldExplode && !string.IsNullOrEmpty(info.PointDefenseType))
-				shouldExplode |= world.ActorsWithTrait<IPointDefense>().Any(x => x.Trait.Destroy(pos, args.SourceActor.Owner, info.PointDefenseType));
+			if (!string.IsNullOrEmpty(info.PointDefenseType) && world.ActorsWithTrait<IPointDefense>().Any(x => x.Trait.Destroy(pos, args.SourceActor.Owner, info.PointDefenseType)))
+				return true;
 
-			if (shouldExplode)
-				Explode(world);
+			return false;
 		}
 
 		public IEnumerable<IRenderable> Render(WorldRenderer wr)
