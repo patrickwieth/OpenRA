@@ -75,11 +75,19 @@ namespace OpenRA
 
 		public WinState WinState = WinState.Undefined;
 		public bool HasObjectives = false;
-		public bool Spectating;
+
+		public bool Spectating
+		{
+			get
+			{
+				return spectating || WinState != WinState.Undefined;
+			}
+		}
 
 		public World World { get; private set; }
 
 		readonly bool inMissionMap;
+		readonly bool spectating;
 		readonly IUnlocksRenderPlayer[] unlockRenderPlayer;
 
 		// Each player is identified with a unique bit in the set
@@ -180,7 +188,7 @@ namespace OpenRA
 				PlayerName = pr.Name;
 				NonCombatant = pr.NonCombatant;
 				Playable = pr.Playable;
-				Spectating = pr.Spectating;
+				spectating = pr.Spectating;
 				BotType = pr.Bot;
 				Faction = ResolveFaction(world, pr.Faction, playerRandom, false);
 				DisplayFaction = ResolveDisplayFaction(world, pr.Faction);
@@ -188,7 +196,7 @@ namespace OpenRA
 				SpawnPoint = DisplaySpawnPoint = 0;
 			}
 
-			if (!Spectating)
+			if (!spectating)
 				PlayerMask = new LongBitSet<PlayerBitMask>(InternalName);
 
 			// Set this property before running any Created callbacks on the player actor
@@ -229,11 +237,27 @@ namespace OpenRA
 			return "{0} ({1})".F(PlayerName, ClientIndex);
 		}
 
-		public Dictionary<Player, Stance> Stances = new Dictionary<Player, Stance>();
+		public PlayerRelationship RelationshipWith(Player other)
+		{
+			if (this == other)
+				return PlayerRelationship.Ally;
+
+			// Observers are considered allies to active combatants
+			if (other == null || other.Spectating)
+				return NonCombatant ? PlayerRelationship.Neutral : PlayerRelationship.Ally;
+
+			if (AlliedPlayersMask.Overlaps(other.PlayerMask))
+				return PlayerRelationship.Ally;
+
+			if (EnemyPlayersMask.Overlaps(other.PlayerMask))
+				return PlayerRelationship.Enemy;
+
+			return PlayerRelationship.Neutral;
+		}
+
 		public bool IsAlliedWith(Player p)
 		{
-			// Observers are considered allies to active combatants
-			return p == null || Stances[p] == Stance.Ally || (p.Spectating && !NonCombatant);
+			return RelationshipWith(p) == PlayerRelationship.Ally;
 		}
 
 		public Color PlayerStanceColor(Actor a)

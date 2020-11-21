@@ -27,8 +27,11 @@ namespace OpenRA.Mods.Cnc.Traits
 		[VoiceReference]
 		public readonly string Voice = "Action";
 
+		[Desc("Color to use for the target line.")]
+		public readonly Color TargetLineColor = Color.Crimson;
+
 		[Desc("What diplomatic stances can be infiltrated by this actor.")]
-		public readonly Stance ValidStances = Stance.Neutral | Stance.Enemy;
+		public readonly PlayerRelationship ValidStances = PlayerRelationship.Neutral | PlayerRelationship.Enemy;
 
 		[Desc("Behaviour when entering the target.",
 			"Possible values are Exit, Suicide, Dispose.")]
@@ -98,10 +101,10 @@ namespace OpenRA.Mods.Cnc.Traits
 			{
 				case TargetType.Actor:
 					return Info.Types.Overlaps(target.Actor.GetEnabledTargetTypes()) &&
-					       Info.ValidStances.HasStance(self.Owner.Stances[target.Actor.Owner]);
+					       Info.ValidStances.HasStance(self.Owner.RelationshipWith(target.Actor.Owner));
 				case TargetType.FrozenActor:
 					return target.FrozenActor.IsValid && Info.Types.Overlaps(target.FrozenActor.TargetTypes) &&
-					       Info.ValidStances.HasStance(self.Owner.Stances[target.FrozenActor.Owner]);
+					       Info.ValidStances.HasStance(self.Owner.RelationshipWith(target.FrozenActor.Owner));
 				default:
 					return false;
 			}
@@ -115,7 +118,7 @@ namespace OpenRA.Mods.Cnc.Traits
 			if (!CanInfiltrateTarget(self, order.Target))
 				return;
 
-			self.QueueActivity(order.Queued, new Infiltrate(self, order.Target, this));
+			self.QueueActivity(order.Queued, new Infiltrate(self, order.Target, this, Info.TargetLineColor));
 			self.ShowTargetLines();
 		}
 	}
@@ -132,8 +135,7 @@ namespace OpenRA.Mods.Cnc.Traits
 
 		public override bool CanTargetActor(Actor self, Actor target, TargetModifiers modifiers, ref string cursor)
 		{
-			var stance = self.Owner.Stances[target.Owner];
-
+			var stance = self.Owner.RelationshipWith(target.Owner);
 			if (!info.ValidStances.HasStance(stance))
 				return false;
 
@@ -142,8 +144,7 @@ namespace OpenRA.Mods.Cnc.Traits
 
 		public override bool CanTargetFrozenActor(Actor self, FrozenActor target, TargetModifiers modifiers, ref string cursor)
 		{
-			var stance = self.Owner.Stances[target.Owner];
-
+			var stance = self.Owner.RelationshipWith(target.Owner);
 			if (!info.ValidStances.HasStance(stance))
 				return false;
 

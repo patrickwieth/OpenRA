@@ -24,7 +24,7 @@ namespace OpenRA.Mods.Common.Activities
 		EngineerRepairable enterEngineerRepariable;
 
 		public RepairBuilding(Actor self, in Target target, EngineerRepairInfo info)
-			: base(self, target, Color.Yellow)
+			: base(self, target, info.TargetLineColor)
 		{
 			this.info = info;
 		}
@@ -37,7 +37,7 @@ namespace OpenRA.Mods.Common.Activities
 
 			// Make sure we can still repair the target before entering
 			// (but not before, because this may stop the actor in the middle of nowhere)
-			var stance = self.Owner.Stances[enterActor.Owner];
+			var stance = self.Owner.RelationshipWith(enterActor.Owner);
 			if (enterHealth == null || enterHealth.DamageState == DamageState.Undamaged || enterEngineerRepariable == null || enterEngineerRepariable.IsTraitDisabled || !info.ValidStances.HasStance(stance))
 			{
 				Cancel(self, true);
@@ -60,7 +60,7 @@ namespace OpenRA.Mods.Common.Activities
 			if (enterHealth.DamageState == DamageState.Undamaged)
 				return;
 
-			var stance = self.Owner.Stances[enterActor.Owner];
+			var stance = self.Owner.RelationshipWith(enterActor.Owner);
 			if (!info.ValidStances.HasStance(stance))
 				return;
 

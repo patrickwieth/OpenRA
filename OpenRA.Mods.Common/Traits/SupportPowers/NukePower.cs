@@ -95,7 +95,7 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly bool RevealGeneratedShroud = true;
 
 		[Desc("Reveal cells to players with these stances only.")]
-		public readonly Stance CameraStances = Stance.Ally;
+		public readonly PlayerRelationship CameraStances = PlayerRelationship.Ally;
 
 		[Desc("Amount of time before detonation to spawn the camera.")]
 		public readonly int CameraSpawnAdvance = 25;
@@ -211,9 +211,6 @@ namespace OpenRA.Mods.Common.Traits
 
 		public override void SelectTarget(Actor self, string order, SupportPowerManager manager)
 		{
-			Game.Sound.PlayToPlayer(SoundType.UI, manager.Self.Owner, Info.SelectTargetSound);
-			Game.Sound.PlayNotification(self.World.Map.Rules, self.Owner, "Speech",
-				Info.SelectTargetSpeechNotification, self.Owner.Faction.InternalName);
 			self.World.OrderGenerator = new SelectNukePowerTarget(order, manager, info, MouseButton.Left);
 		}
 	}

@@ -80,7 +80,7 @@ namespace OpenRA.Mods.Cnc.Traits
 		public readonly string DisguisedCondition = null;
 
 		[Desc("What diplomatic stances can this actor disguise as.")]
-		public readonly Stance ValidStances = Stance.Ally | Stance.Neutral | Stance.Enemy;
+		public readonly PlayerRelationship ValidStances = PlayerRelationship.Ally | PlayerRelationship.Neutral | PlayerRelationship.Enemy;
 
 		[Desc("Target types of actors that this actor disguise as.")]
 		public readonly BitSet<TargetableType> TargetTypes = new BitSet<TargetableType>("Disguise");
@@ -298,8 +298,7 @@ namespace OpenRA.Mods.Cnc.Traits
 
 		public override bool CanTargetActor(Actor self, Actor target, TargetModifiers modifiers, ref string cursor)
 		{
-			var stance = self.Owner.Stances[target.Owner];
-
+			var stance = self.Owner.RelationshipWith(target.Owner);
 			if (!info.ValidStances.HasStance(stance))
 				return false;
 
@@ -308,8 +307,7 @@ namespace OpenRA.Mods.Cnc.Traits
 
 		public override bool CanTargetFrozenActor(Actor self, FrozenActor target, TargetModifiers modifiers, ref string cursor)
 		{
-			var stance = self.Owner.Stances[target.Owner];
-
+			var stance = self.Owner.RelationshipWith(target.Owner);
 			if (!info.ValidStances.HasStance(stance))
 				return false;
 

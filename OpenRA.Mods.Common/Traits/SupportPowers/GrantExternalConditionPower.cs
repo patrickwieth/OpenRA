@@ -40,7 +40,7 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly string OnFireSound = null;
 
 		[Desc("Player stances which condition can be applied to.")]
-		public readonly Stance ValidStances = Stance.Ally;
+		public readonly PlayerRelationship ValidStances = PlayerRelationship.Ally;
 
 		[SequenceReference]
 		[Desc("Sequence to play for granting actor when activated.",
@@ -67,7 +67,6 @@ namespace OpenRA.Mods.Common.Traits
 
 		public override void SelectTarget(Actor self, string order, SupportPowerManager manager)
 		{
-			Game.Sound.PlayToPlayer(SoundType.World, manager.Self.Owner, Info.SelectTargetSound);
 			self.World.OrderGenerator = new SelectConditionTarget(Self.World, order, manager, this);
 		}
 
@@ -97,7 +96,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			return units.Distinct().Where(a =>
 			{
-				if (!info.ValidStances.HasStance(a.Owner.Stances[Self.Owner]))
+				if (!info.ValidStances.HasStance(Self.Owner.RelationshipWith(a.Owner)))
 					return false;
 
 				return a.TraitsImplementing<ExternalCondition>()

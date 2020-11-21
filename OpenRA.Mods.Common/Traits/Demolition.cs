@@ -44,8 +44,11 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Voice string when planting explosive charges.")]
 		public readonly string Voice = "Action";
 
-		public readonly Stance TargetStances = Stance.Enemy | Stance.Neutral;
-		public readonly Stance ForceTargetStances = Stance.Enemy | Stance.Neutral | Stance.Ally;
+		[Desc("Color to use for the target line.")]
+		public readonly Color TargetLineColor = Color.Crimson;
+
+		public readonly PlayerRelationship TargetStances = PlayerRelationship.Enemy | PlayerRelationship.Neutral;
+		public readonly PlayerRelationship ForceTargetStances = PlayerRelationship.Enemy | PlayerRelationship.Neutral | PlayerRelationship.Ally;
 
 		[Desc("Cursor to display when hovering over a demolishable target.")]
 		public readonly string Cursor = "c4";
@@ -88,7 +91,7 @@ namespace OpenRA.Mods.Common.Traits
 			}
 
 			self.QueueActivity(order.Queued, new Demolish(self, order.Target, info.EnterBehaviour, info.DetonationDelay,
-				info.Flashes, info.FlashesDelay, info.FlashInterval, info.DamageTypes));
+				info.Flashes, info.FlashesDelay, info.FlashInterval, info.DamageTypes, info.TargetLineColor));
 
 			self.ShowTargetLines();
 		}
@@ -114,7 +117,7 @@ namespace OpenRA.Mods.Common.Traits
 				if (modifiers.HasModifier(TargetModifiers.ForceMove))
 					return false;
 
-				var stance = self.Owner.Stances[target.Owner];
+				var stance = target.Owner.RelationshipWith(self.Owner);
 				if (!info.TargetStances.HasStance(stance) && !modifiers.HasModifier(TargetModifiers.ForceAttack))
 					return false;
 
@@ -126,7 +129,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			public override bool CanTargetFrozenActor(Actor self, FrozenActor target, TargetModifiers modifiers, ref string cursor)
 			{
-				var stance = self.Owner.Stances[target.Owner];
+				var stance = target.Owner.RelationshipWith(self.Owner);
 				if (!info.TargetStances.HasStance(stance) && !modifiers.HasModifier(TargetModifiers.ForceAttack))
 					return false;
 

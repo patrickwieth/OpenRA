@@ -22,8 +22,8 @@ namespace OpenRA.Mods.Common.Activities
 		Actor enterActor;
 		CaptureManager enterCaptureManager;
 
-		public CaptureActor(Actor self, in Target target)
-			: base(self, target, Color.Crimson)
+		public CaptureActor(Actor self, in Target target, Color? targetLineColor)
+			: base(self, target, targetLineColor)
 		{
 			manager = self.Trait<CaptureManager>();
 		}
@@ -124,7 +124,7 @@ namespace OpenRA.Mods.Common.Activities
 				foreach (var t in enterActor.TraitsImplementing<INotifyCapture>())
 					t.OnCapture(enterActor, self, oldOwner, self.Owner, captures.Info.CaptureTypes);
 
-				if (self.Owner.Stances[oldOwner].HasStance(captures.Info.PlayerExperienceStances))
+				if (self.Owner.RelationshipWith(oldOwner).HasStance(captures.Info.PlayerExperienceStances))
 					self.Owner.PlayerActor.TraitOrDefault<PlayerExperience>()?.GiveExperience(captures.Info.PlayerExperience);
 
 				if (captures.Info.ConsumedByCapture)
