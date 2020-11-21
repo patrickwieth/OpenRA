@@ -59,13 +59,13 @@ namespace OpenRA.Mods.AS.Warheads
 					? world.SharedRandom.Next(Amount[0], Amount[1])
 					: Amount[0];
 
-			var offset = 256 / amount;
+			var offset = 1024 / amount;
 
 			for (var i = 0; i < amount; i++)
 			{
 				var radiusTarget = Target.Invalid;
 
-				var rotation = WRot.FromFacing(i * offset);
+				var rotation = WRot.FromYaw(new WAngle(i * offset));
 				var targetpos = epicenter + new WVec(weapon.Range.Length, 0, 0).Rotate(rotation);
 				var tpos = Target.FromPos(new WPos(targetpos.X, targetpos.Y, map.CenterOfCell(map.CellContaining(targetpos)).Z));
 				if (weapon.IsValidAgainst(tpos, firedBy.World, firedBy))
