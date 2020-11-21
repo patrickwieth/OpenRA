@@ -17,7 +17,7 @@ namespace OpenRA.Mods.AS.Warheads
 	public class RevealShroudWarhead : WarheadAS
 	{
 		[Desc("PlayerRelationships relative to the firer which the warhead affects.")]
-		public readonly PlayerRelationship RevealPlayerRelationships = PlayerRelationship.Ally;
+		public readonly PlayerRelationship RevealStances = PlayerRelationship.Ally;
 
 		[Desc("Duration of the reveal.")]
 		public readonly int Duration = 25;
@@ -44,7 +44,7 @@ namespace OpenRA.Mods.AS.Warheads
 			{
 				firedBy.World.AddFrameEndTask(w => w.Add(new RevealShroudEffect(centerPosition, Radius,
 					RevealGeneratedShroud ? Shroud.SourceType.Visibility : Shroud.SourceType.PassiveVisibility,
-					firedBy.Owner, RevealPlayerRelationships, duration: Duration)));
+					firedBy.Owner, RevealStances, duration: Duration)));
 			}
 		}
 	}

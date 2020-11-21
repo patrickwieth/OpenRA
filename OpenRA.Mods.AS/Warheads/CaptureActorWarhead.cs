@@ -43,7 +43,7 @@ namespace OpenRA.Mods.AS.Warheads
 		public readonly int PlayerExperience = 0;
 
 		[Desc("PlayerRelationship that the structure's previous owner needs to have for the capturing player to receive Experience.")]
-		public readonly PlayerRelationship PlayerExperiencePlayerRelationships = PlayerRelationship.Enemy;
+		public readonly PlayerRelationship PlayerExperienceStances = PlayerRelationship.Enemy;
 
 		public override void DoImpact(in Target target, WarheadArgs args)
 		{
@@ -111,7 +111,7 @@ namespace OpenRA.Mods.AS.Warheads
 							exp.GiveExperience(Experience);
 					}
 
-					if (firedBy.Owner.RelationshipWith(oldOwner).HasStance(PlayerExperiencePlayerRelationships))
+					if (firedBy.Owner.RelationshipWith(oldOwner).HasStance(PlayerExperienceStances))
 					{
 						var exp = firedBy.Owner.PlayerActor.TraitOrDefault<PlayerExperience>();
 						if (exp != null)
