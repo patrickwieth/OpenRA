@@ -27,7 +27,7 @@ namespace OpenRA.Mods.AS.Traits
 			if (exit != null && exit.IsPrimary)
 				return false;
 
-			return networkactor.Owner.Stances[useractor.Owner].HasFlag(trait.Info.ValidStances);
+			return networkactor.Owner.RelationshipWith(useractor.Owner).HasFlag(trait.Info.ValidStances);
 		}
 
 		public static bool IsPrimaryTeleportNetworkExit(this Actor networkactor)

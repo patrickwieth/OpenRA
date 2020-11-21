@@ -29,7 +29,7 @@ namespace OpenRA.Mods.AS.Traits
 		public readonly int Weight = 1;
 
 		[Desc("What diplomatic stances can be Garrisoned by this actor.")]
-		public readonly Stance TargetStances = Stance.Ally | Stance.Neutral;
+		public readonly PlayerRelationship TargetPlayerRelationships = PlayerRelationship.Ally | PlayerRelationship.Neutral;
 
 		[GrantedConditionReference]
 		[Desc("The condition to grant to when this actor is loaded inside any transport.")]

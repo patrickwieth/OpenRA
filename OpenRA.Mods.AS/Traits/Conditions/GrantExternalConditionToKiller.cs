@@ -25,8 +25,8 @@ namespace OpenRA.Mods.AS.Traits
 		[Desc("Duration of the condition (in ticks). Set to 0 for a permanent upgrade.")]
 		public readonly int Duration = 0;
 
-		[Desc("Stance the attacking player needs to receive the condition.")]
-		public readonly Stance ValidStances = Stance.Neutral | Stance.Enemy;
+		[Desc("PlayerRelationship the attacking player needs to receive the condition.")]
+		public readonly PlayerRelationship ValidStances = PlayerRelationship.Neutral | PlayerRelationship.Enemy;
 
 		[Desc("DeathType(s) that grant the condition. Leave empty to always grant the condition.")]
 		public readonly BitSet<DamageType> DeathTypes = default(BitSet<DamageType>);
@@ -51,7 +51,7 @@ namespace OpenRA.Mods.AS.Traits
 			if (!Info.DeathTypes.IsEmpty && !e.Damage.DamageTypes.Overlaps(Info.DeathTypes))
 				return;
 
-			if (!Info.ValidStances.HasStance(e.Attacker.Owner.Stances[self.Owner]))
+			if (!Info.ValidStances.HasStance(e.Attacker.Owner.RelationshipWith(self.Owner)))
 				return;
 
 			var external = e.Attacker.TraitsImplementing<ExternalCondition>()

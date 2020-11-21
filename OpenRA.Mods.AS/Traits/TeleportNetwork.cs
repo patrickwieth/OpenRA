@@ -21,8 +21,8 @@ namespace OpenRA.Mods.AS.Traits
 		[Desc("Type of TeleportNetwork that pairs up, in order for it to work.")]
 		public string Type;
 
-		[Desc("Stances requirement that targeted TeleportNetwork has to meet in order to teleport units.")]
-		public Stance ValidStances = Stance.Ally;
+		[Desc("PlayerRelationships requirement that targeted TeleportNetwork has to meet in order to teleport units.")]
+		public PlayerRelationship ValidStances = PlayerRelationship.Ally;
 
 		public override object Create(ActorInitializer init) { return new TeleportNetwork(this); }
 	}

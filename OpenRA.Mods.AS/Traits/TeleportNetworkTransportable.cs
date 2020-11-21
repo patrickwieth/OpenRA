@@ -121,7 +121,7 @@ namespace OpenRA.Mods.AS.Traits
 					return false;
 
 				// Valid enemy TeleportNetwork entrances should still be offered to be destroyed first.
-				if (self.Owner.Stances[target.Owner] == Stance.Enemy && !modifiers.HasFlag(TargetModifiers.ForceMove))
+				if (self.Owner.RelationshipWith(target.Owner) == PlayerRelationship.Enemy && !modifiers.HasFlag(TargetModifiers.ForceMove))
 					return false;
 
 				var trait = target.TraitOrDefault<TeleportNetwork>();

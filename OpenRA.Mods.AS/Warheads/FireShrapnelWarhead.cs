@@ -30,7 +30,7 @@ namespace OpenRA.Mods.AS.Warheads
 		public readonly int AimChance = 0;
 
 		[Desc("What diplomatic stances can be targeted by the shrapnel.")]
-		public readonly Stance AimTargetStances = Stance.Ally | Stance.Neutral | Stance.Enemy;
+		public readonly PlayerRelationship AimTargetPlayerRelationships = PlayerRelationship.Ally | PlayerRelationship.Neutral | PlayerRelationship.Enemy;
 
 		[Desc("Allow this shrapnel to be thrown randomly when no targets found.")]
 		public readonly bool ThrowWithoutTarget = true;
@@ -83,7 +83,7 @@ namespace OpenRA.Mods.AS.Warheads
 			var availableTargetActors = world.FindActorsOnCircle(epicenter, weapon.Range)
 				.Where(x => (AllowDirectHit || !directActors.Contains(x))
 					&& weapon.IsValidAgainst(Target.FromActor(x), firedBy.World, firedBy)
-					&& AimTargetStances.HasStance(firedBy.Owner.Stances[x.Owner]))
+					&& AimTargetPlayerRelationships.HasStance(firedBy.Owner.RelationshipWith(x.Owner)))
 				.Where(x =>
 				{
 					var activeShapes = x.TraitsImplementing<HitShape>().Where(Exts.IsTraitEnabled);

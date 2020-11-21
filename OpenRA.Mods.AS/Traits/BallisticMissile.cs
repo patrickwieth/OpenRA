@@ -38,6 +38,9 @@ namespace OpenRA.Mods.AS.Traits
 		[Desc("The condition to grant to self while airborne.")]
 		public readonly string AirborneCondition = null;
 
+		[Desc("Color to use for the target line.")]
+		public readonly Color TargetLineColor = Color.Crimson;
+
 		public override object Create(ActorInitializer init) { return new BallisticMissile(init, this); }
 
 		public IReadOnlyDictionary<CPos, SubCell> OccupiedCells(ActorInfo info, CPos location, SubCell subCell = SubCell.Any) { return new ReadOnlyDictionary<CPos, SubCell>(); }
@@ -50,6 +53,8 @@ namespace OpenRA.Mods.AS.Traits
 
 		// set by spawned logic, not this.
 		public WAngle GetInitialFacing() { return WAngle.Zero; }
+
+		public Color GetTargetLineColor() { return TargetLineColor; }
 	}
 
 	public class BallisticMissile : ISync, IFacing, IMove, IPositionable,

@@ -29,7 +29,7 @@ namespace OpenRA.Mods.AS.Traits
 		public readonly WDist MaximumVerticalOffset = WDist.Zero;
 
 		[Desc("What diplomatic stances cash is collected from.")]
-		public readonly Stance ValidStances = Stance.Ally;
+		public readonly PlayerRelationship ValidStances = PlayerRelationship.Ally;
 
 		[FieldLoader.Require]
 		[Desc("Delay between two collections.")]
@@ -134,7 +134,7 @@ namespace OpenRA.Mods.AS.Traits
 			if (a == self || a.Disposed || self.Disposed)
 				return;
 
-			var stance = self.Owner.Stances[a.Owner];
+			var stance = self.Owner.RelationshipWith(a.Owner);
 			if (!Info.ValidStances.HasStance(stance))
 				return;
 
@@ -153,7 +153,7 @@ namespace OpenRA.Mods.AS.Traits
 
 			if ((produced.CenterPosition - self.CenterPosition).HorizontalLengthSquared <= Info.Range.LengthSquared)
 			{
-				var stance = self.Owner.Stances[produced.Owner];
+				var stance = self.Owner.RelationshipWith(produced.Owner);
 				if (!Info.ValidStances.HasStance(stance))
 					return;
 
@@ -168,7 +168,7 @@ namespace OpenRA.Mods.AS.Traits
 			if (a == self || a.Disposed || self.Disposed)
 				return;
 
-			var stance = self.Owner.Stances[a.Owner];
+			var stance = self.Owner.RelationshipWith(a.Owner);
 			if (!Info.ValidStances.HasStance(stance))
 				return;
 

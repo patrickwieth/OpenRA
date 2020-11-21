@@ -42,7 +42,7 @@ namespace OpenRA.Mods.AS.Traits
 		public readonly bool RevealGeneratedShroud = true;
 
 		[Desc("Reveal cells to players with these stances only.")]
-		public readonly Stance CameraStances = Stance.Ally;
+		public readonly PlayerRelationship CameraPlayerRelationships = PlayerRelationship.Ally;
 
 		[Desc("Amount of time before firing to spawn the camera.")]
 		public readonly int CameraSpawnAdvance = 25;
@@ -138,7 +138,7 @@ namespace OpenRA.Mods.AS.Traits
 					: Shroud.SourceType.PassiveVisibility;
 
 				self.World.AddFrameEndTask(w => w.Add(new RevealShroudEffect(target.CenterPosition, FireArmamentPowerInfo.CameraRange, type, self.Owner,
-					FireArmamentPowerInfo.CameraStances, estimatedTicks - FireArmamentPowerInfo.CameraSpawnAdvance,
+					FireArmamentPowerInfo.CameraPlayerRelationships, estimatedTicks - FireArmamentPowerInfo.CameraSpawnAdvance,
 					FireArmamentPowerInfo.CameraSpawnAdvance + FireArmamentPowerInfo.CameraRemoveDelay)));
 			}
 
