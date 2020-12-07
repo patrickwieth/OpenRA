@@ -636,4 +636,10 @@ namespace OpenRA.Mods.Common.Traits
 	{
 		void NotifyTimerExpired(Actor self);
 	}
+
+	[RequireExplicitImplementation]
+	public interface INotifyPassengersDamage
+	{
+		void DamagePassengers(int damage, Actor attacker, int amount, Dictionary<string, int> versus, BitSet<DamageType> damageTypes, IEnumerable<int> damageModifiers);
+	}
 }
