@@ -72,12 +72,16 @@ namespace OpenRA.Mods.AS.Warheads
 				if (Rotate && args.ImpactOrientation != WRot.None)
 					targetVector = targetVector.Rotate(args.ImpactOrientation);
 
-				if (UseZOffsetAsAbsoluteHeight)
-					targetVector = new WVec(targetVector.X, targetVector.Y,
-						map.CenterOfCell(map.CellContaining(epicenter + targetVector)).Z + targetVector.Z);
+				var fragmentTargetPosition = epicenter + targetVector;
 
-				var fragmentTarget = Target.FromPos(epicenter + targetVector);
-				var fragmentFacing = (fragmentTarget.CenterPosition - target.CenterPosition).Yaw;
+				if (UseZOffsetAsAbsoluteHeight)
+				{
+					fragmentTargetPosition = new WPos(fragmentTargetPosition.X, fragmentTargetPosition.Y,
+						world.Map.CenterOfCell(world.Map.CellContaining(fragmentTargetPosition)).Z + offset.Z);
+				}
+
+				var fragmentTarget = Target.FromPos(fragmentTargetPosition);
+				var fragmentFacing = (fragmentTargetPosition - target.CenterPosition).Yaw;
 
 				// Lambdas can't use 'in' variables, so capture a copy for later
 				var centerPosition = target.CenterPosition;
@@ -100,7 +104,7 @@ namespace OpenRA.Mods.AS.Warheads
 					CurrentSource = () => centerPosition,
 					SourceActor = firedBy,
 					GuidedTarget = fragmentTarget,
-					PassiveTarget = fragmentTarget.CenterPosition
+					PassiveTarget = fragmentTargetPosition
 				};
 
 				if (projectileArgs.Weapon.Projectile != null)
