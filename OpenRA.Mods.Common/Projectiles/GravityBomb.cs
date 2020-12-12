@@ -72,7 +72,8 @@ namespace OpenRA.Mods.Common.Projectiles
 			pos = args.Source;
 			var convertedVelocity = new WVec(info.Velocity.Y, -info.Velocity.X, info.Velocity.Z);
 			velocity = convertedVelocity.Rotate(WRot.FromYaw(args.Facing));
-			acceleration = new WVec(info.Acceleration.Y, -info.Acceleration.X, info.Acceleration.Z);
+			var convertedAcceleration = new WVec(info.Acceleration.Y, -info.Acceleration.X, info.Acceleration.Z);
+			acceleration = convertedAcceleration.Rotate(WRot.FromYaw(args.Facing));
 
 			if (!string.IsNullOrEmpty(info.Image))
 			{
