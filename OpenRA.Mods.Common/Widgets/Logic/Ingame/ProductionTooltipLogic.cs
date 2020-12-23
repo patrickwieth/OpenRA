@@ -131,6 +131,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				timeLabel.Text = formatBuildTime.Update((buildTime * timeModifier) / 100);
 				timeLabel.TextColor = (pm != null && pm.PowerState != PowerState.Normal && tooltipIcon.ProductionQueue.Info.LowPowerModifier > 100) ? Color.Red : Color.White;
 				var timeSize = font.Measure(timeLabel.Text);
+				costLabel.IsVisible = () => cost != 0;
+				costIcon.IsVisible = () => cost != 0;
 
 				costLabel.Text = cost.ToString();
 				costLabel.GetColor = () => pr.Cash + pr.Resources >= cost ? Color.White : Color.Red;
@@ -165,8 +167,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 		static string ActorName(Ruleset rules, string a)
 		{
-			ActorInfo ai;
-			if (rules.Actors.TryGetValue(a.ToLowerInvariant(), out ai))
+			if (rules.Actors.TryGetValue(a.ToLowerInvariant(), out var ai))
 			{
 				var actorTooltip = ai.TraitInfos<TooltipInfo>().FirstOrDefault(info => info.EnabledByDefault);
 				if (actorTooltip != null)

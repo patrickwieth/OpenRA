@@ -31,7 +31,7 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly WDist MaximumVerticalOffset = WDist.Zero;
 
 		[Desc("What diplomatic stances are affected.")]
-		public readonly Stance ValidStances = Stance.Ally;
+		public readonly PlayerRelationship ValidStances = PlayerRelationship.Ally;
 
 		[Desc("Condition is applied permanently to this actor.")]
 		public readonly bool AffectsParent = false;
@@ -110,7 +110,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (tokens.ContainsKey(a))
 				return;
 
-			var stance = self.Owner.Stances[a.Owner];
+			var stance = self.Owner.RelationshipWith(a.Owner);
 			if (!Info.ValidStances.HasStance(stance))
 				return;
 
@@ -134,7 +134,7 @@ namespace OpenRA.Mods.Common.Traits
 			// Work around for actors produced within the region not triggering until the second tick
 			if ((produced.CenterPosition - self.CenterPosition).HorizontalLengthSquared <= Info.Range.LengthSquared)
 			{
-				var stance = self.Owner.Stances[produced.Owner];
+				var stance = self.Owner.RelationshipWith(produced.Owner);
 				if (!Info.ValidStances.HasStance(stance))
 					return;
 
@@ -151,8 +151,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (a.Disposed)
 				return;
 
-			int token;
-			if (!tokens.TryGetValue(a, out token))
+			if (!tokens.TryGetValue(a, out var token))
 				return;
 
 			tokens.Remove(a);

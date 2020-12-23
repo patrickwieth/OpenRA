@@ -51,6 +51,7 @@ namespace OpenRA.Mods.Common.Traits
 			// PERF: Avoid LINQ.
 			Enabled = false;
 			var isActive = false;
+			HashSet<Production> validProductions = new HashSet<Production>();
 			foreach (var x in self.World.ActorsWithTrait<Production>())
 			{
 				if (x.Trait.IsTraitDisabled)
@@ -61,10 +62,13 @@ namespace OpenRA.Mods.Common.Traits
 
 				Enabled |= IsValidFaction;
 				isActive |= !x.Trait.IsTraitPaused;
+				validProductions.Add(x.Trait);
 			}
 
 			if (!Enabled)
 				ClearQueue();
+
+			productionTraits = validProductions.ToArray();
 
 			TickInner(self, !isActive);
 		}
@@ -124,9 +128,10 @@ namespace OpenRA.Mods.Common.Traits
 					new FactionInit(BuildableInfo.GetInitialFaction(unit, p.Trait.Faction))
 				};
 
-				if (p.Trait.Produce(p.Actor, unit, type, inits))
+				var item = Queue.First(i => i.Done && i.Item == unit.Name);
+				if (p.Trait.Produce(p.Actor, unit, type, inits, item.TotalCost))
 				{
-					EndProduction(Queue.FirstOrDefault(i => i.Done && i.Item == unit.Name));
+					EndProduction(item);
 					return true;
 				}
 			}

@@ -47,7 +47,7 @@ namespace OpenRA.Mods.Cnc.Traits
 				return;
 
 			// No recursive cloning!
-			if (producer.Owner != self.Owner || producer.Info.HasTraitInfo<ClonesProducedUnitsInfo>())
+			if (producer.Owner != self.Owner || productionType == Info.ProductionType)
 				return;
 
 			var ci = produced.Info.TraitInfoOrDefault<CloneableInfo>();
@@ -68,7 +68,7 @@ namespace OpenRA.Mods.Cnc.Traits
 					factionInit ?? new FactionInit(BuildableInfo.GetInitialFaction(produced.Info, p.Faction))
 				};
 
-				if (p.Produce(self, produced.Info, Info.ProductionType, inits))
+				if (p.Produce(self, produced.Info, Info.ProductionType, inits, 0))
 					return;
 			}
 		}

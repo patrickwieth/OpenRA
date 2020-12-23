@@ -34,15 +34,15 @@ namespace OpenRA.Mods.Common.Traits
 			Info = info;
 		}
 
-		protected override bool CanAttack(Actor self, Target target)
+		protected override bool CanAttack(Actor self, in Target target)
 		{
 			if (!base.CanAttack(self, target))
 				return false;
 
-			return TargetInFiringArc(self, target, Info.FacingTolerance);
+			return TargetInFiringArc(self, target, 4 * Info.FacingTolerance);
 		}
 
-		public override Activity GetAttackActivity(Actor self, AttackSource source, Target newTarget, bool allowMove, bool forceAttack, Color? targetLineColor = null)
+		public override Activity GetAttackActivity(Actor self, AttackSource source, in Target newTarget, bool allowMove, bool forceAttack, Color? targetLineColor = null)
 		{
 			return new Activities.Attack(self, newTarget, allowMove, forceAttack, targetLineColor);
 		}

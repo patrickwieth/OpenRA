@@ -35,6 +35,7 @@ namespace OpenRA
 		/// <summary>Gets the game's duration, from the time the game started until the replay recording stopped.</summary>
 		public TimeSpan Duration { get { return EndTimeUtc > StartTimeUtc ? EndTimeUtc - StartTimeUtc : TimeSpan.Zero; } }
 		public IList<Player> Players { get; private set; }
+		public HashSet<int> DisabledSpawnPoints = new HashSet<int>();
 		public MapPreview MapPreview { get { return Game.ModData.MapCache[MapUid]; } }
 		public IEnumerable<Player> HumanPlayers { get { return Players.Where(p => p.IsHuman); } }
 		public bool IsSinglePlayer { get { return HumanPlayers.Count() == 1; } }
@@ -122,7 +123,7 @@ namespace OpenRA
 				Team = client.Team,
 				SpawnPoint = runtimePlayer.SpawnPoint,
 				IsRandomFaction = runtimePlayer.Faction.InternalName != client.Faction,
-				IsRandomSpawnPoint = runtimePlayer.SpawnPoint != client.SpawnPoint,
+				IsRandomSpawnPoint = runtimePlayer.DisplaySpawnPoint == 0,
 				Fingerprint = client.Fingerprint
 			};
 
@@ -133,9 +134,7 @@ namespace OpenRA
 		/// <summary>Gets the player information for the specified runtime player instance.</summary>
 		public Player GetPlayer(OpenRA.Player runtimePlayer)
 		{
-			Player player;
-
-			playersByRuntime.TryGetValue(runtimePlayer, out player);
+			playersByRuntime.TryGetValue(runtimePlayer, out var player);
 
 			return player;
 		}
@@ -180,6 +179,9 @@ namespace OpenRA
 
 			/// <summary>The time when this player won or lost the game.</summary>
 			public DateTime OutcomeTimestampUtc;
+
+			/// <summary>The frame at which this player disconnected.</summary>
+			public int DisconnectFrame;
 
 			#endregion
 		}

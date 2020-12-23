@@ -16,6 +16,7 @@ using OpenRA.Graphics;
 using OpenRA.Mods.Common.Lint;
 using OpenRA.Mods.Common.Traits;
 using OpenRA.Primitives;
+using OpenRA.Traits;
 using OpenRA.Widgets;
 
 namespace OpenRA.Mods.Common.Widgets
@@ -27,6 +28,8 @@ namespace OpenRA.Mods.Common.Widgets
 
 		[Translate]
 		public readonly string HoldText = "";
+
+		public readonly string OverlayFont = "TinyBold";
 
 		public readonly int2 IconSize = new int2(64, 48);
 		public readonly int IconMargin = 10;
@@ -64,7 +67,7 @@ namespace OpenRA.Mods.Common.Widgets
 		Rectangle eventBounds;
 		public override Rectangle EventBounds { get { return eventBounds; } }
 		SpriteFont overlayFont;
-		float2 holdOffset, readyOffset, timeOffset;
+		float2 iconOffset, holdOffset, readyOffset, timeOffset;
 
 		[CustomLintableHotkeyNames]
 		public static IEnumerable<string> LinterHotkeyNames(MiniYamlNode widgetNode, Action<string> emitError, Action<string> emitWarning)
@@ -98,7 +101,6 @@ namespace OpenRA.Mods.Common.Widgets
 			tooltipContainer = Exts.Lazy(() =>
 				Ui.Root.Get<TooltipContainerWidget>(TooltipContainer));
 
-			icon = new Animation(world, "icon");
 			clock = new Animation(world, ClockAnimation);
 		}
 
@@ -108,6 +110,12 @@ namespace OpenRA.Mods.Common.Widgets
 
 			hotkeys = Exts.MakeArray(HotkeyCount,
 				i => modData.Hotkeys[HotkeyPrefix + (i + 1).ToString("D2")]);
+
+			overlayFont = Game.Renderer.Fonts[OverlayFont];
+
+			iconOffset = 0.5f * IconSize.ToFloat2() + IconSpriteOffset;
+			holdOffset = iconOffset - overlayFont.Measure(HoldText) / 2;
+			readyOffset = iconOffset - overlayFont.Measure(ReadyText) / 2;
 		}
 
 		public class SupportPowerIcon
@@ -138,6 +146,7 @@ namespace OpenRA.Mods.Common.Widgets
 				else
 					rect = new Rectangle(rb.X, rb.Y + IconCount * (IconSize.Y + IconMargin), IconSize.X, IconSize.Y);
 
+				icon = new Animation(worldRenderer.World, p.Info.IconImage);
 				icon.Play(p.Info.Icon);
 
 				var power = new SupportPowerIcon()
@@ -190,11 +199,6 @@ namespace OpenRA.Mods.Common.Widgets
 
 		public override void Draw()
 		{
-			var iconOffset = 0.5f * IconSize.ToFloat2() + IconSpriteOffset;
-			overlayFont = Game.Renderer.Fonts["TinyBold"];
-
-			holdOffset = iconOffset - overlayFont.Measure(HoldText) / 2;
-			readyOffset = iconOffset - overlayFont.Measure(ReadyText) / 2;
 			timeOffset = iconOffset - overlayFont.Measure(WidgetUtils.FormatTime(0, worldRenderer.World.Timestep)) / 2;
 
 			// Icons
@@ -253,7 +257,11 @@ namespace OpenRA.Mods.Common.Widgets
 				return;
 
 			tooltipContainer.Value.SetTooltip(TooltipTemplate,
-				new WidgetArgs() { { "world", worldRenderer.World }, { "player", spm.Self.Owner }, { "getTooltipIcon", GetTooltipIcon } });
+				new WidgetArgs()
+				{
+					{ "world", worldRenderer.World }, { "player", spm.Self.Owner }, { "getTooltipIcon", GetTooltipIcon },
+					{ "playerResources", worldRenderer.World.LocalPlayer.PlayerActor.Trait<PlayerResources>() }
+				});
 		}
 
 		public override void MouseExited()

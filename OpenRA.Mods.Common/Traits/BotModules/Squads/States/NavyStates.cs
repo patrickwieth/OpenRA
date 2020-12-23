@@ -29,11 +29,11 @@ namespace OpenRA.Mods.Common.Traits.BotModules.Squads
 			// (Way better than finding a nearest target which is likely to be on Ground)
 			// You might be tempted to move these lookups into Activate() but that causes null reference exception.
 			var domainIndex = first.World.WorldActor.Trait<DomainIndex>();
-			var locomotorInfo = first.Info.TraitInfo<MobileInfo>().LocomotorInfo;
+			var locomotor = first.Trait<Mobile>().Locomotor;
 
 			var navalProductions = owner.World.ActorsHavingTrait<Building>().Where(a
 				=> owner.SquadManager.Info.NavalProductionTypes.Contains(a.Info.Name)
-				&& domainIndex.IsPassable(first.Location, a.Location, locomotorInfo)
+				&& domainIndex.IsPassable(first.Location, a.Location, locomotor)
 				&& a.AppearsHostileTo(first));
 
 			if (navalProductions.Any())
@@ -71,7 +71,7 @@ namespace OpenRA.Mods.Common.Traits.BotModules.Squads
 			}
 
 			var enemyUnits = owner.World.FindActorsInCircle(owner.TargetActor.CenterPosition, WDist.FromCells(owner.SquadManager.Info.IdleScanRadius))
-				.Where(owner.SquadManager.IsEnemyUnit).ToList();
+				.Where(owner.SquadManager.IsPreferredEnemyUnit).ToList();
 
 			if (enemyUnits.Count == 0)
 				return;
@@ -130,7 +130,7 @@ namespace OpenRA.Mods.Common.Traits.BotModules.Squads
 			else
 			{
 				var enemies = owner.World.FindActorsInCircle(leader.CenterPosition, WDist.FromCells(owner.SquadManager.Info.AttackScanRadius))
-					.Where(owner.SquadManager.IsEnemyUnit);
+					.Where(owner.SquadManager.IsPreferredEnemyUnit);
 				var target = enemies.ClosestTo(leader.CenterPosition);
 				if (target != null)
 				{

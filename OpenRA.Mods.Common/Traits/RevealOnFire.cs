@@ -22,7 +22,7 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly string[] ArmamentNames = { "primary", "secondary" };
 
 		[Desc("Stances relative to the target player this actor will be revealed to during firing.")]
-		public readonly Stance RevealForStancesRelativeToTarget = Stance.Ally;
+		public readonly PlayerRelationship RevealForStancesRelativeToTarget = PlayerRelationship.Ally;
 
 		[Desc("Duration of the reveal.")]
 		public readonly int Duration = 25;
@@ -46,7 +46,7 @@ namespace OpenRA.Mods.Common.Traits
 			this.info = info;
 		}
 
-		void INotifyAttack.Attacking(Actor self, Target target, Armament a, Barrel barrel)
+		void INotifyAttack.Attacking(Actor self, in Target target, Armament a, Barrel barrel)
 		{
 			if (IsTraitDisabled)
 				return;
@@ -64,7 +64,7 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
-		Player GetTargetPlayer(Target target)
+		Player GetTargetPlayer(in Target target)
 		{
 			if (target.Type == TargetType.Actor)
 				return target.Actor.Owner;
@@ -74,6 +74,6 @@ namespace OpenRA.Mods.Common.Traits
 			return null;
 		}
 
-		void INotifyAttack.PreparingAttack(Actor self, OpenRA.Traits.Target target, Armament a, Barrel barrel) { }
+		void INotifyAttack.PreparingAttack(Actor self, in Target target, Armament a, Barrel barrel) { }
 	}
 }

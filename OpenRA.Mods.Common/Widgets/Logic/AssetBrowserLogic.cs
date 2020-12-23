@@ -124,7 +124,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				frameContainer.IsVisible = () => (currentSprites != null && currentSprites.Length > 1) ||
 					(isVideoLoaded && player != null && player.Video != null && player.Video.Frames > 1);
 
-			frameSlider = panel.Get<SliderWidget>("FRAME_SLIDER");
+			frameSlider = panel.GetOrNull<SliderWidget>("FRAME_SLIDER");
 			if (frameSlider != null)
 			{
 				frameSlider.OnChange += x =>
@@ -183,7 +183,9 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 						player.Stop();
 					else
 					{
-						frameSlider.Value = 0;
+						if (frameSlider != null)
+							frameSlider.Value = 0;
+
 						currentFrame = 0;
 						animateFrames = false;
 					}
@@ -272,10 +274,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 			// Select the first visible
 			var firstVisible = assetVisByName.FirstOrDefault(kvp => kvp.Value);
-			IReadOnlyPackage package;
-			string filename;
 
-			if (firstVisible.Key != null && modData.DefaultFileSystem.TryGetPackageContaining(firstVisible.Key, out package, out filename))
+			if (firstVisible.Key != null && modData.DefaultFileSystem.TryGetPackageContaining(firstVisible.Key, out var package, out var filename))
 				LoadAsset(package, filename);
 		}
 
@@ -290,8 +290,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 			item.IsVisible = () =>
 			{
-				bool visible;
-				if (assetVisByName.TryGetValue(filepath, out visible))
+				if (assetVisByName.TryGetValue(filepath, out var visible))
 					return visible;
 
 				visible = FilterAsset(filepath);
@@ -339,15 +338,23 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					player.Load(prefix + filename);
 					player.DrawOverlay = false;
 					isVideoLoaded = true;
-					frameSlider.MaximumValue = (float)player.Video.Frames - 1;
-					frameSlider.Ticks = 0;
+
+					if (frameSlider != null)
+					{
+						frameSlider.MaximumValue = (float)player.Video.Frames - 1;
+						frameSlider.Ticks = 0;
+					}
+
 					return true;
 				}
 
 				currentSprites = world.Map.Rules.Sequences.SpriteCache[prefix + filename];
 				currentFrame = 0;
-				frameSlider.MaximumValue = (float)currentSprites.Length - 1;
-				frameSlider.Ticks = currentSprites.Length;
+				if (frameSlider != null)
+				{
+					frameSlider.MaximumValue = (float)currentSprites.Length - 1;
+					frameSlider.Ticks = currentSprites.Length;
+				}
 			}
 			catch (Exception ex)
 			{

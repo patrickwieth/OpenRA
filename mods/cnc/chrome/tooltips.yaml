@@ -352,6 +352,12 @@ Background@SUPPORT_POWER_TOOLTIP_FACTIONSUFFIX:
 			Y: 22
 			Font: TinyBold
 			VAlign: Top
+		Label@COST:
+			X: 5
+			Y: 6
+			Font: TinyBold
+			VAlign: Top
+			Text: $
 
 Background@ARMY_TOOLTIP:
 	Logic: ArmyTooltipLogic

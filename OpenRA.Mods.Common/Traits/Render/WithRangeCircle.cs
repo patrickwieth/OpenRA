@@ -28,12 +28,21 @@ namespace OpenRA.Mods.Common.Traits.Render
 		[Desc("Color of the circle")]
 		public readonly Color Color = Color.FromArgb(128, Color.White);
 
+		[Desc("Border width.")]
+		public readonly float Width = 1;
+
+		[Desc("Color of the border.")]
+		public readonly Color BorderColor = Color.FromArgb(96, Color.Black);
+
+		[Desc("Range circle border width.")]
+		public readonly float BorderWidth = 3;
+
 		[Desc("If set, the color of the owning player will be used instead of `Color`.")]
 		public readonly bool UsePlayerColor = false;
 
 		[Desc("Stances of players which will be able to see the circle.",
 			"Valid values are combinations of `None`, `Ally`, `Enemy` and `Neutral`.")]
-		public readonly Stance ValidStances = Stance.Ally;
+		public readonly PlayerRelationship ValidStances = PlayerRelationship.Ally;
 
 		[Desc("When to show the range circle. Valid values are `Always`, and `WhenSelected`")]
 		public readonly RangeCircleVisibility Visible = RangeCircleVisibility.WhenSelected;
@@ -41,16 +50,22 @@ namespace OpenRA.Mods.Common.Traits.Render
 		[Desc("Range of the circle")]
 		public readonly WDist Range = WDist.Zero;
 
+		[Desc("Render the circle on the ground regardless of actors height.")]
+		public readonly bool RenderOnGround = false;
+
 		public IEnumerable<IRenderable> RenderAnnotations(WorldRenderer wr, World w, ActorInfo ai, WPos centerPosition)
 		{
+			var position = centerPosition - new WVec(WDist.Zero, WDist.Zero, RenderOnGround ? w.Map.DistanceAboveTerrain(centerPosition) : WDist.Zero);
 			if (EnabledByDefault)
 			{
 				yield return new RangeCircleAnnotationRenderable(
-					centerPosition,
+					position,
 					Range,
 					0,
 					Color,
-					Color.FromArgb(96, Color.Black));
+					Width,
+					BorderColor,
+					BorderWidth);
 
 				foreach (var a in w.ActorsWithTrait<WithRangeCircle>())
 					if (a.Trait.Info.Type == Type)
@@ -62,7 +77,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 		public override object Create(ActorInitializer init) { return new WithRangeCircle(init.Self, this); }
 	}
 
-	class WithRangeCircle : ConditionalTrait<WithRangeCircleInfo>, IRenderAnnotationsWhenSelected, IRenderAboveShroud
+	class WithRangeCircle : ConditionalTrait<WithRangeCircleInfo>, IRenderAnnotationsWhenSelected, IRenderAnnotations
 	{
 		readonly Actor self;
 
@@ -80,19 +95,22 @@ namespace OpenRA.Mods.Common.Traits.Render
 					return false;
 
 				var p = self.World.RenderPlayer;
-				return p == null || Info.ValidStances.HasStance(self.Owner.Stances[p]) || (p.Spectating && !p.NonCombatant);
+				return p == null || Info.ValidStances.HasStance(self.Owner.RelationshipWith(p)) || (p.Spectating && !p.NonCombatant);
 			}
 		}
 
 		public IEnumerable<IRenderable> RenderRangeCircle(Actor self, WorldRenderer wr, RangeCircleVisibility visibility)
 		{
+			var position = self.CenterPosition - new WVec(WDist.Zero, WDist.Zero, Info.RenderOnGround ? self.World.Map.DistanceAboveTerrain(self.CenterPosition) : WDist.Zero);
 			if (Info.Visible == visibility && Visible)
 				yield return new RangeCircleAnnotationRenderable(
-					self.CenterPosition,
+					position,
 					Info.Range,
 					0,
 					Info.UsePlayerColor ? self.Owner.Color : Info.Color,
-					Color.FromArgb(96, Color.Black));
+					Info.Width,
+					Info.BorderColor,
+					Info.BorderWidth);
 		}
 
 		IEnumerable<IRenderable> IRenderAnnotationsWhenSelected.RenderAnnotations(Actor self, WorldRenderer wr)
@@ -102,11 +120,11 @@ namespace OpenRA.Mods.Common.Traits.Render
 
 		bool IRenderAnnotationsWhenSelected.SpatiallyPartitionable { get { return false; } }
 
-		IEnumerable<IRenderable> IRenderAboveShroud.RenderAboveShroud(Actor self, WorldRenderer wr)
+		IEnumerable<IRenderable> IRenderAnnotations.RenderAnnotations(Actor self, WorldRenderer wr)
 		{
 			return RenderRangeCircle(self, wr, RangeCircleVisibility.Always);
 		}
 
-		bool IRenderAboveShroud.SpatiallyPartitionable { get { return false; } }
+		bool IRenderAnnotations.SpatiallyPartitionable { get { return false; } }
 	}
 }

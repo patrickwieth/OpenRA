@@ -62,6 +62,10 @@ Var StartMenuFolder
 
 !insertmacro MUI_LANGUAGE "English"
 
+!define RA_DISCORDID 699222659766026240
+!define CNC_DISCORDID 699223250181292033
+!define D2K_DISCORDID 712711732770111550
+
 ;***************************
 ;Section Definitions
 ;***************************
@@ -73,18 +77,33 @@ Section "-Reg" Reg
 	; Join server URL Scheme
 	WriteRegStr HKLM "Software\Classes\openra-ra-${TAG}" "" "URL:Join OpenRA server"
 	WriteRegStr HKLM "Software\Classes\openra-ra-${TAG}" "URL Protocol" ""
-	WriteRegStr HKLM "Software\Classes\openra-ra-${TAG}\DefaultIcon" "" "$INSTDIR\RedAlert.ico,0"
+	WriteRegStr HKLM "Software\Classes\openra-ra-${TAG}\DefaultIcon" "" "$INSTDIR\ra.ico,0"
 	WriteRegStr HKLM "Software\Classes\openra-ra-${TAG}\Shell\Open\Command" "" "$INSTDIR\RedAlert.exe Launch.URI=%1"
+
+	WriteRegStr HKLM "Software\Classes\discord-${RA_DISCORDID}" "" "URL:Run game ${RA_DISCORDID} protocol"
+	WriteRegStr HKLM "Software\Classes\discord-${RA_DISCORDID}" "URL Protocol" ""
+	WriteRegStr HKLM "Software\Classes\discord-${RA_DISCORDID}\DefaultIcon" "" "$INSTDIR\ra.ico,0"
+	WriteRegStr HKLM "Software\Classes\discord-${RA_DISCORDID}\Shell\Open\Command" "" "$INSTDIR\RedAlert.exe"
 
 	WriteRegStr HKLM "Software\Classes\openra-cnc-${TAG}" "" "URL:Join OpenRA server"
 	WriteRegStr HKLM "Software\Classes\openra-cnc-${TAG}" "URL Protocol" ""
-	WriteRegStr HKLM "Software\Classes\openra-cnc-${TAG}\DefaultIcon" "" "$INSTDIR\TiberianDawn.ico,0"
+	WriteRegStr HKLM "Software\Classes\openra-cnc-${TAG}\DefaultIcon" "" "$INSTDIR\cnc.ico,0"
 	WriteRegStr HKLM "Software\Classes\openra-cnc-${TAG}\Shell\Open\Command" "" "$INSTDIR\TiberianDawn.exe Launch.URI=%1"
+
+	WriteRegStr HKLM "Software\Classes\discord-${CNC_DISCORDID}" "" "URL:Run game ${CNC_DISCORDID} protocol"
+	WriteRegStr HKLM "Software\Classes\discord-${CNC_DISCORDID}" "URL Protocol" ""
+	WriteRegStr HKLM "Software\Classes\discord-${CNC_DISCORDID}\DefaultIcon" "" "$INSTDIR\cnc.ico,0"
+	WriteRegStr HKLM "Software\Classes\discord-${CNC_DISCORDID}\Shell\Open\Command" "" "$INSTDIR\TiberianDawn.exe"
 
 	WriteRegStr HKLM "Software\Classes\openra-d2k-${TAG}" "" "URL:Join OpenRA server"
 	WriteRegStr HKLM "Software\Classes\openra-d2k-${TAG}" "URL Protocol" ""
-	WriteRegStr HKLM "Software\Classes\openra-d2k-${TAG}\DefaultIcon" "" "$INSTDIR\Dune2000.ico,0"
+	WriteRegStr HKLM "Software\Classes\openra-d2k-${TAG}\DefaultIcon" "" "$INSTDIR\d2k.ico,0"
 	WriteRegStr HKLM "Software\Classes\openra-d2k-${TAG}\Shell\Open\Command" "" "$INSTDIR\Dune2000.exe Launch.URI=%1"
+
+	WriteRegStr HKLM "Software\Classes\discord-${D2K_DISCORDID}" "" "URL:Run game ${D2K_DISCORDID} protocol"
+	WriteRegStr HKLM "Software\Classes\discord-${D2K_DISCORDID}" "URL Protocol" ""
+	WriteRegStr HKLM "Software\Classes\discord-${D2K_DISCORDID}\DefaultIcon" "" "$INSTDIR\d2k.ico,0"
+	WriteRegStr HKLM "Software\Classes\discord-${D2K_DISCORDID}\Shell\Open\Command" "" "$INSTDIR\Dune2000.exe"
 
 	; Remove obsolete file associations
 	DeleteRegKey HKLM "Software\Classes\.orarep"
@@ -121,23 +140,23 @@ Section "Game" GAME
 	File "${SRCDIR}\VERSION"
 	File "${SRCDIR}\AUTHORS"
 	File "${SRCDIR}\COPYING"
-	File "${SRCDIR}\README.html"
-	File "${SRCDIR}\CHANGELOG.html"
-	File "${SRCDIR}\CONTRIBUTING.html"
-	File "${SRCDIR}\OpenRA.ico"
-	File "${SRCDIR}\RedAlert.ico"
-	File "${SRCDIR}\TiberianDawn.ico"
-	File "${SRCDIR}\Dune2000.ico"
+	File "${SRCDIR}\ra.ico"
+	File "${SRCDIR}\cnc.ico"
+	File "${SRCDIR}\d2k.ico"
 	File "${SRCDIR}\SDL2-CS.dll"
-	File "${SRCDIR}\OpenAL-CS.dll"
+	File "${SRCDIR}\OpenAL-CS.Core.dll"
 	File "${SRCDIR}\global mix database.dat"
 	File "${SRCDIR}\IP2LOCATION-LITE-DB1.IPV6.BIN.ZIP"
 	File "${SRCDIR}\eluant.dll"
-	File "${SRCDIR}\rix0rrr.BeaconLib.dll"
-	File "${DEPSDIR}\soft_oal.dll"
-	File "${DEPSDIR}\SDL2.dll"
-	File "${DEPSDIR}\freetype6.dll"
-	File "${DEPSDIR}\lua51.dll"
+	File "${SRCDIR}\BeaconLib.dll"
+	File "${SRCDIR}\soft_oal.dll"
+	File "${SRCDIR}\DiscordRPC.dll"
+	File "${SRCDIR}\Newtonsoft.Json.dll"
+	File "${SRCDIR}\SDL2.dll"
+	File "${SRCDIR}\libEGL.dll"
+	File "${SRCDIR}\libGLESv2.dll"
+	File "${SRCDIR}\freetype6.dll"
+	File "${SRCDIR}\lua51.dll"
 
 	!insertmacro MUI_STARTMENU_WRITE_BEGIN Application
 		CreateDirectory "$SMPROGRAMS\$StartMenuFolder"
@@ -191,9 +210,9 @@ Section "-DotNet" DotNet
 	; https://docs.microsoft.com/en-us/dotnet/framework/migration-guide/how-to-determine-which-versions-are-installed
 	ReadRegDWORD $0 HKLM "SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full" "Release"
 	IfErrors error 0
-	IntCmp $0 394254 done error done
+	IntCmp $0 461808 done error done
 	error:
-		MessageBox MB_OK ".NET Framework v4.6.1 or later is required to run OpenRA."
+		MessageBox MB_OK ".NET Framework v4.7.2 or later is required to run OpenRA."
 		Abort
 	done:
 SectionEnd
@@ -205,12 +224,11 @@ Section "-Uninstaller"
 	WriteUninstaller $INSTDIR\uninstaller.exe
 	WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OpenRA${SUFFIX}" "DisplayName" "OpenRA${SUFFIX}"
 	WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OpenRA${SUFFIX}" "UninstallString" "$INSTDIR\uninstaller.exe"
-	WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OpenRA${SUFFIX}" "QuietUninstallString" "$\"$INSTDIR\uninstall.exe$\" /S"
+	WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OpenRA${SUFFIX}" "QuietUninstallString" "$\"$INSTDIR\uninstaller.exe$\" /S"
 	WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OpenRA${SUFFIX}" "InstallLocation" "$INSTDIR"
-	WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OpenRA${SUFFIX}" "DisplayIcon" "$INSTDIR\OpenRA.ico"
+	WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OpenRA${SUFFIX}" "DisplayIcon" "$INSTDIR\ra.ico"
 	WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OpenRA${SUFFIX}" "Publisher" "OpenRA developers"
 	WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OpenRA${SUFFIX}" "URLInfoAbout" "http://openra.net"
-	WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OpenRA${SUFFIX}" "Readme" "$INSTDIR\README.html"
 	WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OpenRA${SUFFIX}" "DisplayVersion" "${TAG}"
 	WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OpenRA${SUFFIX}" "NoModify" "1"
 	WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OpenRA${SUFFIX}" "NoRepair" "1"
@@ -240,29 +258,33 @@ Function ${UN}Clean
 	Delete $INSTDIR\VERSION
 	Delete $INSTDIR\AUTHORS
 	Delete $INSTDIR\COPYING
-	Delete $INSTDIR\README.html
-	Delete $INSTDIR\CHANGELOG.html
-	Delete $INSTDIR\CONTRIBUTING.html
-	Delete $INSTDIR\OpenRA.ico
-	Delete $INSTDIR\RedAlert.ico
-	Delete $INSTDIR\TiberianDawn.ico
-	Delete $INSTDIR\Dune2000.ico
+	Delete $INSTDIR\ra.ico
+	Delete $INSTDIR\cnc.ico
+	Delete $INSTDIR\d2k.ico
 	Delete "$INSTDIR\global mix database.dat"
 	Delete $INSTDIR\IP2LOCATION-LITE-DB1.IPV6.BIN.ZIP
 	Delete $INSTDIR\soft_oal.dll
 	Delete $INSTDIR\SDL2.dll
+	Delete $INSTDIR\libEGL.dll
+	Delete $INSTDIR\libGLESv2.dll
 	Delete $INSTDIR\lua51.dll
 	Delete $INSTDIR\eluant.dll
 	Delete $INSTDIR\freetype6.dll
+	Delete $INSTDIR\DiscordRPC.dll
+	Delete $INSTDIR\Newtonsoft.Json.dll
 	Delete $INSTDIR\SDL2-CS.dll
-	Delete $INSTDIR\OpenAL-CS.dll
-	Delete $INSTDIR\rix0rrr.BeaconLib.dll
+	Delete $INSTDIR\OpenAL-CS.Core.dll
+	Delete $INSTDIR\BeaconLib.dll
 	RMDir /r $INSTDIR\Support
 
 	DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OpenRA${SUFFIX}"
 	DeleteRegKey HKLM "Software\Classes\openra-ra-${TAG}"
 	DeleteRegKey HKLM "Software\Classes\openra-cnc-${TAG}"
 	DeleteRegKey HKLM "Software\Classes\openra-d2k-${TAG}"
+
+	DeleteRegKey HKLM "Software\Classes\discord-${RA_DISCORDID}"
+	DeleteRegKey HKLM "Software\Classes\discord-${CNC_DISCORDID}"
+	DeleteRegKey HKLM "Software\Classes\discord-${D2K_DISCORDID}"
 
 	Delete $INSTDIR\uninstaller.exe
 	RMDir $INSTDIR

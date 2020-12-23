@@ -19,7 +19,7 @@ namespace OpenRA.Mods.Common.Server
 	{
 		static readonly int PingInterval = 5000; // Ping every 5 seconds
 		static readonly int ConnReportInterval = 20000; // Report every 20 seconds
-		static readonly int ConnTimeout = 60000; // Drop unresponsive clients after 60 seconds
+		static readonly int ConnTimeout = 180000; // Drop unresponsive clients after 180 seconds
 
 		// TickTimeout is in microseconds
 		public int TickTimeout { get { return PingInterval * 100; } }
@@ -36,7 +36,11 @@ namespace OpenRA.Mods.Common.Server
 				lastPing = Game.RunTime;
 
 				// Ignore client timeout in singleplayer games to make debugging easier
-				if (server.LobbyInfo.NonBotClients.Count() < 2 && server.Type != ServerType.Dedicated)
+				var nonBotClientCount = 0;
+				lock (server.LobbyInfo)
+					nonBotClientCount = server.LobbyInfo.NonBotClients.Count();
+
+				if (nonBotClientCount < 2 && server.Type != ServerType.Dedicated)
 					foreach (var c in server.Conns.ToList())
 						server.SendOrderTo(c, "Ping", Game.RunTime.ToString());
 				else

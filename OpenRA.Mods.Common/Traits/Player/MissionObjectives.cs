@@ -34,7 +34,7 @@ namespace OpenRA.Mods.Common.Traits
 		}
 	}
 
-	public class MissionObjectivesInfo : ITraitInfo
+	public class MissionObjectivesInfo : TraitInfo
 	{
 		[Desc("Set this to true if multiple cooperative players have a distinct set of " +
 			"objectives that each of them has to complete to win the game. This is mainly " +
@@ -58,7 +58,7 @@ namespace OpenRA.Mods.Common.Traits
 		[NotificationReference("Speech")]
 		public readonly string LeaveNotification = null;
 
-		public object Create(ActorInitializer init) { return new MissionObjectives(init.World, this); }
+		public override object Create(ActorInitializer init) { return new MissionObjectives(init.World, this); }
 	}
 
 	public class MissionObjectives : INotifyWinStateChanged, ISync, IResolveOrder
@@ -249,24 +249,21 @@ namespace OpenRA.Mods.Common.Traits
 		public void ResolveOrder(Actor self, Order order)
 		{
 			if (order.OrderString == "Surrender")
-			{
 				ForceDefeat(self.Owner);
-				self.Owner.Spectating = true;
-			}
 		}
 	}
 
 	[Desc("Provides game mode progress information for players.",
 		"Goes on WorldActor - observers don't have a player it can live on.",
 		"Current options for PanelName are 'SKIRMISH_STATS' and 'MISSION_OBJECTIVES'.")]
-	public class ObjectivesPanelInfo : ITraitInfo
+	public class ObjectivesPanelInfo : TraitInfo
 	{
 		public string PanelName = null;
 
 		[Desc("in ms")]
 		public int ExitDelay = 1400;
 
-		public object Create(ActorInitializer init) { return new ObjectivesPanel(this); }
+		public override object Create(ActorInitializer init) { return new ObjectivesPanel(this); }
 	}
 
 	public class ObjectivesPanel : IObjectivesPanel

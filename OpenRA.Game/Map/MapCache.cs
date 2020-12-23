@@ -38,6 +38,8 @@ namespace OpenRA
 		object syncRoot = new object();
 		Queue<MapPreview> generateMinimap = new Queue<MapPreview>();
 
+		public Dictionary<string, string> StringPool { get; } = new Dictionary<string, string>();
+
 		public MapCache(ModData modData)
 		{
 			this.modData = modData;
@@ -111,8 +113,7 @@ namespace OpenRA
 					}
 					catch (Exception e)
 					{
-						if (mapPackage != null)
-							mapPackage.Dispose();
+						mapPackage?.Dispose();
 						Console.WriteLine("Failed to load map: {0}", map);
 						Console.WriteLine("Details: {0}", e);
 						Log.Write("debug", "Failed to load map: {0}", map);
@@ -131,8 +132,7 @@ namespace OpenRA
 			// Enumerate map directories
 			foreach (var kv in modData.Manifest.MapFolders)
 			{
-				MapClassification packageClassification;
-				if (!Enum.TryParse(kv.Value, out packageClassification))
+				if (!Enum.TryParse(kv.Value, out MapClassification packageClassification))
 					continue;
 
 				if (!classification.HasFlag(packageClassification))
@@ -193,8 +193,7 @@ namespace OpenRA
 					foreach (var p in maps.Values)
 						p.UpdateRemoteSearch(MapStatus.Unavailable, null);
 
-					if (queryFailed != null)
-						queryFailed();
+					queryFailed?.Invoke();
 
 					return;
 				}
@@ -214,8 +213,7 @@ namespace OpenRA
 				{
 					Log.Write("debug", "Can't parse remote map search data:\n{0}", data);
 					Log.Write("debug", "Exception: {0}", e);
-					if (queryFailed != null)
-						queryFailed();
+					queryFailed?.Invoke();
 				}
 			};
 
@@ -299,8 +297,7 @@ namespace OpenRA
 				Game.RunAfterTick(() =>
 				{
 					// Wait for any existing thread to exit before starting a new one.
-					if (previewLoaderThread != null)
-						previewLoaderThread.Join();
+					previewLoaderThread?.Join();
 
 					previewLoaderThread = new Thread(LoadAsyncInternal)
 					{

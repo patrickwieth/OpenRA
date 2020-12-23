@@ -7,7 +7,7 @@ command -v python >/dev/null 2>&1 || { echo >&2 "Linux packaging requires python
 command -v tar >/dev/null 2>&1 || { echo >&2 "Linux packaging requires tar."; exit 1; }
 command -v curl >/dev/null 2>&1 || command -v wget > /dev/null 2>&1 || { echo >&2 "Linux packaging requires curl or wget."; exit 1; }
 
-DEPENDENCIES_TAG="20200222"
+DEPENDENCIES_TAG="20200328"
 
 if [ $# -eq "0" ]; then
 	echo "Usage: $(basename "$0") version [outputdir]"
@@ -21,6 +21,7 @@ TAG="$1"
 OUTPUTDIR="$2"
 SRCDIR="$(pwd)/../.."
 BUILTDIR="$(pwd)/build"
+ARTWORK_DIR="$(pwd)/../artwork/"
 
 UPDATE_CHANNEL=""
 SUFFIX="-devel"
@@ -48,24 +49,21 @@ pushd "${SRCDIR}" > /dev/null || exit 1
 
 make clean
 
-# linux-dependencies target will trigger the lua detection script, which we don't want during packaging
-make cli-dependencies
-sed "s/@LIBLUA51@/liblua5.1.so.0/" thirdparty/Eluant.dll.config.in > Eluant.dll.config
-
-make core
+make core TARGETPLATFORM=linux-x64
 make version VERSION="${TAG}"
 make install-engine prefix="usr" DESTDIR="${BUILTDIR}/"
 make install-common-mod-files prefix="usr" DESTDIR="${BUILTDIR}/"
+make install-dependencies TARGETPLATFORM=linux-x64 prefix="usr" DESTDIR="${BUILTDIR}/"
 
 popd > /dev/null || exit 1
 
 # Add native libraries
 echo "Downloading dependencies"
 if command -v curl >/dev/null 2>&1; then
-	curl -s -L -O https://github.com/OpenRA/AppImageSupport/releases/download/${DEPENDENCIES_TAG}/libs.tar.bz2 || exit 3
+	curl -s -L -O https://github.com/OpenRA/AppImageSupport/releases/download/${DEPENDENCIES_TAG}/mono.tar.bz2 || exit 3
 	curl -s -L -O https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage || exit 3
 else
-	wget -cq https://github.com/OpenRA/AppImageSupport/releases/download/${DEPENDENCIES_TAG}/libs.tar.bz2 || exit 3
+	wget -cq https://github.com/OpenRA/AppImageSupport/releases/download/${DEPENDENCIES_TAG}/mono.tar.bz2 || exit 3
 	wget -cq https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage || exit 3
 fi
 
@@ -74,27 +72,29 @@ chmod a+x appimagetool-x86_64.AppImage
 echo "Building AppImage"
 mkdir libs
 pushd libs
-tar xf ../libs.tar.bz2
+tar xf ../mono.tar.bz2
 
 install -d "${BUILTDIR}/usr/bin"
 install -d "${BUILTDIR}/etc/mono/4.5"
-install -d "${BUILTDIR}/usr/lib/mono/4.5"
+install -d "${BUILTDIR}/usr/lib/mono/4.5/Facades"
 
 install -Dm 0755 usr/bin/mono "${BUILTDIR}/usr/bin/"
 
 install -Dm 0644 /etc/mono/config "${BUILTDIR}/etc/mono/"
 install -Dm 0644 /etc/mono/4.5/machine.config "${BUILTDIR}/etc/mono/4.5"
 
+for f in $(ls usr/lib/mono/4.5/Facades/*.dll); do install -Dm 0644 "$f" "${BUILTDIR}/usr/lib/mono/4.5/Facades/"; done
 for f in $(ls usr/lib/mono/4.5/*.dll usr/lib/mono/4.5/*.exe); do install -Dm 0644 "$f" "${BUILTDIR}/usr/lib/mono/4.5/"; done
-for f in $(ls usr/lib/*.so usr/lib/*.so.*); do install -Dm 0755 "$f" "${BUILTDIR}/usr/lib/"; done
+for f in $(ls usr/lib/*.so); do install -Dm 0755 "$f" "${BUILTDIR}/usr/lib/"; done
 
 popd
 
-rm -rf libs libs.tar.bz2
+rm -rf libs mono.tar.bz2
 
 build_appimage() {
 	MOD_ID=${1}
 	DISPLAY_NAME=${2}
+	DISCORD_ID=${3}
 	APPDIR="$(pwd)/${MOD_ID}.appdir"
 	APPIMAGE="OpenRA-$(echo "${DISPLAY_NAME}" | sed 's/ /-/g')${SUFFIX}-x86_64.AppImage"
 
@@ -109,7 +109,7 @@ build_appimage() {
 	sed "s/{MODID}/${MOD_ID}/g" AppRun.in | sed "s/{MODNAME}/${DISPLAY_NAME}/g" > AppRun.temp
 	install -m 0755 AppRun.temp "${APPDIR}/AppRun"
 
-	sed "s/{MODID}/${MOD_ID}/g" openra.desktop.in | sed "s/{MODNAME}/${DISPLAY_NAME}/g" | sed "s/{TAG}/${TAG}/g" > temp.desktop
+	sed "s/{MODID}/${MOD_ID}/g" openra.desktop.in | sed "s/{MODNAME}/${DISPLAY_NAME}/g" | sed "s/{TAG}/${TAG}/g" | sed "s/{DISCORDAPPID}/${DISCORD_ID}/g" > temp.desktop
 	echo "StartupWMClass=openra-${MOD_ID}-${TAG}" >> temp.desktop
 
 	install -Dm 0755 temp.desktop "${APPDIR}/usr/share/applications/openra-${MOD_ID}.desktop"
@@ -118,14 +118,14 @@ build_appimage() {
 	sed "s/{MODID}/${MOD_ID}/g" openra-mimeinfo.xml.in | sed "s/{TAG}/${TAG}/g" > temp.xml
 	install -Dm 0755 temp.xml "${APPDIR}/usr/share/mime/packages/openra-${MOD_ID}.xml"
 
-	if [ -f "icons/${MOD_ID}_scalable.svg" ]; then
-		install -Dm644 "icons/${MOD_ID}_scalable.svg" "${APPDIR}/usr/share/icons/hicolor/scalable/apps/openra-${MOD_ID}.svg"
+	if [ -f "${ARTWORK_DIR}/${MOD_ID}_scalable.svg" ]; then
+		install -Dm644 "${ARTWORK_DIR}/${MOD_ID}_scalable.svg" "${APPDIR}/usr/share/icons/hicolor/scalable/apps/openra-${MOD_ID}.svg"
 	fi
 
 	for i in 16x16 32x32 48x48 64x64 128x128 256x256 512x512 1024x1024; do
-		if [ -f "icons/${MOD_ID}_${i}.png" ]; then
-			install -Dm644 "icons/${MOD_ID}_${i}.png" "${APPDIR}/usr/share/icons/hicolor/${i}/apps/openra-${MOD_ID}.png"
-			install -m644 "icons/${MOD_ID}_${i}.png" "${APPDIR}/openra-${MOD_ID}.png"
+		if [ -f "${ARTWORK_DIR}/${MOD_ID}_${i}.png" ]; then
+			install -Dm644 "${ARTWORK_DIR}/${MOD_ID}_${i}.png" "${APPDIR}/usr/share/icons/hicolor/${i}/apps/openra-${MOD_ID}.png"
+			install -m644 "${ARTWORK_DIR}/${MOD_ID}_${i}.png" "${APPDIR}/openra-${MOD_ID}.png"
 		fi
 	done
 
@@ -144,7 +144,7 @@ build_appimage() {
 
 	# travis-ci doesn't support mounting FUSE filesystems so extract and run the contents manually
 	./appimagetool-x86_64.AppImage --appimage-extract
-	
+
 	# Embed update metadata if (and only if) compiled on travis
 	if [ ! -z "${TRAVIS_REPO_SLUG}" ]; then
 		ARCH=x86_64 ./squashfs-root/AppRun --no-appstream -u "zsync|https://master.openra.net/appimagecheck?mod=${MOD_ID}&channel=${UPDATE_CHANNEL}" "${APPDIR}" "${OUTPUTDIR}/${APPIMAGE}"
@@ -156,9 +156,9 @@ build_appimage() {
 	rm -rf "${APPDIR}"
 }
 
-build_appimage "ra" "Red Alert"
-build_appimage "cnc" "Tiberian Dawn"
-build_appimage "d2k" "Dune 2000"
+build_appimage "ra" "Red Alert" "699222659766026240"
+build_appimage "cnc" "Tiberian Dawn" "699223250181292033"
+build_appimage "d2k" "Dune 2000" "712711732770111550"
 
 # Clean up
 rm -rf openra-mod.temp openra-mod-server.temp openra-mod-utility.temp temp.desktop temp.xml AppRun.temp appimagetool-x86_64.AppImage squashfs-root "${BUILTDIR}"

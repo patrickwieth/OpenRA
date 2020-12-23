@@ -9,12 +9,9 @@
  */
 #endregion
 
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using OpenRA.Activities;
 using OpenRA.Mods.Common.Activities;
-using OpenRA.Mods.Common.Orders;
 using OpenRA.Primitives;
 using OpenRA.Traits;
 
@@ -23,7 +20,10 @@ namespace OpenRA.Mods.Common.Traits
 	[Desc("Add to a building to expose a move cursor that triggers Transforms and issues an enter tunnel order to the transformed actor.")]
 	public class TransformsIntoEntersTunnelsInfo : ConditionalTraitInfo, Requires<TransformsInfo>
 	{
+		[Desc("Cursor to display when able to enter target tunnel.")]
 		public readonly string EnterCursor = "enter";
+
+		[Desc("Cursor to display when unable to enter target tunnel.")]
 		public readonly string EnterBlockedCursor = "enter-blocked";
 
 		[VoiceReference]
@@ -71,7 +71,7 @@ namespace OpenRA.Mods.Common.Traits
 			return self.CurrentActivity is Transform || transforms.Any(t => !t.IsTraitDisabled && !t.IsTraitPaused);
 		}
 
-		Order IIssueOrder.IssueOrder(Actor self, IOrderTargeter order, Target target, bool queued)
+		Order IIssueOrder.IssueOrder(Actor self, IOrderTargeter order, in Target target, bool queued)
 		{
 			if (order.OrderID == "EnterTunnel")
 				return new Order(order.OrderID, self, target, queued) { SuppressVisualFeedback = true };
@@ -95,8 +95,8 @@ namespace OpenRA.Mods.Common.Traits
 
 			// Manually manage the inner activity queue
 			var activity = currentTransform ?? transform.GetTransformActivity(self);
-			if (!order.Queued && activity.NextActivity != null)
-				activity.NextActivity.Cancel(self);
+			if (!order.Queued)
+				activity.NextActivity?.Cancel(self);
 
 			activity.Queue(new IssueOrderAfterTransform(order.OrderString, order.Target, Color.Green));
 

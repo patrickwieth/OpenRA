@@ -15,6 +15,10 @@
     "Tiberian Sun": {
       "commandName": "Project",
       "commandLineArgs": "Game.Mod=ts"
+    },
+    "Red Alert 2 - Valiant Shades": {
+      "commandName": "Project",
+      "commandLineArgs": "Game.Mod=ra2vsh"
     }
   }
 }

@@ -9,26 +9,17 @@
  */
 #endregion
 
-using System.Collections.Generic;
 using OpenRA.GameRules;
 using OpenRA.Primitives;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Warheads
 {
-	public enum ImpactType
+	public enum ImpactActorType
 	{
 		None,
-		Ground,
-		Air,
-		TargetHit
-	}
-
-	public enum ImpactTargetType
-	{
-		NoActor,
-		ValidActor,
-		InvalidActor
+		Invalid,
+		Valid,
 	}
 
 	[Desc("Base warhead class. This can be used to derive other warheads from.")]
@@ -41,10 +32,13 @@ namespace OpenRA.Mods.Common.Warheads
 		public readonly BitSet<TargetableType> InvalidTargets;
 
 		[Desc("What diplomatic stances are affected.")]
-		public readonly Stance ValidStances = Stance.Ally | Stance.Neutral | Stance.Enemy;
+		public readonly PlayerRelationship ValidStances = PlayerRelationship.Ally | PlayerRelationship.Neutral | PlayerRelationship.Enemy;
 
 		[Desc("Can this warhead affect the actor that fired it.")]
 		public readonly bool AffectsParent = false;
+
+		[Desc("If impact is above this altitude, warheads that would affect terrain ignore terrain target types (and either do nothing or perform their own checks).")]
+		public readonly WDist AirThreshold = new WDist(128);
 
 		[Desc("Delay in ticks before applying the warhead effect.", "0 = instant (old model).")]
 		public readonly int Delay = 0;
@@ -54,13 +48,13 @@ namespace OpenRA.Mods.Common.Warheads
 		[Desc("The color used for this warhead's visualization in the world's `WarheadDebugOverlay` trait.")]
 		public readonly Color DebugOverlayColor = Color.Red;
 
-		public bool IsValidTarget(BitSet<TargetableType> targetTypes)
+		protected bool IsValidTarget(BitSet<TargetableType> targetTypes)
 		{
 			return ValidTargets.Overlaps(targetTypes) && !InvalidTargets.Overlaps(targetTypes);
 		}
 
 		/// <summary>Applies the warhead's effect against the target.</summary>
-		public abstract void DoImpact(Target target, WarheadArgs args);
+		public abstract void DoImpact(in Target target, WarheadArgs args);
 
 		/// <summary>Checks if the warhead is valid against (can do something to) the actor.</summary>
 		public virtual bool IsValidAgainst(Actor victim, Actor firedBy)
@@ -68,7 +62,7 @@ namespace OpenRA.Mods.Common.Warheads
 			if (!AffectsParent && victim == firedBy)
 				return false;
 
-			var stance = firedBy.Owner.Stances[victim.Owner];
+			var stance = firedBy.Owner.RelationshipWith(victim.Owner);
 			if (!ValidStances.HasStance(stance))
 				return false;
 
@@ -86,7 +80,7 @@ namespace OpenRA.Mods.Common.Warheads
 				return false;
 
 			// AffectsParent checks do not make sense for FrozenActors, so skip to stance checks
-			var stance = firedBy.Owner.Stances[victim.Owner];
+			var stance = firedBy.Owner.RelationshipWith(victim.Owner);
 			if (!ValidStances.HasStance(stance))
 				return false;
 

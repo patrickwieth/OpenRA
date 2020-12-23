@@ -24,7 +24,7 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly int Percentage = 10;
 
 		[Desc("Stance the attacking player needs to receive the bounty.")]
-		public readonly Stance ValidStances = Stance.Neutral | Stance.Enemy;
+		public readonly PlayerRelationship ValidStances = PlayerRelationship.Neutral | PlayerRelationship.Enemy;
 
 		[Desc("Whether to show a floating text announcing the won bounty.")]
 		public readonly bool ShowBounty = true;
@@ -64,7 +64,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (e.Attacker == null || e.Attacker.Disposed || IsTraitDisabled)
 				return;
 
-			if (!Info.ValidStances.HasStance(e.Attacker.Owner.Stances[self.Owner]))
+			if (!Info.ValidStances.HasStance(e.Attacker.Owner.RelationshipWith(self.Owner)))
 				return;
 
 			if (!Info.DeathTypes.IsEmpty && !e.Damage.DamageTypes.Overlaps(Info.DeathTypes))

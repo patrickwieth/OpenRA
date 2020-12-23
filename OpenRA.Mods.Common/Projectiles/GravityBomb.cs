@@ -10,8 +10,10 @@
 #endregion
 
 using System.Collections.Generic;
+using System.Linq;
 using OpenRA.GameRules;
 using OpenRA.Graphics;
+using OpenRA.Mods.Common.Traits;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Projectiles
@@ -20,11 +22,11 @@ namespace OpenRA.Mods.Common.Projectiles
 	{
 		public readonly string Image = null;
 
-		[SequenceReference("Image")]
+		[SequenceReference(nameof(Image), allowNullImage: true)]
 		[Desc("Loop a randomly chosen sequence of Image from this list while falling.")]
 		public readonly string[] Sequences = { "idle" };
 
-		[SequenceReference("Image")]
+		[SequenceReference(nameof(Image), allowNullImage: true)]
 		[Desc("Sequence to play when launched. Skipped if null or empty.")]
 		public readonly string OpenSequence = null;
 
@@ -46,6 +48,9 @@ namespace OpenRA.Mods.Common.Projectiles
 		[Desc("Value added to Velocity every tick.")]
 		public readonly WVec Acceleration = new WVec(0, 0, -15);
 
+		[Desc("Type defined for point-defense logic.")]
+		public readonly string PointDefenseType = null;
+
 		public IProjectile Create(ProjectileArgs args) { return new GravityBomb(this, args); }
 	}
 
@@ -58,7 +63,7 @@ namespace OpenRA.Mods.Common.Projectiles
 		WVec velocity;
 
 		[Sync]
-		WPos pos;
+		WPos pos, lastPos;
 
 		public GravityBomb(GravityBombInfo info, ProjectileArgs args)
 		{
@@ -66,8 +71,9 @@ namespace OpenRA.Mods.Common.Projectiles
 			this.args = args;
 			pos = args.Source;
 			var convertedVelocity = new WVec(info.Velocity.Y, -info.Velocity.X, info.Velocity.Z);
-			velocity = convertedVelocity.Rotate(WRot.FromFacing(args.Facing));
-			acceleration = new WVec(info.Acceleration.Y, -info.Acceleration.X, info.Acceleration.Z);
+			velocity = convertedVelocity.Rotate(WRot.FromYaw(args.Facing));
+			var convertedAcceleration = new WVec(info.Acceleration.Y, -info.Acceleration.X, info.Acceleration.Z);
+			acceleration = convertedAcceleration.Rotate(WRot.FromYaw(args.Facing));
 
 			if (!string.IsNullOrEmpty(info.Image))
 			{
@@ -82,19 +88,42 @@ namespace OpenRA.Mods.Common.Projectiles
 
 		public void Tick(World world)
 		{
+			lastPos = pos;
 			pos += velocity;
 			velocity += acceleration;
+
+			if (!string.IsNullOrEmpty(info.PointDefenseType))
+			{
+				var shouldExplode = world.ActorsWithTrait<IPointDefense>().Any(x => x.Trait.Destroy(pos, args.SourceActor.Owner, info.PointDefenseType));
+				if (shouldExplode)
+				{
+					var warheadArgs = new WarheadArgs(args)
+					{
+						ImpactOrientation = new WRot(WAngle.Zero, Util.GetVerticalAngle(lastPos, pos), args.Facing),
+						ImpactPosition = pos,
+					};
+
+					args.Weapon.Impact(Target.FromPos(pos), warheadArgs);
+					world.AddFrameEndTask(w => w.Remove(this));
+					return;
+				}
+			}
 
 			if (pos.Z <= args.PassiveTarget.Z)
 			{
 				pos += new WVec(0, 0, args.PassiveTarget.Z - pos.Z);
 				world.AddFrameEndTask(w => w.Remove(this));
 
-				args.Weapon.Impact(Target.FromPos(pos), new WarheadArgs(args));
+				var warheadArgs = new WarheadArgs(args)
+				{
+					ImpactOrientation = new WRot(WAngle.Zero, Util.GetVerticalAngle(lastPos, pos), args.Facing),
+					ImpactPosition = pos,
+				};
+
+				args.Weapon.Impact(Target.FromPos(pos), warheadArgs);
 			}
 
-			if (anim != null)
-				anim.Tick();
+			anim?.Tick();
 		}
 
 		public IEnumerable<IRenderable> Render(WorldRenderer wr)

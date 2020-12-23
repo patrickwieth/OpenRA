@@ -17,7 +17,7 @@ using OpenRA.Mods.Common.Traits;
 
 namespace OpenRA.Mods.Common.Effects
 {
-	class RallyPointIndicator : IEffect, IEffectAboveShroud, IEffectAnnotation
+	public class RallyPointIndicator : IEffect, IEffectAboveShroud, IEffectAnnotation
 	{
 		readonly Actor building;
 		readonly RallyPoint rp;
@@ -48,18 +48,15 @@ namespace OpenRA.Mods.Common.Effects
 
 		void IEffect.Tick(World world)
 		{
-			if (flag != null)
-				flag.Tick();
+			flag?.Tick();
 
-			if (circles != null)
-				circles.Tick();
+			circles?.Tick();
 
 			if (cachedLocations == null || !cachedLocations.SequenceEqual(rp.Path))
 			{
 				UpdateTargetLineNodes(world);
 
-				if (circles != null)
-					circles.Play(rp.Info.CirclesSequence);
+				circles?.Play(rp.Info.CirclesSequence);
 			}
 
 			if (!building.IsInWorld || building.IsDead)

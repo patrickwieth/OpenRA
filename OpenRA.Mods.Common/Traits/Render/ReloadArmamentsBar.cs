@@ -17,14 +17,14 @@ using OpenRA.Traits;
 namespace OpenRA.Mods.Common.Traits.Render
 {
 	[Desc("Visualizes the minimum remaining time for reloading the armaments.")]
-	class ReloadArmamentsBarInfo : ITraitInfo
+	class ReloadArmamentsBarInfo : TraitInfo
 	{
 		[Desc("Armament names")]
 		public readonly string[] Armaments = { "primary", "secondary" };
 
 		public readonly Color Color = Color.Red;
 
-		public object Create(ActorInitializer init) { return new ReloadArmamentsBar(init.Self, this); }
+		public override object Create(ActorInitializer init) { return new ReloadArmamentsBar(init.Self, this); }
 	}
 
 	class ReloadArmamentsBar : ISelectionBar, INotifyCreated
@@ -47,10 +47,10 @@ namespace OpenRA.Mods.Common.Traits.Render
 
 		float ISelectionBar.GetValue()
 		{
-			if (!self.Owner.IsAlliedWith(self.World.RenderPlayer))
+			if (!self.Owner.IsAlliedWith(self.World.RenderPlayer) || armaments.All(a => !a.IsReloading))
 				return 0;
 
-			return armaments.Min(a => a.FireDelay / (float)a.Weapon.ReloadDelay);
+			return armaments.Where(a => a.IsReloading).Min(a => a.FireDelay / (float)a.Weapon.ReloadDelay);
 		}
 
 		Color ISelectionBar.GetColor() { return info.Color; }

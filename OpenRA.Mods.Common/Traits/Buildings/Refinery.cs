@@ -21,10 +21,10 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
 {
-	public class RefineryInfo : IAcceptResourcesInfo, Requires<WithSpriteBodyInfo>
+	public class RefineryInfo : TraitInfo, Requires<WithSpriteBodyInfo>, IAcceptResourcesInfo
 	{
-		[Desc("Actual harvester facing when docking, 0-255 counter-clock-wise.")]
-		public readonly int DockAngle = 0;
+		[Desc("Actual harvester facing when docking.")]
+		public readonly WAngle DockAngle = WAngle.Zero;
 
 		[Desc("Docking cell relative to top-left cell.")]
 		public readonly CVec DockOffset = CVec.Zero;
@@ -49,7 +49,7 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly int TickVelocity = 2;
 		public readonly int TickRate = 10;
 
-		public virtual object Create(ActorInitializer init) { return new Refinery(init.Self, this); }
+		public override object Create(ActorInitializer init) { return new Refinery(init.Self, this); }
 	}
 
 	public class Refinery : INotifyCreated, ITick, IAcceptResources, INotifySold, INotifyCapture,
@@ -59,6 +59,7 @@ namespace OpenRA.Mods.Common.Traits
 		readonly RefineryInfo info;
 		PlayerResources playerResources;
 		RefineryResourceMultiplier[] resourceMultipliers;
+		IRefineryResourceDelivered[] refineryResourceDelivereds;
 
 		int currentDisplayTick = 0;
 		int currentDisplayValue = 0;
@@ -71,7 +72,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		public bool AllowDocking { get { return !preventDock; } }
 		public CVec DeliveryOffset { get { return info.DockOffset; } }
-		public int DeliveryAngle { get { return info.DockAngle; } }
+		public WAngle DeliveryAngle { get { return info.DockAngle; } }
 		public bool IsDragRequired { get { return info.IsDragRequired; } }
 		public WVec DragOffset { get { return info.DragOffset; } }
 		public int DragLength { get { return info.DragLength; } }
@@ -87,6 +88,7 @@ namespace OpenRA.Mods.Common.Traits
 		void INotifyCreated.Created(Actor self)
 		{
 			resourceMultipliers = self.TraitsImplementing<RefineryResourceMultiplier>().ToArray();
+			refineryResourceDelivereds = self.TraitsImplementing<IRefineryResourceDelivered>().ToArray();
 		}
 
 		public virtual Activity DockSequence(Actor harv, Actor self)
@@ -123,6 +125,9 @@ namespace OpenRA.Mods.Common.Traits
 
 				notify.Trait.OnResourceAccepted(notify.Actor, self, amount);
 			}
+
+			foreach (var rrd in refineryResourceDelivereds)
+				rrd.ResourceDelivered(self, amount);
 
 			if (info.ShowTicks)
 				currentDisplayValue += amount;

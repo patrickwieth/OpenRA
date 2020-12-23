@@ -28,6 +28,9 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Override the production structure type (from the Production Produces list) that this unit should be built at.")]
 		public readonly string BuildAtProductionType = null;
 
+		[Desc("Explicitly require a production type (from the Production Produces list) to reveal this unit.")]
+		public readonly string RequiresProductionType = null;
+
 		[Desc("Disable production when there are more than this many of this actor on the battlefield. Set to 0 to disable.")]
 		public readonly int BuildLimit = 0;
 
@@ -38,9 +41,12 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Sequence of the actor that contains the icon.")]
 		public readonly string Icon = "icon";
 
-		[PaletteReference]
+		[PaletteReference(nameof(IconPaletteIsPlayerPalette))]
 		[Desc("Palette used for the production icon.")]
 		public readonly string IconPalette = "chrome";
+
+		[Desc("Custom palette is a player palette BaseName")]
+		public readonly bool IconPaletteIsPlayerPalette = false;
 
 		[Desc("Base build time in frames (-1 indicates to use the unit's Value).")]
 		public readonly int BuildDuration = -1;

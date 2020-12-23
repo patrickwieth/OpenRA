@@ -9,10 +9,8 @@
  */
 #endregion
 
-using System;
 using System.Collections.Generic;
 using System.Linq;
-using OpenRA.Activities;
 using OpenRA.Mods.Common.Activities;
 using OpenRA.Mods.Common.Orders;
 using OpenRA.Primitives;
@@ -31,6 +29,12 @@ namespace OpenRA.Mods.Common.Traits
 
 		[Desc("Require the force-move modifier to display the enter cursor.")]
 		public readonly bool RequiresForceMove = false;
+
+		[Desc("Cursor to display when able to enter target actor.")]
+		public readonly string EnterCursor = "enter";
+
+		[Desc("Cursor to display when unable to enter target actor.")]
+		public readonly string EnterBlockedCursor = "enter-blocked";
 
 		public override object Create(ActorInitializer init) { return new TransformsIntoPassenger(init.Self, this); }
 	}
@@ -57,11 +61,17 @@ namespace OpenRA.Mods.Common.Traits
 			get
 			{
 				if (!IsTraitDisabled)
-					yield return new EnterAlliedActorTargeter<CargoInfo>("EnterTransport", 5, IsCorrectCargoType, CanEnter);
+					yield return new EnterAlliedActorTargeter<CargoInfo>(
+						"EnterTransport",
+						5,
+						Info.EnterCursor,
+						Info.EnterBlockedCursor,
+						IsCorrectCargoType,
+						CanEnter);
 			}
 		}
 
-		Order IIssueOrder.IssueOrder(Actor self, IOrderTargeter order, Target target, bool queued)
+		Order IIssueOrder.IssueOrder(Actor self, IOrderTargeter order, in Target target, bool queued)
 		{
 			if (order.OrderID == "EnterTransport")
 				return new Order(order.OrderID, self, target, queued);
@@ -119,8 +129,8 @@ namespace OpenRA.Mods.Common.Traits
 
 			// Manually manage the inner activity queue
 			var activity = currentTransform ?? transform.GetTransformActivity(self);
-			if (!order.Queued && activity.NextActivity != null)
-				activity.NextActivity.Cancel(self);
+			if (!order.Queued)
+				activity.NextActivity?.Cancel(self);
 
 			activity.Queue(new IssueOrderAfterTransform(order.OrderString, order.Target, Color.Green));
 
