@@ -91,7 +91,7 @@ namespace OpenRA.Mods.Common.Traits
 			activeRepairers.RemoveAll(unitCannotBeOrderedOrIsIdle);
 
 			var targetOptions = world.ActorsWithTrait<LegacyBridgeHut>().Where(
-				b => b.Trait.BridgeDamageState != DamageState.Undamaged);
+				b => b.Trait.BridgeDamageState == DamageState.Dead);
 
 			if (!targetOptions.Any())
 				return;
