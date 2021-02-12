@@ -92,7 +92,7 @@ namespace OpenRA.Mods.Common.Traits.BotModules.Squads
 			// If there are any own buildings within the DangerRadius, don't flee
 			// PERF: Avoid LINQ
 			foreach (var u in units)
-				if (u.Owner == squad.Bot.Player && u.Info.HasTraitInfo<BuildingInfo>())
+				if ((u.Owner == squad.Bot.Player && u.Info.HasTraitInfo<BuildingInfo>()) || u.Info.HasTraitInfo<AttackAircraftInfo>())
 					return false;
 
 			var enemyAroundUnit = units.Where(unit => squad.SquadManager.IsPreferredEnemyUnit(unit) && unit.Info.HasTraitInfo<AttackBaseInfo>());

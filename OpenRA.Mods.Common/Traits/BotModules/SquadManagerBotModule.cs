@@ -132,7 +132,7 @@ namespace OpenRA.Mods.Common.Traits
 		// Use for proactive targeting.
 		public bool IsPreferredEnemyUnit(Actor a)
 		{
-			if (a == null || a.IsDead || Player.RelationshipWith(a.Owner) != PlayerRelationship.Enemy || a.Info.HasTraitInfo<HuskInfo>() || a.Info.HasTraitInfo<AircraftInfo>())
+			if (a == null || a.IsDead || Player.RelationshipWith(a.Owner) != PlayerRelationship.Enemy || a.Info.HasTraitInfo<HuskInfo>() || (a.Info.HasTraitInfo<AircraftInfo>() && a.Info.HasTraitInfo<AmmoPoolInfo>()))
 				return false;
 
 			var targetTypes = a.GetEnabledTargetTypes();
@@ -257,7 +257,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			foreach (var a in newUnits)
 			{
-				if (a.Info.HasTraitInfo<AircraftInfo>() && a.Info.HasTraitInfo<AttackBaseInfo>())
+				if (a.Info.HasTraitInfo<AircraftInfo>()	&& a.Info.HasTraitInfo<AttackBaseInfo>() && a.Info.HasTraitInfo<AmmoPoolInfo>())
 				{
 					var air = GetSquadOfType(SquadType.Air);
 					if (air == null)
@@ -310,7 +310,7 @@ namespace OpenRA.Mods.Common.Traits
 			// TODO: This should use common names & ExcludeFromSquads instead of hardcoding TraitInfo checks
 			var ownUnits = activeUnits
 				.Where(unit => unit.IsIdle && unit.Info.HasTraitInfo<AttackBaseInfo>()
-					&& !unit.Info.HasTraitInfo<AircraftInfo>() && !Info.NavalUnitsTypes.Contains(unit.Info.Name) && !unit.Info.HasTraitInfo<HarvesterInfo>()).ToList();
+					&& !(unit.Info.HasTraitInfo<AircraftInfo>() && unit.Info.HasTraitInfo<AmmoPoolInfo>()) && !Info.NavalUnitsTypes.Contains(unit.Info.Name) && !unit.Info.HasTraitInfo<HarvesterInfo>()).ToList();
 
 			if (!allEnemyBaseBuilder.Any() || ownUnits.Count < Info.SquadSize)
 				return;
