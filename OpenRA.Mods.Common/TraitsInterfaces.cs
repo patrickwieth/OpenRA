@@ -643,4 +643,8 @@ namespace OpenRA.Mods.Common.Traits
 
 		IEnumerable<IRenderable> RenderDecoration(Actor self, WorldRenderer wr, ISelectionDecorations container);
 	}
+	public interface INotifyPassengersDamage
+	{
+			void DamagePassengers(int damage, Actor attacker, int amount, Dictionary<string, int> versus, BitSet<DamageType> damageTypes, IEnumerable<int> damageModifiers);
+	}
 }

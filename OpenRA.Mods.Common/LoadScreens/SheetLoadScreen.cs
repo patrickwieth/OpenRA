@@ -9,6 +9,7 @@
  */
 #endregion
 
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using OpenRA.Graphics;
@@ -52,7 +53,8 @@ namespace OpenRA.Mods.Common.LoadScreens
 				dpiScale = scale;
 
 				// Force images to be reloaded on the next display
-				sheet?.Dispose();
+				if (sheet != null)
+					sheet.Dispose();
 
 				sheet = null;
 			}
@@ -72,7 +74,9 @@ namespace OpenRA.Mods.Common.LoadScreens
 					density = 2;
 				}
 
-				using (var stream = ModData.DefaultFileSystem.Open(Platform.ResolvePath(Info[key])))
+				var files = Info[key].Split(',');
+				var file = files.Random(Game.CosmeticRandom);
+				using (var stream = ModData.DefaultFileSystem.Open(file))
 				{
 					sheet = new Sheet(SheetType.BGRA, stream);
 					sheet.GetTexture().ScaleFilter = TextureScaleFilter.Linear;
@@ -93,8 +97,8 @@ namespace OpenRA.Mods.Common.LoadScreens
 
 		protected override void Dispose(bool disposing)
 		{
-			if (disposing)
-				sheet?.Dispose();
+			if (disposing && sheet != null)
+				sheet.Dispose();
 
 			base.Dispose(disposing);
 		}
