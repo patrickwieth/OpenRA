@@ -122,20 +122,22 @@ namespace OpenRA.Mods.Common.Traits
 				var spawn = self.CenterPosition + exitinfo.SpawnOffset;
 				var to = self.World.Map.CenterOfCell(exit);
 
-				var initialFacing = exitinfo.Facing;
-				if (exitinfo.Facing < 0)
+				WAngle initialFacing;
+				if (!exitinfo.Facing.HasValue)
 				{
 					var delta = to - spawn;
 					if (delta.HorizontalLengthSquared == 0)
 					{
 						var fi = producee.TraitInfoOrDefault<IFacingInfo>();
-						initialFacing = fi != null ? fi.GetInitialFacing() : 0;
+						initialFacing = fi != null ? fi.GetInitialFacing() : WAngle.Zero;
 					}
 					else
-						initialFacing = delta.Yaw.Facing;
+						initialFacing = delta.Yaw;
 				}
+				else
+					initialFacing = exitinfo.Facing.Value;
 
-				exitLocations = rp.Value != null && rp.Value.Path.Count > 0 ? rp.Value.Path : new List<CPos> { exit };
+				exitLocations = rp != null && rp.Path.Count > 0 ? rp.Path : new List<CPos> { exit };
 
 				td.Add(new LocationInit(exit));
 				td.Add(new CenterPositionInit(spawn));
@@ -164,6 +166,8 @@ namespace OpenRA.Mods.Common.Traits
 					notify.Trait.UnitProducedByOther(notify.Actor, self, newUnit, productionType, td);
 			});
 		}
+
+
 
 		protected virtual Exit SelectExit(Actor self, ActorInfo producee, string productionType, Func<Exit, bool> p)
 		{

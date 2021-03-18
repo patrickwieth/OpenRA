@@ -22,7 +22,7 @@ namespace OpenRA.Mods.Common.Warheads
 		[Desc("Amount of garrisoners that will be affected, use -1 to affect all.")]
 		public readonly int Amount = -1;
 
-		protected override void InflictDamage(Actor victim, Actor firedBy, HitShapeInfo hitshapeInfo, IEnumerable<int> damageModifiers)
+		protected void InflictDamage(Actor victim, Actor firedBy, HitShapeInfo hitshapeInfo, IEnumerable<int> damageModifiers)
 		{
 			var validTraits = victim.TraitsImplementing<INotifyPassengersDamage>();
 			foreach (var trait in validTraits)
