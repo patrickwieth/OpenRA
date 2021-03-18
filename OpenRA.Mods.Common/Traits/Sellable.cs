@@ -26,6 +26,10 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("List of audio clips to play when the actor is being sold.")]
 		public readonly string[] SellSounds = { };
 
+		[NotificationReference("Speech")]
+		[Desc("The audio notification type to play.")]
+		public string Notification = null;
+
 		[Desc("Whether to show the cash tick indicators rising from the actor.")]
 		public readonly bool ShowTicks = true;
 
@@ -35,7 +39,7 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Skip playing (reversed) make animation.")]
 		public readonly bool SkipMakeAnimation = false;
 
-		[Desc("Cursor type to use when the sell order generator hovers over this actor.")]
+		[Desc("Cursor to display when the sell order generator hovers over this actor.")]
 		public readonly string Cursor = "sell";
 
 		public override object Create(ActorInitializer init) { return new Sellable(init.Self, this); }
