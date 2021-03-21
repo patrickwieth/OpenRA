@@ -226,9 +226,9 @@ namespace OpenRA.Mods.Common.Traits
 					self.Dispose();
 
 				if (attacker == null)
-					Log.Write("debug", "{0} #{1} was killed.", self.Info.Name, self.ActorID);
+					Log.Write("debug", "Tick {2}: {0} #{1} was killed.", self.Info.Name, self.ActorID, self.World.WorldTick);
 				else
-					Log.Write("debug", "{0} #{1} killed by {2} #{3}", self.Info.Name, self.ActorID, attacker.Info.Name, attacker.ActorID);
+					Log.Write("debug", "Tick {4}: {0} #{1} killed by {2} #{3}", self.Info.Name, self.ActorID, attacker.Info.Name, attacker.ActorID, self.World.WorldTick);
 			}
 		}
 

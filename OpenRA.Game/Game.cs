@@ -607,7 +607,8 @@ namespace OpenRA
 					{
 						++orderManager.LocalFrameNumber;
 
-						Log.Write("debug", "--Tick: {0} ({1})", LocalTick, isNetTick ? "net" : "local");
+						if (Settings.Debug.EnableDebugTickLogging)
+							Log.Write("debug", "--Tick: {0} ({1})", LocalTick, isNetTick ? "net" : "local");
 
 						if (isNetTick)
 							orderManager.Tick();
