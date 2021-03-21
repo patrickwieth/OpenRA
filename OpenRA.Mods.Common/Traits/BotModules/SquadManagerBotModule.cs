@@ -27,6 +27,9 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Actor types that should generally be excluded from attack squads.")]
 		public readonly HashSet<string> ExcludeFromSquadsTypes = new HashSet<string>();
 
+		[Desc("Actor types that should generally be excluded from air squads.")]
+		public readonly HashSet<string> ExcludeFromAirSquadsTypes = new HashSet<string>();
+
 		[Desc("Actor types that are considered construction yards (base builders).")]
 		public readonly HashSet<string> ConstructionYardTypes = new HashSet<string>();
 
@@ -132,7 +135,7 @@ namespace OpenRA.Mods.Common.Traits
 		// Use for proactive targeting.
 		public bool IsPreferredEnemyUnit(Actor a)
 		{
-			if (a == null || a.IsDead || Player.RelationshipWith(a.Owner) != PlayerRelationship.Enemy || a.Info.HasTraitInfo<HuskInfo>() || (a.Info.HasTraitInfo<AircraftInfo>() && a.Info.HasTraitInfo<AmmoPoolInfo>()))
+			if (a == null || a.IsDead || Player.RelationshipWith(a.Owner) != PlayerRelationship.Enemy || a.Info.HasTraitInfo<HuskInfo>() || a.Info.HasTraitInfo<AircraftInfo>())
 				return false;
 
 			var targetTypes = a.GetEnabledTargetTypes();
@@ -257,7 +260,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			foreach (var a in newUnits)
 			{
-				if (a.Info.HasTraitInfo<AircraftInfo>()	&& a.Info.HasTraitInfo<AttackBaseInfo>() && a.Info.HasTraitInfo<AmmoPoolInfo>())
+				if (a.Info.HasTraitInfo<AircraftInfo>()	&& a.Info.HasTraitInfo<AttackBaseInfo>() && !Info.ExcludeFromAirSquadsTypes.Contains(a.Info.Name))
 				{
 					var air = GetSquadOfType(SquadType.Air);
 					if (air == null)
@@ -310,7 +313,7 @@ namespace OpenRA.Mods.Common.Traits
 			// TODO: This should use common names & ExcludeFromSquads instead of hardcoding TraitInfo checks
 			var ownUnits = activeUnits
 				.Where(unit => unit.IsIdle && unit.Info.HasTraitInfo<AttackBaseInfo>()
-					&& !(unit.Info.HasTraitInfo<AircraftInfo>() && unit.Info.HasTraitInfo<AmmoPoolInfo>()) && !Info.NavalUnitsTypes.Contains(unit.Info.Name) && !unit.Info.HasTraitInfo<HarvesterInfo>()).ToList();
+					&& !unit.Info.HasTraitInfo<AircraftInfo>() && !Info.NavalUnitsTypes.Contains(unit.Info.Name) && !unit.Info.HasTraitInfo<HarvesterInfo>()).ToList();
 
 			if (!allEnemyBaseBuilder.Any() || ownUnits.Count < Info.SquadSize)
 				return;
