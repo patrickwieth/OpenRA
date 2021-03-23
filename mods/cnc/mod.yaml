@@ -1,6 +1,6 @@
 Metadata:
 	Title: Tiberian Dawn
-	Version: 826c958
+	Version: 8acb0899e983b25453cfb5d4d436bf3cbc645d92
 	Website: https://www.openra.net
 	WebIcon32: https://www.openra.net/images/icons/cnc_32x32.png
 
@@ -34,7 +34,7 @@ Packages:
 
 MapFolders:
 	cnc|maps: System
-	~^SupportDir|maps/cnc/826c958: User
+	~^SupportDir|maps/cnc/8acb0899e983b25453cfb5d4d436bf3cbc645d92: User
 
 Rules:
 	cnc|rules/misc.yaml

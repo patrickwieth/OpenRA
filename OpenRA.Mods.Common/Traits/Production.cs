@@ -10,6 +10,7 @@
 #endregion
 
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using OpenRA.Mods.Common.Activities;
 using OpenRA.Primitives;
@@ -35,6 +36,7 @@ namespace OpenRA.Mods.Common.Traits
 
 	public class Production : PausableConditionalTrait<ProductionInfo>
 	{
+		readonly ProductionInfo info;
 		RallyPoint rp;
 
 		public string Faction { get; private set; }
@@ -42,6 +44,7 @@ namespace OpenRA.Mods.Common.Traits
 		public Production(ActorInitializer init, ProductionInfo info)
 			: base(info)
 		{
+			this.info = info;
 			Faction = init.GetValue<FactionInit, string>(init.Self.Owner.Faction.InternalName);
 		}
 

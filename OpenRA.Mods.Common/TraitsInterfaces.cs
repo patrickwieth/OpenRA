@@ -637,6 +637,12 @@ namespace OpenRA.Mods.Common.Traits
 		string Class { get; }
 	}
 
+	[RequireExplicitImplementation]
+	public interface INotifyPassengersDamage
+	{
+		void DamagePassengers(int damage, Actor attacker, int amount, Dictionary<string, int> versus, BitSet<DamageType> damageTypes, IEnumerable<int> damageModifiers);
+	}
+
 	public interface IDecoration
 	{
 		bool RequiresSelection { get; }

@@ -104,13 +104,14 @@ namespace OpenRA.Mods.Common.Traits
 
 	public class Cargo : IIssueOrder, IResolveOrder, IOrderVoice, INotifyCreated, INotifyKilled,
 		INotifyOwnerChanged, INotifySold, INotifyActorDisposing, IIssueDeployOrder,
-		ITransformActorInitModifier
+		ITransformActorInitModifier, INotifyPassengersDamage
 	{
 		public readonly CargoInfo Info;
 		readonly Actor self;
 		readonly List<Actor> cargo = new List<Actor>();
 		readonly HashSet<Actor> reserves = new HashSet<Actor>();
 		readonly Dictionary<string, Stack<int>> passengerTokens = new Dictionary<string, Stack<int>>();
+		readonly Dictionary<string, Stack<int>> passengerToTransportTokens = new Dictionary<string, Stack<int>>();
 		readonly Lazy<IFacing> facing;
 		readonly bool checkTerrainType;
 
