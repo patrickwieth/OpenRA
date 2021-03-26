@@ -68,16 +68,17 @@ namespace OpenRA
 			// PERF: This is a hot path and must run with minimal added overhead.
 			// Calling Stopwatch.GetTimestamp is a bit expensive, so we enumerate manually to allow us to call it only
 			// once per iteration in the normal case.
+			// Additionally, we only call GetTimestamp if simulation perf.log output is enabled.
 			// See also: RunActivity
 			var longTickThresholdInStopwatchTicks = PerfTimer.LongTickThresholdInStopwatchTicks;
 			using (var enumerator = e.GetEnumerator())
 			{
-				var start = Stopwatch.GetTimestamp();
+				var start = Game.Settings.Debug.EnableSimulationPerfLogging ? Stopwatch.GetTimestamp() : 0L;
 				while (enumerator.MoveNext())
 				{
 					a(enumerator.Current);
-					var current = Stopwatch.GetTimestamp();
-					if (current - start > longTickThresholdInStopwatchTicks)
+					var current = Game.Settings.Debug.EnableSimulationPerfLogging ? Stopwatch.GetTimestamp() : 0L;
+					if (Game.Settings.Debug.EnableSimulationPerfLogging && current - start > longTickThresholdInStopwatchTicks)
 					{
 						PerfTimer.LogLongTick(start, current, text, enumerator.Current);
 						start = Stopwatch.GetTimestamp();

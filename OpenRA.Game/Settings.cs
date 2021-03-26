@@ -135,6 +135,9 @@ namespace OpenRA
 		[Desc("Enable logging world tick and tick type (local or net) in debug.log.")]
 		public bool EnableDebugTickLogging = false;
 
+		[Desc("Enable perf.log output for traits, activities and effects.")]
+		public bool EnableSimulationPerfLogging = false;
+
 		[Desc("Amount of time required for triggering perf.log output.")]
 		public float LongTickThresholdMs = 1;
 
