@@ -69,7 +69,8 @@ namespace OpenRA.Mods.Common.Traits.Render
 				{
 					var sequence = Info.FullSequence;
 					if (pi.CustomPipType != null && !Info.CustomPipSequences.TryGetValue(pi.CustomPipType, out sequence))
-						Log.Write("debug", "Actor type {0} defines a custom pip type {1} that is not defined for actor type {2}".F(c.Info.Name, pi.CustomPipType, self.Info.Name));
+						Log.Write("debug", "Tick {3}: Actor type {0} defines a custom pip type {1} that is not defined for actor type {2}"
+							.F(c.Info.Name, pi.CustomPipType, self.Info.Name, self.World.WorldTick));
 
 					return sequence;
 				}

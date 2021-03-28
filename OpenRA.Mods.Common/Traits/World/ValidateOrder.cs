@@ -29,7 +29,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			if (subjectClient == null)
 			{
-				Log.Write("debug", "Order sent to {0}: resolved ClientIndex `{1}` doesn't exist", order.Subject.Owner.PlayerName, subjectClientId);
+				Log.Write("debug", "Tick {2}: Order sent to {0}: resolved ClientIndex `{1}` doesn't exist", order.Subject.Owner.PlayerName, subjectClientId, world.WorldTick);
 				return false;
 			}
 
