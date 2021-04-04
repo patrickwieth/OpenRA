@@ -13,7 +13,7 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits.Sound
 {
-	class ActorLostNotificationInfo : ITraitInfo
+	class ActorLostNotificationInfo : ConditionalTraitInfo
 	{
 		[NotificationReference("Speech")]
 		public readonly string Notification = "UnitLost";
@@ -23,7 +23,7 @@ namespace OpenRA.Mods.Common.Traits.Sound
 		public object Create(ActorInitializer init) { return new ActorLostNotification(this); }
 	}
 
-	class ActorLostNotification : INotifyKilled
+	class ActorLostNotification : ConditionalTrait<ActorLostNotificationInfo>, INotifyKilled
 	{
 		ActorLostNotificationInfo info;
 		public ActorLostNotification(ActorLostNotificationInfo info)
@@ -33,8 +33,11 @@ namespace OpenRA.Mods.Common.Traits.Sound
 
 		void INotifyKilled.Killed(Actor self, AttackInfo e)
 		{
-			var player = info.NotifyAll ? self.World.LocalPlayer : self.Owner;
-			Game.Sound.PlayNotification(self.World.Map.Rules, player, "Speech", info.Notification, self.Owner.Faction.InternalName);
+			if (IsTraitDisabled)
+				return;
+
+			var player = Info.NotifyAll ? self.World.LocalPlayer : self.Owner;
+			Game.Sound.PlayNotification(self.World.Map.Rules, player, "Speech", Info.Notification, self.Owner.Faction.InternalName);
 		}
 	}
 }
