@@ -13,31 +13,28 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits.Sound
 {
-	class ActorLostNotificationInfo : ConditionalTraitInfo
-	{
-		[NotificationReference("Speech")]
-		public readonly string Notification = "UnitLost";
+    class ActorLostNotificationInfo : ConditionalTraitInfo
+    {
+        [NotificationReference("Speech")]
+        public readonly string Notification = "UnitLost";
 
-		public readonly bool NotifyAll = false;
+        public readonly bool NotifyAll = false;
 
-		public object Create(ActorInitializer init) { return new ActorLostNotification(this); }
-	}
+        public override object Create(ActorInitializer init) { return new ActorLostNotification(this); }
+    }
 
-	class ActorLostNotification : ConditionalTrait<ActorLostNotificationInfo>, INotifyKilled
-	{
-		ActorLostNotificationInfo info;
-		public ActorLostNotification(ActorLostNotificationInfo info)
-		{
-			this.info = info;
-		}
+    class ActorLostNotification : ConditionalTrait<ActorLostNotificationInfo>, INotifyKilled
+    {
+        public ActorLostNotification(ActorLostNotificationInfo info)
+            : base(info) { }
 
-		void INotifyKilled.Killed(Actor self, AttackInfo e)
-		{
-			if (IsTraitDisabled)
-				return;
+        void INotifyKilled.Killed(Actor self, AttackInfo e)
+        {
+            if (IsTraitDisabled)
+                return;
 
-			var player = Info.NotifyAll ? self.World.LocalPlayer : self.Owner;
-			Game.Sound.PlayNotification(self.World.Map.Rules, player, "Speech", Info.Notification, self.Owner.Faction.InternalName);
-		}
-	}
+            var player = Info.NotifyAll ? self.World.LocalPlayer : self.Owner;
+            Game.Sound.PlayNotification(self.World.Map.Rules, player, "Speech", Info.Notification, self.Owner.Faction.InternalName);
+        }
+    }
 }
