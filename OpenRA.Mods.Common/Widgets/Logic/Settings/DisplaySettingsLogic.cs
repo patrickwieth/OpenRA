@@ -64,6 +64,9 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			var ds = Game.Settings.Graphics;
 			var gs = Game.Settings.Game;
 
+			// added for CA
+			SettingsUtils.BindCheckboxPref(panel, "SELECTIONTOOLTIP_CHECKBOX", gs, "SelectionTooltip");
+
 			SettingsUtils.BindCheckboxPref(panel, "CURSORDOUBLE_CHECKBOX", ds, "CursorDouble");
 			SettingsUtils.BindCheckboxPref(panel, "VSYNC_CHECKBOX", ds, "VSync");
 			SettingsUtils.BindCheckboxPref(panel, "FRAME_LIMIT_CHECKBOX", ds, "CapFramerate");

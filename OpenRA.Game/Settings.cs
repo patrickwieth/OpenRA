@@ -264,6 +264,9 @@ namespace OpenRA
 		public MPGameFilters MPGameFilters = MPGameFilters.Waiting | MPGameFilters.Empty | MPGameFilters.Protected | MPGameFilters.Started;
 
 		public bool PauseShellmap = false;
+
+		// added for CA
+		public bool SelectionTooltip = true;
 	}
 
 	public class Settings
