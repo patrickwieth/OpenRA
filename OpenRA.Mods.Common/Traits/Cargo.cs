@@ -585,6 +585,13 @@ namespace OpenRA.Mods.Common.Traits
 				passenger.InflictDamage(attacker, new Damage(d, damageTypes));
 			}
 		}
+		void INotifyPassengersDamage.KillPassengers(Actor attacker)
+		{
+			for(int i = cargo.Count - 1; i >= 0; --i) {
+				cargo[i].Kill(attacker);
+			}
+			cargo.Clear();
+		}
 	}
 
 	public class RuntimeCargoInit : ValueActorInit<Actor[]>, ISuppressInitExport
