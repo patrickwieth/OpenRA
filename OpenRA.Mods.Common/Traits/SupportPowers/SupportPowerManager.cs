@@ -227,8 +227,10 @@ namespace OpenRA.Mods.Common.Traits
 				return;
 
 			var power = Instances.FirstOrDefault(i => !i.IsTraitPaused);
-
 			if (power == null)
+				return;
+
+			if (!HasSufficientFunds(power))
 				return;
 
 			Game.Sound.PlayToPlayer(SoundType.UI, Manager.Self.Owner, Info.SelectTargetSound);
@@ -255,6 +257,9 @@ namespace OpenRA.Mods.Common.Traits
 			if (power == null)
 				return;
 
+			if (!HasSufficientFunds(power, true))
+				return;
+
 			// Note: order.Subject is the *player* actor
 			power.Activate(power.Self, order, Manager);
 			remainingSubTicks = TotalTicks * 100;
@@ -275,6 +280,26 @@ namespace OpenRA.Mods.Common.Traits
 		public virtual string TooltipTimeTextOverride()
 		{
 			return null;
+		}
+
+		bool HasSufficientFunds(SupportPower power, bool activate = false)
+		{
+			if (power.Info.Cost != 0)
+			{
+				var player = Manager.Self;
+				var pr = player.Trait<PlayerResources>();
+				if (pr.Cash + pr.Resources < power.Info.Cost)
+				{
+					Game.Sound.PlayNotification(player.World.Map.Rules, player.Owner, "Speech",
+						pr.Info.InsufficientFundsNotification, player.Owner.Faction.InternalName);
+					return false;
+				}
+
+				if (activate)
+					pr.TakeCash(power.Info.Cost);
+			}
+
+			return true;
 		}
 	}
 
@@ -309,7 +334,7 @@ namespace OpenRA.Mods.Common.Traits
 		protected override void Tick(World world)
 		{
 			// Cancel the OG if we can't use the power
-			if (!manager.Powers.TryGetValue(order, out var p) || !p.Active || !p.Ready)
+			if (!manager.Powers.ContainsKey(order))
 				world.CancelInputMode();
 		}
 

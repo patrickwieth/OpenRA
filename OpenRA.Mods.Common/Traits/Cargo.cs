@@ -509,6 +509,8 @@ namespace OpenRA.Mods.Common.Traits
 						var nbms = passenger.TraitsImplementing<INotifyBlockingMove>();
 						foreach (var nbm in nbms)
 							nbm.OnNotifyBlockingMove(passenger, passenger);
+
+						passenger.TraitOrDefault<Mobile>()?.Nudge(passenger);
 					}
 					else
 						passenger.Kill(e.Attacker);
@@ -584,6 +586,13 @@ namespace OpenRA.Mods.Common.Traits
 				var d = Util.ApplyPercentageModifiers(damage, damageModifiers.Append(DamageVersus(passenger, versus)));
 				passenger.InflictDamage(attacker, new Damage(d, damageTypes));
 			}
+		}
+		void INotifyPassengersDamage.KillPassengers(Actor attacker)
+		{
+			for(int i = cargo.Count - 1; i >= 0; --i) {
+				cargo[i].Kill(attacker);
+			}
+			cargo.Clear();
 		}
 	}
 
