@@ -31,7 +31,7 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly WDist StrafeRunLength = WDist.Zero;
 
 		[Desc("Does this actor cancel its attack activity when it needs to resupply? Setting this to 'false' will make the actor resume attack after reloading.")]
-		public readonly bool AbortOnResupply = true;
+		public readonly bool AbortOnResupply = false;
 
 		public override object Create(ActorInitializer init) { return new AttackAircraft(init.Self, this); }
 	}

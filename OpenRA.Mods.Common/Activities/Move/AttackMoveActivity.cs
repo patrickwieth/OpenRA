@@ -10,6 +10,7 @@
 #endregion
 
 using System;
+using System.Linq;
 using System.Collections.Generic;
 using OpenRA.Activities;
 using OpenRA.Mods.Common.Traits;
@@ -59,6 +60,12 @@ namespace OpenRA.Mods.Common.Activities
 			// We are currently not attacking, so scan for new targets.
 			if (ChildActivity == null || runningMoveActivity)
 			{
+				// This makes rearmable aircraft to return to base when out of ammo on attack move and not only on force attack
+				foreach (var t in self.TraitsImplementing<AttackAircraft>()) {
+					if (self.TraitOrDefault<Rearmable>() != null && t.Armaments.All(x => x.IsTraitPaused ))
+						QueueChild(new ReturnToBase(self));
+				}
+
 				// Use the standard ScanForTarget rate limit while we are running the move activity to save performance.
 				// Override the rate limit if our attack activity has completed so we can immediately acquire a new target instead of moving.
 				target = autoTarget.ScanForTarget(self, false, true, !runningMoveActivity);
