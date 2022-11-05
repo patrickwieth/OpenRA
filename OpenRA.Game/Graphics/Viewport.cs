@@ -94,7 +94,7 @@ namespace OpenRA.Graphics
 		public void AdjustZoom(float dz)
 		{
 			// Exponential ensures that equal positive and negative steps have the same effect
-			Zoom = (zoom * (float)Math.Exp(dz)).Clamp(unlockMinZoom ? unlockedMinZoom : minZoom, maxZoom);
+			Zoom = (zoom * (float)Math.Exp(dz)).Clamp(unlockMinZoom ? unlockedMinZoom : minZoom/2, maxZoom);
 		}
 
 		public void AdjustZoom(float dz, int2 center)
