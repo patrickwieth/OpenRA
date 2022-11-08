@@ -54,6 +54,12 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly string CloakSound = null;
 		public readonly string UncloakSound = null;
 
+		[Desc("Do the sounds play under shroud or fog.")]
+		public readonly bool AudibleThroughFog = false;
+
+		[Desc("Volume the sounds played at.")]
+		public readonly float Volume = 1f;
+
 		[PaletteReference(nameof(IsPlayerPalette))]
 		public readonly string Palette = "cloak";
 		public readonly bool IsPlayerPalette = false;
@@ -174,6 +180,11 @@ namespace OpenRA.Mods.Common.Traits
 			return bounds;
 		}
 
+		bool SoundShouldStart(Actor self)
+		{
+			return Info.AudibleThroughFog || (!self.World.ShroudObscures(self.CenterPosition) && !self.World.FogObscures(self.CenterPosition));
+		}
+
 		void ITick.Tick(Actor self)
 		{
 			if (!IsTraitDisabled && !IsTraitPaused)
@@ -198,7 +209,7 @@ namespace OpenRA.Mods.Common.Traits
 				if (!(firstTick && Info.InitialDelay == 0) && (otherCloaks == null || !otherCloaks.Any(a => a.Cloaked)))
 				{
 					var pos = self.CenterPosition;
-					Game.Sound.Play(SoundType.World, Info.CloakSound, self.CenterPosition);
+					Game.Sound.Play(SoundType.World, Info.CloakSound, pos, SoundShouldStart(self) ? Info.Volume : 0f);
 
 					Func<WPos> posfunc = () => self.CenterPosition + Info.EffectOffset;
 					if (!Info.EffectTracksActor)
@@ -223,7 +234,7 @@ namespace OpenRA.Mods.Common.Traits
 				if (!(firstTick && Info.InitialDelay == 0) && (otherCloaks == null || !otherCloaks.Any(a => a.Cloaked)))
 				{
 					var pos = self.CenterPosition;
-					Game.Sound.Play(SoundType.World, Info.CloakSound, pos);
+					Game.Sound.Play(SoundType.World, Info.UncloakSound, pos, SoundShouldStart(self) ? Info.Volume : 0f);
 
 					Func<WPos> posfunc = () => self.CenterPosition + Info.EffectOffset;
 					if (!Info.EffectTracksActor)
