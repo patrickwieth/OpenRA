@@ -30,9 +30,6 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Actor types that should generally be excluded from attack squads.")]
 		public readonly HashSet<string> ExcludeFromSquadsTypes = new HashSet<string>();
 
-		[Desc("Actor types that should generally be excluded from air squads.")]
-		public readonly HashSet<string> ExcludeFromAirSquadsTypes = new HashSet<string>();
-
 		[Desc("Actor types that are considered construction yards (base builders).")]
 		public readonly HashSet<string> ConstructionYardTypes = new HashSet<string>();
 

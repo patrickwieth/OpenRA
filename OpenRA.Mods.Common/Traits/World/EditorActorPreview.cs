@@ -215,10 +215,6 @@ namespace OpenRA.Mods.Common.Traits
 				if (init is HealthInit healthInit && healthInit.Value == 100)
 					return false;
 
-				var healthInit = init as HealthInit;
-				if (healthInit != null && healthInit.Value == 100)
-					return false;
-
 				// TODO: Other default values will need to be filtered
 				// here after we have built a properties panel
 				return true;

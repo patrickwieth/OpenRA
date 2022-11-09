@@ -1,6 +1,6 @@
 Metadata:
 	Title: Tiberian Sun
-	Version: 826c958
+	Version: {DEV_VERSION}
 	Website: https://www.openra.net
 	WebIcon32: https://www.openra.net/images/icons/ts_32x32.png
 	WindowTitle: OpenRA - Tiberian Sun
@@ -52,7 +52,7 @@ Packages:
 
 MapFolders:
 	ts|maps: System
-	~^SupportDir|maps/ts/826c958: User
+	~^SupportDir|maps/ts/{DEV_VERSION}: User
 
 Rules:
 	ts|rules/ai.yaml

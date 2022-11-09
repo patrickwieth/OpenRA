@@ -1,6 +1,6 @@
 Metadata:
 	Title: Red Alert
-	Version: 8acb0899e983b25453cfb5d4d436bf3cbc645d92
+	Version: {DEV_VERSION}
 	Website: https://www.openra.net
 	WebIcon32: https://www.openra.net/images/icons/ra_32x32.png
 	WindowTitle: OpenRA - Red Alert
@@ -40,7 +40,7 @@ Packages:
 
 MapFolders:
 	ra|maps: System
-	~^SupportDir|maps/ra/8acb0899e983b25453cfb5d4d436bf3cbc645d92: User
+	~^SupportDir|maps/ra/{DEV_VERSION}: User
 
 Rules:
 	ra|rules/misc.yaml

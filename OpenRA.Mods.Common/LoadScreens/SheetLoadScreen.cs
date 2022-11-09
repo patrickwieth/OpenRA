@@ -71,7 +71,7 @@ namespace OpenRA.Mods.Common.LoadScreens
 					key = "Image2x";
 					density = 2;
 				}
-
+				
 				var files = Info[key].Split(',');
 				var file = files.Random(Game.CosmeticRandom);
 				using (var stream = ModData.DefaultFileSystem.Open(Platform.ResolvePath(file)))

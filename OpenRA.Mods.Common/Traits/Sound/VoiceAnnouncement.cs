@@ -24,7 +24,7 @@ namespace OpenRA.Mods.Common.Traits.Sound
 		[Desc("Player relationships who can hear this voice.")]
 		public readonly PlayerRelationship ValidRelationships = PlayerRelationship.Ally | PlayerRelationship.Neutral | PlayerRelationship.Enemy;
 
-		[Desc("Play the voice to the owning player even if Stance.Ally is not included in ValidRelationships.")]
+		[Desc("Play the voice to the owning player even if Stance.Ally is not included in ValidStances.")]
 		public readonly bool PlayToOwner = true;
 
 		[Desc("Disable the announcement after it has been triggered.")]

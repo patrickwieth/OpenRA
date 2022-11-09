@@ -33,10 +33,6 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Text notification to display.")]
 		public string TextNotification = null;
 
-		[NotificationReference("Speech")]
-		[Desc("The audio notification type to play.")]
-		public string Notification = null;
-
 		[Desc("Whether to show the cash tick indicators rising from the actor.")]
 		public readonly bool ShowTicks = true;
 

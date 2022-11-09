@@ -23,44 +23,44 @@ namespace OpenRA.Mods.Common.UpdateRules.Rules
 
 		readonly (string TraitName, string OldName, string NewName)[] traits =
 		{
-			("Disguise", "ValidRelationships", "ValidRelationships"),
-			("Infiltrates", "ValidRelationships", "ValidRelationships"),
-			("AcceptsDeliveredCash", "ValidRelationships", "ValidRelationships"),
-			("AcceptsDeliveredExperience", "ValidRelationships", "ValidRelationships"),
+			("Disguise", "ValidStances", "ValidRelationships"),
+			("Infiltrates", "ValidStances", "ValidRelationships"),
+			("AcceptsDeliveredCash", "ValidStances", "ValidRelationships"),
+			("AcceptsDeliveredExperience", "ValidStances", "ValidRelationships"),
 			("Armament", "TargetStances", "TargetRelationships"),
 			("Armament", "ForceTargetStances", "ForceTargetRelationships"),
-			("AutoTargetPriority", "ValidRelationships", "ValidRelationships"),
+			("AutoTargetPriority", "ValidStances", "ValidRelationships"),
 			("CaptureManagerBotModule", "CapturableStances", "CapturableRelationships"),
-			("Capturable", "ValidRelationships", "ValidRelationships"),
+			("Capturable", "ValidStances", "ValidRelationships"),
 			("Captures", "PlayerExperienceStances", "PlayerExperienceRelationships"),
-			("ProximityExternalCondition", "ValidRelationships", "ValidRelationships"),
-			("CreatesShroud", "ValidRelationships", "ValidRelationships"),
+			("ProximityExternalCondition", "ValidStances", "ValidRelationships"),
+			("CreatesShroud", "ValidStances", "ValidRelationships"),
 			("Demolition", "TargetStances", "TargetRelationships"),
 			("Demolition", "ForceTargetStances", "ForceTargetRelationships"),
-			("EngineerRepair", "ValidRelationships", "ValidRelationships"),
-			("GivesBounty", "ValidRelationships", "ValidRelationships"),
-			("GivesExperience", "ValidRelationships", "ValidRelationships"),
+			("EngineerRepair", "ValidStances", "ValidRelationships"),
+			("GivesBounty", "ValidStances", "ValidRelationships"),
+			("GivesExperience", "ValidStances", "ValidRelationships"),
 			("JamsMissiles", "DeflectionStances", "DeflectionRelationships"),
 			("FrozenUnderFog", "AlwaysVisibleStances", "AlwaysVisibleRelationships"),
 			("HiddenUnderShroud", "AlwaysVisibleStances", "AlwaysVisibleRelationships"),
 			("HiddenUnderFog", "AlwaysVisibleStances", "AlwaysVisibleRelationships"),
-			("AppearsOnRadar", "ValidRelationships", "ValidRelationships"),
+			("AppearsOnRadar", "ValidStances", "ValidRelationships"),
 			("CashTricklerBar", "DisplayStances", "DisplayRelationships"),
 			("SupportPowerChargeBar", "DisplayStances", "DisplayRelationships"),
-			("WithAmmoPipsDecoration", "ValidRelationships", "ValidRelationships"),
-			("WithCargoPipsDecoration", "ValidRelationships", "ValidRelationships"),
-			("WithDecoration", "ValidRelationships", "ValidRelationships"),
-			("WithHarvesterPipsDecoration", "ValidRelationships", "ValidRelationships"),
-			("WithNameTagDecoration", "ValidRelationships", "ValidRelationships"),
-			("WithResourceStoragePipsDecoration", "ValidRelationships", "ValidRelationships"),
-			("WithTextDecoration", "ValidRelationships", "ValidRelationships"),
-			("WithRangeCircle", "ValidRelationships", "ValidRelationships"),
+			("WithAmmoPipsDecoration", "ValidStances", "ValidRelationships"),
+			("WithCargoPipsDecoration", "ValidStances", "ValidRelationships"),
+			("WithDecoration", "ValidStances", "ValidRelationships"),
+			("WithHarvesterPipsDecoration", "ValidStances", "ValidRelationships"),
+			("WithNameTagDecoration", "ValidStances", "ValidRelationships"),
+			("WithResourceStoragePipsDecoration", "ValidStances", "ValidRelationships"),
+			("WithTextDecoration", "ValidStances", "ValidRelationships"),
+			("WithRangeCircle", "ValidStances", "ValidRelationships"),
 			("RevealOnDeath", "RevealForStances", "RevealForRelationships"),
 			("RevealOnFire", "RevealForStancesRelativeToTarget", "RevealForRelationships"),
-			("RevealsMap", "ValidRelationships", "ValidRelationships"),
-			("RevealsShroud", "ValidRelationships", "ValidRelationships"),
-			("VoiceAnnouncement", "ValidRelationships", "ValidRelationships"),
-			("GrantExternalConditionPower", "ValidRelationships", "ValidRelationships"),
+			("RevealsMap", "ValidStances", "ValidRelationships"),
+			("RevealsShroud", "ValidStances", "ValidRelationships"),
+			("VoiceAnnouncement", "ValidStances", "ValidRelationships"),
+			("GrantExternalConditionPower", "ValidStances", "ValidRelationships"),
 			("NukePower", "CameraStances", "CameraRelationships"),
 			("NukePower", "DisplayTimerStances", "DisplayTimerRelationships"),
 			("AttackOrderPower", "DisplayTimerStances", "DisplayTimerRelationships"),
@@ -74,7 +74,7 @@ namespace OpenRA.Mods.Common.UpdateRules.Rules
 			("ParatroopersPower", "DisplayTimerStances", "DisplayTimerRelationships"),
 			("ProduceActorPower", "DisplayTimerStances", "DisplayTimerRelationships"),
 			("SpawnActorPower", "DisplayTimerStances", "DisplayTimerRelationships"),
-			("TooltipDescription", "ValidRelationships", "ValidRelationships")
+			("TooltipDescription", "ValidStances", "ValidRelationships")
 		};
 
 		public override IEnumerable<string> UpdateActorNode(ModData modData, MiniYamlNode actorNode)
@@ -92,7 +92,7 @@ namespace OpenRA.Mods.Common.UpdateRules.Rules
 				projectileNode.RenameChildrenMatching("ValidBounceBlockerStances", "ValidBounceBlockerRelationships");
 
 			foreach (var warheadNode in weaponNode.ChildrenMatching("Warhead"))
-				warheadNode.RenameChildrenMatching("ValidRelationships", "ValidRelationships");
+				warheadNode.RenameChildrenMatching("ValidStances", "ValidRelationships");
 
 			yield break;
 		}

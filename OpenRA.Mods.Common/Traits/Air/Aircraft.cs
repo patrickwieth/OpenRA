@@ -150,12 +150,6 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Volume the sounds played at.")]
 		public readonly float Volume = 1f;
 
-		[Desc("Do the sounds play under shroud or fog.")]
-		public readonly bool AudibleThroughFog = false;
-
-		[Desc("Volume the sounds played at.")]
-		public readonly float Volume = 1f;
-
 		[Desc("The distance of the resupply base that the aircraft will wait for its turn.")]
 		public readonly WDist WaitDistanceFromResupplyBase = new WDist(3072);
 

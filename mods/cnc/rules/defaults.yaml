@@ -566,7 +566,7 @@
 	OwnerLostAction:
 		Action: Kill
 	Health:
-		HP: 40000
+		HP: 30000
 	Armor:
 		Type: Light
 	RevealsShroud:

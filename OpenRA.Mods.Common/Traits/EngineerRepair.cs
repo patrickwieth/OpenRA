@@ -133,7 +133,7 @@ namespace OpenRA.Mods.Common.Traits
 				// TODO: FrozenActors don't yet have a way of caching conditions, so we can't filter disabled traits
 				// This therefore assumes that all EngineerRepairable traits are enabled, which is probably wrong.
 				// Actors with FrozenUnderFog should therefore not disable the EngineerRepairable trait if
-				// ValidRelationships includes Enemy actors.
+				// ValidStances includes Enemy actors.
 				var engineerRepairable = target.Info.TraitInfoOrDefault<EngineerRepairableInfo>();
 				if (engineerRepairable == null)
 					return false;

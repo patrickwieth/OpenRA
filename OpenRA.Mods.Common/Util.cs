@@ -257,9 +257,6 @@ namespace OpenRA.Mods.Common
 			if (t.IsGenericType && t.GetGenericTypeDefinition() == typeof(Nullable<>))
 				return $"{t.GetGenericArguments().Select(FriendlyTypeName).First()} (optional)";
 
-			if (t.IsGenericType && t.GetGenericTypeDefinition() == typeof(Nullable<>))
-				return "{0} (optional)".F(t.GetGenericArguments().Select(FriendlyTypeName).First());
-
 			if (t == typeof(int) || t == typeof(uint))
 				return "Integer";
 

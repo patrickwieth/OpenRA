@@ -26,7 +26,7 @@ namespace OpenRA.Mods.Common.Effects
 		readonly Player player;
 		readonly Shroud.SourceType sourceType;
 		readonly WDist revealRadius;
-		readonly PlayerRelationship ValidRelationships;
+		readonly PlayerRelationship validStances;
 		readonly int duration;
 
 		int ticks;
@@ -36,7 +36,7 @@ namespace OpenRA.Mods.Common.Effects
 			this.pos = pos;
 			player = forPlayer;
 			revealRadius = radius;
-			ValidRelationships = stances;
+			validStances = stances;
 			sourceType = type;
 			this.duration = duration;
 			ticks = -delay;

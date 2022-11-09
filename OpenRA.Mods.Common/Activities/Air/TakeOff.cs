@@ -36,7 +36,7 @@ namespace OpenRA.Mods.Common.Activities
 
 			if (self.World.Map.DistanceAboveTerrain(aircraft.CenterPosition).Length > aircraft.Info.MinAirborneAltitude)
 				return;
-
+			
 			var shouldStart = aircraft.Info.AudibleThroughFog || (!self.World.ShroudObscures(self.CenterPosition) && !self.World.FogObscures(self.CenterPosition));
 			var sound = aircraft.Info.TakeoffSounds.RandomOrDefault(Game.CosmeticRandom);
 
