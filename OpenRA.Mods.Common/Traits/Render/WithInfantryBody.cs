@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -9,6 +9,7 @@
  */
 #endregion
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Graphics;
@@ -35,7 +36,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 		public readonly Dictionary<string, string[]> AttackSequences = new Dictionary<string, string[]>();
 
 		[SequenceReference]
-		public readonly string[] IdleSequences = { };
+		public readonly string[] IdleSequences = Array.Empty<string>();
 
 		[SequenceReference]
 		public readonly string[] StandSequences = { "stand" };
@@ -49,7 +50,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 
 		public override object Create(ActorInitializer init) { return new WithInfantryBody(init, this); }
 
-		public IEnumerable<IActorPreview> RenderPreviewSprites(ActorPreviewInitializer init, RenderSpritesInfo rs, string image, int facings, PaletteReference p)
+		public IEnumerable<IActorPreview> RenderPreviewSprites(ActorPreviewInitializer init, string image, int facings, PaletteReference p)
 		{
 			if (!EnabledByDefault)
 				yield break;
@@ -62,7 +63,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 			else if (Palette != null)
 				p = init.WorldRenderer.Palette(Palette);
 
-			yield return new SpriteActorPreview(anim, () => WVec.Zero, () => 0, p, rs.Scale);
+			yield return new SpriteActorPreview(anim, () => WVec.Zero, () => 0, p);
 		}
 	}
 
@@ -74,10 +75,10 @@ namespace OpenRA.Mods.Common.Traits.Render
 		bool dirty;
 		string idleSequence;
 		int idleDelay;
-		AnimationState state;
+		protected AnimationState state;
 		IRenderInfantrySequenceModifier rsm;
 
-		bool IsModifyingSequence { get { return rsm != null && rsm.IsModifyingSequence; } }
+		bool IsModifyingSequence => rsm != null && rsm.IsModifyingSequence;
 		bool wasModifying;
 
 		// Allow subclasses to override the info that we use for rendering
@@ -135,7 +136,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 			}
 		}
 
-		void Attacking(Actor self, Armament a, Barrel barrel)
+		protected virtual void Attacking(Actor self, Armament a, Barrel barrel)
 		{
 			var info = GetDisplayInfo();
 			var sequence = info.DefaultAttackSequence;
@@ -213,7 +214,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 			}
 		}
 
-		enum AnimationState
+		protected enum AnimationState
 		{
 			Idle,
 			Attacking,

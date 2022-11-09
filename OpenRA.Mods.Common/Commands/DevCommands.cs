@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -10,6 +10,7 @@
 #endregion
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.Traits;
@@ -17,11 +18,82 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Commands
 {
+	[TraitLocation(SystemActors.World)]
 	[Desc("Enables developer cheats via the chatbox. Attach this to the world actor.")]
 	public class DevCommandsInfo : TraitInfo<DevCommands> { }
 
 	public class DevCommands : IChatCommand, IWorldLoaded
 	{
+		[TranslationReference]
+		static readonly string CheatsDisabled = "cheats-disabled";
+
+		[TranslationReference]
+		static readonly string InvalidCashAmount = "invalid-cash-amount";
+
+		[TranslationReference]
+		static readonly string ToggleVisiblityDescription = "toggle-visibility";
+
+		[TranslationReference]
+		static readonly string GiveCashDescription = "give-cash";
+
+		[TranslationReference]
+		static readonly string GiveCashAllDescription = "give-cash-all";
+
+		[TranslationReference]
+		static readonly string InstantBuildingDescription = "instant-building";
+
+		[TranslationReference]
+		static readonly string BuildAnywhereDescription = "build-anywhere";
+
+		[TranslationReference]
+		static readonly string UnlimitedPowerDescription = "unlimited-power";
+
+		[TranslationReference]
+		static readonly string EnableTechDescription = "enable-tech";
+
+		[TranslationReference]
+		static readonly string FastChargeDescription = "fast-charge";
+
+		[TranslationReference]
+		static readonly string DevCheatAllDescription = "dev-cheat-all";
+
+		[TranslationReference]
+		static readonly string DevCrashDescription = "dev-crash";
+
+		[TranslationReference]
+		static readonly string LevelUpActorDescription = "levelup-actor";
+
+		[TranslationReference]
+		static readonly string PlayerExperienceDescription = "player-experience";
+
+		[TranslationReference]
+		static readonly string PowerOutageDescription = "power-outage";
+
+		[TranslationReference]
+		static readonly string KillSelectedActorsDescription = "kill-selected-actors";
+
+		[TranslationReference]
+		static readonly string DisposeSelectedActorsDescription = "dispose-selected-actors";
+
+		readonly IDictionary<string, (string Description, Action<string, World> Handler)> commandHandlers = new Dictionary<string, (string, Action<string, World>)>
+		{
+			{ "visibility", (ToggleVisiblityDescription, Visibility) },
+			{ "give-cash", (GiveCashDescription, GiveCash) },
+			{ "give-cash-all", (GiveCashAllDescription, GiveCashAll) },
+			{ "instant-build", (InstantBuildingDescription, InstantBuild) },
+			{ "build-anywhere", (BuildAnywhereDescription, BuildAnywhere) },
+			{ "unlimited-power", (UnlimitedPowerDescription, UnlimitedPower) },
+			{ "enable-tech", (EnableTechDescription, EnableTech) },
+			{ "fast-charge", (FastChargeDescription, FastCharge) },
+			{ "all", (DevCheatAllDescription, All) },
+			{ "crash", (DevCrashDescription, Crash) },
+			{ "levelup", (LevelUpActorDescription, LevelUp) },
+			{ "player-experience", (PlayerExperienceDescription, PlayerExperience) },
+			{ "power-outage", (PowerOutageDescription, PowerOutage) },
+			{ "kill", (KillSelectedActorsDescription, Kill) },
+			{ "dispose", (DisposeSelectedActorsDescription, Dispose) }
+		};
+
 		World world;
 		DeveloperMode developerMode;
 
@@ -35,27 +107,11 @@ namespace OpenRA.Mods.Common.Commands
 			var console = world.WorldActor.Trait<ChatCommands>();
 			var help = world.WorldActor.Trait<HelpCommand>();
 
-			Action<string, string> register = (name, helpText) =>
+			foreach (var command in commandHandlers)
 			{
-				console.RegisterCommand(name, this);
-				help.RegisterHelp(name, helpText);
-			};
-
-			register("visibility", "toggles visibility checks and minimap.");
-			register("givecash", "gives the default or specified amount of money.");
-			register("givecashall", "gives the default or specified amount of money to all players and ai.");
-			register("instantbuild", "toggles instant building.");
-			register("buildanywhere", "toggles you the ability to build anywhere.");
-			register("unlimitedpower", "toggles infinite power.");
-			register("enabletech", "toggles the ability to build everything.");
-			register("instantcharge", "toggles instant support power charging.");
-			register("all", "toggles all cheats and gives you some cash for your trouble.");
-			register("crash", "crashes the game.");
-			register("levelup", "adds a specified number of levels to the selected actors.");
-			register("playerexperience", "adds a specified amount of player experience to the owner(s) of selected actors.");
-			register("poweroutage", "causes owner(s) of selected actors to have a 5 second power outage.");
-			register("kill", "kills selected actors.");
-			register("dispose", "disposes selected actors.");
+				console.RegisterCommand(command.Key, this);
+				help.RegisterHelp(command.Key, command.Value.Description);
+			}
 		}
 
 		public void InvokeCommand(string name, string arg)
@@ -65,92 +121,132 @@ namespace OpenRA.Mods.Common.Commands
 
 			if (!developerMode.Enabled)
 			{
-				Game.Debug("Cheats are disabled.");
+				TextNotificationsManager.Debug(Game.ModData.Translation.GetString(CheatsDisabled));
 				return;
 			}
 
-			switch (name)
+			if (commandHandlers.TryGetValue(name, out var command))
+				command.Handler(arg, world);
+		}
+
+		static void GiveCash(string arg, World world)
+		{
+			IssueCashDevCommand(world, "DevGiveCash", arg);
+		}
+
+		static void GiveCashAll(string arg, World world)
+		{
+			IssueCashDevCommand(world, "DevGiveCashAll", arg);
+		}
+
+		static void IssueCashDevCommand(World world, string command, string arg)
+		{
+			var giveCashOrder = new Order(command, world.LocalPlayer.PlayerActor, false);
+
+			if (string.IsNullOrEmpty(arg))
+				giveCashOrder.ExtraData = 0;
+			else if (int.TryParse(arg, out var cash))
+				giveCashOrder.ExtraData = (uint)cash;
+			else
 			{
-				case "givecash": IssueGiveCashDevCommand(false, arg); break;
-				case "givecashall": IssueGiveCashDevCommand(true, arg); break;
-				case "visibility": IssueDevCommand(world, "DevVisibility"); break;
-				case "instantbuild": IssueDevCommand(world, "DevFastBuild"); break;
-				case "buildanywhere": IssueDevCommand(world, "DevBuildAnywhere"); break;
-				case "unlimitedpower": IssueDevCommand(world, "DevUnlimitedPower"); break;
-				case "enabletech": IssueDevCommand(world, "DevEnableTech"); break;
-				case "instantcharge": IssueDevCommand(world, "DevFastCharge"); break;
+				TextNotificationsManager.Debug(Game.ModData.Translation.GetString(InvalidCashAmount));
+				return;
+			}
 
-				case "all":
-					IssueDevCommand(world, "DevAll");
-					break;
+			world.IssueOrder(giveCashOrder);
+		}
 
-				case "crash":
-					throw new DevException();
+		static void Visibility(string arg, World world)
+		{
+			IssueDevCommand(world, "DevVisibility");
+		}
 
-				case "levelup":
-					var level = 0;
-					int.TryParse(arg, out level);
+		static void InstantBuild(string arg, World world)
+		{
+			IssueDevCommand(world, "DevFastBuild");
+		}
 
-					foreach (var actor in world.Selection.Actors)
-					{
-						if (actor.IsDead)
-							continue;
+		static void BuildAnywhere(string arg, World world)
+		{
+			IssueDevCommand(world, "DevBuildAnywhere");
+		}
 
-						var leveluporder = new Order("DevLevelUp", actor, false);
-						leveluporder.ExtraData = (uint)level;
+		static void UnlimitedPower(string arg, World world)
+		{
+			IssueDevCommand(world, "DevUnlimitedPower");
+		}
 
-						if (actor.Info.HasTraitInfo<GainsExperienceInfo>())
-							world.IssueOrder(leveluporder);
-					}
+		static void EnableTech(string arg, World world)
+		{
+			IssueDevCommand(world, "DevEnableTech");
+		}
 
-					break;
+		static void FastCharge(string arg, World world)
+		{
+			IssueDevCommand(world, "DevFastCharge");
+		}
 
-				case "playerexperience":
-					var experience = 0;
-					int.TryParse(arg, out experience);
+		static void All(string arg, World world)
+		{
+			IssueDevCommand(world, "DevAll");
+		}
 
-					foreach (var player in world.Selection.Actors.Select(a => a.Owner.PlayerActor).Distinct())
-						world.IssueOrder(new Order("DevPlayerExperience", player, false) { ExtraData = (uint)experience });
-					break;
+		static void Crash(string arg, World world)
+		{
+			throw new DevException();
+		}
 
-				case "poweroutage":
-					foreach (var player in world.Selection.Actors.Select(a => a.Owner.PlayerActor).Distinct())
-						world.IssueOrder(new Order("PowerOutage", player, false) { ExtraData = 250 });
-					break;
+		static void LevelUp(string arg, World world)
+		{
+			foreach (var actor in world.Selection.Actors)
+			{
+				if (actor.IsDead)
+					continue;
 
-				case "kill":
-					foreach (var actor in world.Selection.Actors)
-					{
-						if (actor.IsDead)
-							continue;
+				var leveluporder = new Order("DevLevelUp", actor, false);
+				if (int.TryParse(arg, out var level))
+					leveluporder.ExtraData = (uint)level;
 
-						world.IssueOrder(new Order("DevKill", world.LocalPlayer.PlayerActor, Target.FromActor(actor), false) { TargetString = arg });
-					}
-
-					break;
-
-				case "dispose":
-					foreach (var actor in world.Selection.Actors)
-					{
-						if (actor.Disposed)
-							continue;
-
-						world.IssueOrder(new Order("DevDispose", world.LocalPlayer.PlayerActor, Target.FromActor(actor), false));
-					}
-
-					break;
+				if (actor.Info.HasTraitInfo<GainsExperienceInfo>())
+					world.IssueOrder(leveluporder);
 			}
 		}
 
-		void IssueGiveCashDevCommand(bool toAll, string arg)
+		static void PlayerExperience(string arg, World world)
 		{
-			var orderString = toAll ? "DevGiveCashAll" : "DevGiveCash";
-			var giveCashOrder = new Order(orderString, world.LocalPlayer.PlayerActor, false);
+			if (!int.TryParse(arg, out var experience))
+				return;
 
-			int.TryParse(arg, out var cash);
-			giveCashOrder.ExtraData = (uint)cash;
+			foreach (var player in world.Selection.Actors.Select(a => a.Owner.PlayerActor).Distinct())
+				world.IssueOrder(new Order("DevPlayerExperience", player, false) { ExtraData = (uint)experience });
+		}
 
-			world.IssueOrder(giveCashOrder);
+		static void PowerOutage(string arg, World world)
+		{
+			foreach (var player in world.Selection.Actors.Select(a => a.Owner.PlayerActor).Distinct())
+				world.IssueOrder(new Order("PowerOutage", player, false) { ExtraData = 250 });
+		}
+
+		static void Kill(string arg, World world)
+		{
+			foreach (var actor in world.Selection.Actors)
+			{
+				if (actor.IsDead)
+					continue;
+
+				world.IssueOrder(new Order("DevKill", world.LocalPlayer.PlayerActor, Target.FromActor(actor), false) { TargetString = arg });
+			}
+		}
+
+		static void Dispose(string arg, World world)
+		{
+			foreach (var actor in world.Selection.Actors)
+			{
+				if (actor.Disposed)
+					continue;
+
+				world.IssueOrder(new Order("DevDispose", world.LocalPlayer.PlayerActor, Target.FromActor(actor), false));
+			}
 		}
 
 		static void IssueDevCommand(World world, string command)

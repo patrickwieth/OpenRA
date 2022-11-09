@@ -1,6 +1,6 @@
 ﻿#region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -32,6 +32,7 @@ namespace OpenRA.Mods.Common
 	public sealed class DiscordService : IGlobalModData, IDisposable
 	{
 		public readonly string ApplicationId = null;
+		public readonly string Tooltip = "Open Source real-time strategy game engine for early Westwood titles.";
 		DiscordRpcClient client;
 		DiscordState currentState;
 
@@ -42,6 +43,9 @@ namespace OpenRA.Mods.Common
 			{
 				if (instance != null)
 					return instance;
+
+				if (!Game.Settings.Game.EnableDiscordService)
+					return null;
 
 				if (!Game.ModData.Manifest.Contains<DiscordService>())
 					return null;
@@ -54,6 +58,9 @@ namespace OpenRA.Mods.Common
 		public DiscordService(MiniYaml yaml)
 		{
 			FieldLoader.Load(this, yaml);
+
+			if (!Game.Settings.Game.EnableDiscordService)
+				return;
 
 			// HACK: Prevent service from starting when launching the utility or server.
 			if (Game.Renderer == null)
@@ -69,10 +76,13 @@ namespace OpenRA.Mods.Common
 
 			// HACK: We need to set HasRegisteredUriScheme to bypass the check that is done when calling SetPresence with a joinSecret.
 			// DiscordRpc lib expect us to register uri handlers with RegisterUriScheme(), we are doing it ourselves in our installers/launchers.
-			client.GetType().GetProperty("HasRegisteredUriScheme").SetValue(client, true);
+			client.GetType().GetProperty(nameof(DiscordRpcClient.HasRegisteredUriScheme)).SetValue(client, true);
 
 			client.SetSubscription(EventType.Join | EventType.JoinRequest);
 			client.Initialize();
+
+			// Set an initial value for the rich presence to avoid a NRE in the library
+			client.SetPresence(new RichPresence());
 		}
 
 		void OnJoinRequested(object sender, JoinRequestMessage args)
@@ -148,7 +158,7 @@ namespace OpenRA.Mods.Common
 					timestamp = DateTime.UtcNow;
 					break;
 				default:
-					throw new ArgumentOutOfRangeException("state", state, null);
+					throw new ArgumentOutOfRangeException(nameof(state), state, null);
 			}
 
 			var richPresence = new RichPresence
@@ -158,11 +168,19 @@ namespace OpenRA.Mods.Common
 				Assets = new Assets
 				{
 					LargeImageKey = "large",
-					LargeImageText = Game.ModData.Manifest.Metadata.Title,
+					LargeImageText = Tooltip,
 				},
 				Timestamps = timestamp.HasValue ? new Timestamps(timestamp.Value) : null,
 				Party = party,
-				Secrets = secrets
+				Secrets = secrets,
+				Buttons = new[]
+				{
+					new Button
+					{
+						Label = "Visit Website",
+						Url = Game.ModData.Manifest.Metadata.Website
+					}
+				}
 			};
 
 			client.SetPresence(richPresence);

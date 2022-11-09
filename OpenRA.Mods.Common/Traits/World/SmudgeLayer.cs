@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -9,11 +9,13 @@
  */
 #endregion
 
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.Effects;
+using OpenRA.Primitives;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
@@ -24,6 +26,7 @@ namespace OpenRA.Mods.Common.Traits
 		public int Depth;
 	}
 
+	[TraitLocation(SystemActors.World)]
 	[Desc("Attach this to the world actor.", "Order of the layers defines the Z sorting.")]
 	public class SmudgeLayerInfo : TraitInfo
 	{
@@ -42,9 +45,9 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Smoke sprite image name")]
 		public readonly string SmokeImage = null;
 
-		[SequenceReference(nameof(SmokeImage))]
+		[SequenceReference(nameof(SmokeImage), allowNullImage: true)]
 		[Desc("Smoke sprite sequences randomly chosen from")]
-		public readonly string[] SmokeSequences = { };
+		public readonly string[] SmokeSequences = Array.Empty<string>();
 
 		[PaletteReference]
 		public readonly string SmokePalette = "effect";
@@ -52,7 +55,7 @@ namespace OpenRA.Mods.Common.Traits
 		[PaletteReference]
 		public readonly string Palette = TileSet.TerrainPaletteInternalName;
 
-		[FieldLoader.LoadUsing("LoadInitialSmudges")]
+		[FieldLoader.LoadUsing(nameof(LoadInitialSmudges))]
 		public readonly Dictionary<CPos, MapSmudge> InitialSmudges;
 
 		public static object LoadInitialSmudges(MiniYaml yaml)
@@ -98,13 +101,14 @@ namespace OpenRA.Mods.Common.Traits
 		readonly bool hasSmoke;
 
 		TerrainSpriteLayer render;
+		PaletteReference paletteReference;
 		bool disposed;
 
 		public SmudgeLayer(Actor self, SmudgeLayerInfo info)
 		{
 			Info = info;
 			world = self.World;
-			hasSmoke = !string.IsNullOrEmpty(info.SmokeImage) && info.SmokeSequences.Any();
+			hasSmoke = !string.IsNullOrEmpty(info.SmokeImage) && info.SmokeSequences.Length > 0;
 
 			var sequenceProvider = world.Map.Rules.Sequences;
 			var types = sequenceProvider.Sequences(Info.Sequence);
@@ -117,15 +121,14 @@ namespace OpenRA.Mods.Common.Traits
 			var sprites = smudges.Values.SelectMany(v => Exts.MakeArray(v.Length, x => v.GetSprite(x))).ToList();
 			var sheet = sprites[0].Sheet;
 			var blendMode = sprites[0].BlendMode;
-
-			if (sprites.Any(s => s.Sheet != sheet))
-				throw new InvalidDataException("Resource sprites span multiple sheets. Try loading their sequences earlier.");
+			var emptySprite = new Sprite(sheet, Rectangle.Empty, TextureChannel.Alpha);
 
 			if (sprites.Any(s => s.BlendMode != blendMode))
 				throw new InvalidDataException("Smudges specify different blend modes. "
 					+ "Try using different smudge types for smudges that use different blend modes.");
 
-			render = new TerrainSpriteLayer(w, wr, sheet, blendMode, wr.Palette(Info.Palette), w.Type != WorldType.Editor);
+			paletteReference = wr.Palette(Info.Palette);
+			render = new TerrainSpriteLayer(w, wr, emptySprite, blendMode, w.Type != WorldType.Editor);
 
 			// Add map smudges
 			foreach (var kv in Info.InitialSmudges)
@@ -143,7 +146,7 @@ namespace OpenRA.Mods.Common.Traits
 				};
 
 				tiles.Add(kv.Key, smudge);
-				render.Update(kv.Key, seq, s.Depth);
+				render.Update(kv.Key, seq, paletteReference, s.Depth);
 			}
 		}
 
@@ -187,7 +190,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (!world.Map.Contains(loc))
 				return;
 
-			var tile = dirty.ContainsKey(loc) ? dirty[loc] : default(Smudge);
+			var tile = dirty.ContainsKey(loc) ? dirty[loc] : default;
 
 			// Setting Sequence to null to indicate a deleted smudge.
 			tile.Sequence = null;
@@ -211,7 +214,7 @@ namespace OpenRA.Mods.Common.Traits
 					{
 						var smudge = kv.Value;
 						tiles[kv.Key] = smudge;
-						render.Update(kv.Key, smudge.Sequence, smudge.Depth);
+						render.Update(kv.Key, smudge.Sequence, paletteReference, smudge.Depth);
 					}
 
 					remove.Add(kv.Key);

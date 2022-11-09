@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -33,7 +33,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		[Desc("x means cell is blocked, capital X means blocked but not counting as targetable, ",
 			"= means part of the footprint but passable, _ means completely empty.")]
-		[FieldLoader.LoadUsing("LoadFootprint")]
+		[FieldLoader.LoadUsing(nameof(LoadFootprint))]
 		public readonly Dictionary<CVec, FootprintCellType> Footprint;
 
 		public readonly CVec Dimensions = new CVec(1, 1);
@@ -56,25 +56,25 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Clear smudges from underneath the building footprint on transform.")]
 		public readonly bool RemoveSmudgesOnTransform = true;
 
-		public readonly string[] BuildSounds = { };
+		public readonly string[] BuildSounds = Array.Empty<string>();
 
-		public readonly string[] UndeploySounds = { };
+		public readonly string[] UndeploySounds = Array.Empty<string>();
 
 		public override object Create(ActorInitializer init) { return new Building(init, this); }
 
 		protected static object LoadFootprint(MiniYaml yaml)
 		{
 			var footprintYaml = yaml.Nodes.FirstOrDefault(n => n.Key == "Footprint");
-			var footprintChars = footprintYaml != null ? footprintYaml.Value.Value.Where(x => !char.IsWhiteSpace(x)).ToArray() : new[] { 'x' };
+			var footprintChars = footprintYaml?.Value.Value.Where(x => !char.IsWhiteSpace(x)).ToArray() ?? new[] { 'x' };
 
 			var dimensionsYaml = yaml.Nodes.FirstOrDefault(n => n.Key == "Dimensions");
 			var dim = dimensionsYaml != null ? FieldLoader.GetValue<CVec>("Dimensions", dimensionsYaml.Value.Value) : new CVec(1, 1);
 
 			if (footprintChars.Length != dim.X * dim.Y)
 			{
-				var fp = footprintYaml.Value.Value.ToString();
+				var fp = footprintYaml.Value.Value;
 				var dims = dim.X + "x" + dim.Y;
-				throw new YamlException("Invalid footprint: {0} does not match dimensions {1}".F(fp, dims));
+				throw new YamlException($"Invalid footprint: {fp} does not match dimensions {dims}");
 			}
 
 			var index = 0;
@@ -85,7 +85,7 @@ namespace OpenRA.Mods.Common.Traits
 				{
 					var c = footprintChars[index++];
 					if (!Enum.IsDefined(typeof(FootprintCellType), (FootprintCellType)c))
-						throw new YamlException("Invalid footprint cell type '{0}'".F(c));
+						throw new YamlException($"Invalid footprint cell type '{c}'");
 
 					ret[new CVec(x, y)] = (FootprintCellType)c;
 				}
@@ -180,10 +180,24 @@ namespace OpenRA.Mods.Common.Traits
 			return null;
 		}
 
-		bool ActorGrantsValidArea(Actor a, RequiresBuildableAreaInfo rba)
+		static bool AnyGivesBuildableArea(IEnumerable<Actor> actors, Player p, bool allyBuildEnabled, RequiresBuildableAreaInfo rba)
 		{
-			return rba.AreaTypes.Overlaps(a.TraitsImplementing<GivesBuildableArea>()
-				.SelectMany(gba => gba.AreaTypes));
+			foreach (var a in actors)
+			{
+				if (!a.IsInWorld)
+					continue;
+
+				if (a.Owner != p && (!allyBuildEnabled || a.Owner.RelationshipWith(p) != PlayerRelationship.Ally))
+					continue;
+
+				var overlaps = rba.AreaTypes.Overlaps(a.TraitsImplementing<GivesBuildableArea>()
+					.SelectMany(gba => gba.AreaTypes));
+
+				if (overlaps)
+					return true;
+			}
+
+			return false;
 		}
 
 		public virtual bool IsCloseEnoughToBase(World world, Player p, ActorInfo ai, CPos topLeft)
@@ -211,21 +225,17 @@ namespace OpenRA.Mods.Common.Traits
 			{
 				for (var x = scanStart.X; x < scanEnd.X; x++)
 				{
-					var pos = new CPos(x, y);
-					var buildingAtPos = bi.GetBuildingAt(pos);
-
-					if (buildingAtPos == null)
+					var c = new CPos(x, y);
+					if (AnyGivesBuildableArea(world.ActorMap.GetActorsAt(c), p, allyBuildEnabled, requiresBuildableArea))
 					{
-						var unitsAtPos = world.ActorMap.GetActorsAt(pos).Where(a => a.IsInWorld
-							&& (a.Owner == p || (allyBuildEnabled && a.Owner.RelationshipWith(p) == PlayerRelationship.Ally))
-							&& ActorGrantsValidArea(a, requiresBuildableArea));
-
-						if (unitsAtPos.Any())
-							nearnessCandidates.Add(pos);
+						nearnessCandidates.Add(c);
+						continue;
 					}
-					else if (buildingAtPos.IsInWorld && ActorGrantsValidArea(buildingAtPos, requiresBuildableArea)
-						&& (buildingAtPos.Owner == p || (allyBuildEnabled && buildingAtPos.Owner.RelationshipWith(p) == PlayerRelationship.Ally)))
-						nearnessCandidates.Add(pos);
+
+					// Building bibs and pathable footprint cells are not included in the ActorMap
+					// TODO: Allow ActorMap to track these and finally remove the BuildingInfluence layer completely
+					if (AnyGivesBuildableArea(bi.GetBuildingsAt(c), p, allyBuildEnabled, requiresBuildableArea))
+						nearnessCandidates.Add(c);
 				}
 			}
 
@@ -238,20 +248,18 @@ namespace OpenRA.Mods.Common.Traits
 
 		public IReadOnlyDictionary<CPos, SubCell> OccupiedCells(ActorInfo info, CPos topLeft, SubCell subCell = SubCell.Any)
 		{
-			var occupied = OccupiedTiles(topLeft)
+			return OccupiedTiles(topLeft)
 				.ToDictionary(c => c, c => SubCell.FullCell);
-
-			return new ReadOnlyDictionary<CPos, SubCell>(occupied);
 		}
 
-		bool IOccupySpaceInfo.SharesCell { get { return false; } }
+		bool IOccupySpaceInfo.SharesCell => false;
 
 		public IEnumerable<IRenderable> RenderAnnotations(WorldRenderer wr, World w, ActorInfo ai, WPos centerPosition)
 		{
 			if (!RequiresBaseProvider)
 				return SpriteRenderable.None;
 
-			return w.ActorsWithTrait<BaseProvider>().SelectMany(a => a.Trait.RangeCircleRenderables(wr));
+			return w.ActorsWithTrait<BaseProvider>().SelectMany(a => a.Trait.RangeCircleRenderables());
 		}
 	}
 
@@ -266,12 +274,12 @@ namespace OpenRA.Mods.Common.Traits
 		readonly Actor self;
 		readonly BuildingInfluence influence;
 
-		(CPos, SubCell)[] occupiedCells;
-		(CPos, SubCell)[] targetableCells;
-		CPos[] transitOnlyCells;
+		readonly (CPos, SubCell)[] occupiedCells;
+		readonly (CPos, SubCell)[] targetableCells;
+		readonly CPos[] transitOnlyCells;
 
-		public CPos TopLeft { get { return topLeft; } }
-		public WPos CenterPosition { get; private set; }
+		public CPos TopLeft => topLeft;
+		public WPos CenterPosition { get; }
 
 		public Building(ActorInitializer init, BuildingInfo info)
 		{

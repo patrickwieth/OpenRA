@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -54,7 +54,7 @@ namespace OpenRA.Mods.Cnc.Traits
 		{
 			var weaponToLower = (Weapon ?? string.Empty).ToLowerInvariant();
 			if (!rules.Weapons.TryGetValue(weaponToLower, out var weapon))
-				throw new YamlException("Weapons Ruleset does not contain an entry '{0}'".F(weaponToLower));
+				throw new YamlException($"Weapons Ruleset does not contain an entry '{weaponToLower}'");
 
 			WeaponInfo = weapon;
 

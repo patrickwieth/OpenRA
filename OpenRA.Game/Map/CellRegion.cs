@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -50,6 +50,11 @@ namespace OpenRA
 			BottomRight = bottomRight.ToCPos(gridType);
 		}
 
+		public override string ToString()
+		{
+			return $"{TopLeft}->{BottomRight}";
+		}
+
 		/// <summary>Expand the specified region with an additional cordon. This may expand the region outside the map borders.</summary>
 		public static CellRegion Expand(CellRegion region, int cordon)
 		{
@@ -62,7 +67,7 @@ namespace OpenRA
 		public static CellRegion BoundingRegion(MapGridType shape, IEnumerable<CPos> cells)
 		{
 			if (cells == null || !cells.Any())
-				throw new ArgumentException("cells must not be null or empty.", "cells");
+				throw new ArgumentException("cells must not be null or empty.", nameof(cells));
 
 			var minU = int.MaxValue;
 			var minV = int.MaxValue;
@@ -97,10 +102,7 @@ namespace OpenRA
 			return uv.U >= mapTopLeft.U && uv.U <= mapBottomRight.U && uv.V >= mapTopLeft.V && uv.V <= mapBottomRight.V;
 		}
 
-		public MapCoordsRegion MapCoords
-		{
-			get { return new MapCoordsRegion(mapTopLeft, mapBottomRight); }
-		}
+		public MapCoordsRegion MapCoords => new MapCoordsRegion(mapTopLeft, mapBottomRight);
 
 		public CellRegionEnumerator GetEnumerator()
 		{
@@ -161,8 +163,8 @@ namespace OpenRA
 				v = r.mapTopLeft.V;
 			}
 
-			public CPos Current { get { return current; } }
-			object IEnumerator.Current { get { return Current; } }
+			public CPos Current => current;
+			object IEnumerator.Current => Current;
 			public void Dispose() { }
 		}
 	}

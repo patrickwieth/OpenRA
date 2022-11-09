@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -30,7 +30,7 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly HashSet<string> Types = new HashSet<string>();
 
 		[Desc("A list of actor types that are initially spawned into this actor.")]
-		public readonly string[] InitialUnits = { };
+		public readonly string[] InitialUnits = Array.Empty<string>();
 
 		[Desc("When this actor is sold should all of its passengers be unloaded?")]
 		public readonly bool EjectOnSell = true;
@@ -60,9 +60,11 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Delay (in ticks) before continuing after unloading a passenger.")]
 		public readonly int AfterUnloadDelay = 25;
 
+		[CursorReference]
 		[Desc("Cursor to display when able to unload the passengers.")]
 		public readonly string UnloadCursor = "deploy";
 
+		[CursorReference]
 		[Desc("Cursor to display when unable to unload the passengers.")]
 		public readonly string UnloadBlockedCursor = "deploy-blocked";
 
@@ -77,11 +79,11 @@ namespace OpenRA.Mods.Common.Traits
 
 		[ActorReference(dictionaryReference: LintDictionaryReference.Keys)]
 		[Desc("Conditions to grant when specified actors are loaded inside the transport.",
-			"A dictionary of [actor id]: [condition].")]
+			"A dictionary of [actor name]: [condition].")]
 		public readonly Dictionary<string, string> PassengerConditions = new Dictionary<string, string>();
 
 		[GrantedConditionReference]
-		public IEnumerable<string> LinterPassengerConditions { get { return PassengerConditions.Values; } }
+		public IEnumerable<string> LinterPassengerConditions => PassengerConditions.Values;
 
 		[ActorReference(dictionaryReference: LintDictionaryReference.Keys)]
 		[Desc("Conditions to grant when specified actors are loaded inside passengers of the transport.",
@@ -127,13 +129,10 @@ namespace OpenRA.Mods.Common.Traits
 
 		readonly CachedTransform<CPos, IEnumerable<CPos>> currentAdjacentCells;
 
-		public IEnumerable<CPos> CurrentAdjacentCells
-		{
-			get { return currentAdjacentCells.Update(self.Location); }
-		}
+		public IEnumerable<CPos> CurrentAdjacentCells => currentAdjacentCells.Update(self.Location);
 
-		public IEnumerable<Actor> Passengers { get { return cargo; } }
-		public int PassengerCount { get { return cargo.Count; } }
+		public IEnumerable<Actor> Passengers => cargo;
+		public int PassengerCount => cargo.Count;
 
 		enum State { Free, Locked }
 		State state = State.Free;
@@ -188,7 +187,7 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			aircraft = self.TraitOrDefault<Aircraft>();
 
-			if (cargo.Any())
+			if (cargo.Count > 0)
 			{
 				foreach (var c in cargo) {
 					if (Info.PassengerConditions.TryGetValue(c.Info.Name, out var passengerCondition))
@@ -272,11 +271,11 @@ namespace OpenRA.Mods.Common.Traits
 					return false;
 			}
 
-			return !IsEmpty(self) && (aircraft == null || aircraft.CanLand(self.Location, blockedByMobile: false))
+			return !IsEmpty() && (aircraft == null || aircraft.CanLand(self.Location, blockedByMobile: false))
 				&& CurrentAdjacentCells != null && CurrentAdjacentCells.Any(c => Passengers.Any(p => !p.IsDead && p.Trait<IPositionable>().CanEnterCell(c, null, check)));
 		}
 
-		public bool CanLoad(Actor self, Actor a)
+		public bool CanLoad(Actor a)
 		{
 			return reserves.Contains(a) || HasSpace(GetWeight(a));
 		}
@@ -349,16 +348,16 @@ namespace OpenRA.Mods.Common.Traits
 
 		public string VoicePhraseForOrder(Actor self, Order order)
 		{
-			if (order.OrderString != "Unload" || IsEmpty(self) || !self.HasVoice(Info.UnloadVoice))
+			if (order.OrderString != "Unload" || IsEmpty() || !self.HasVoice(Info.UnloadVoice))
 				return null;
 
 			return Info.UnloadVoice;
 		}
 
 		public bool HasSpace(int weight) { return totalWeight + reservedWeight + weight <= Info.MaxWeight; }
-		public bool IsEmpty(Actor self) { return cargo.Count == 0; }
+		public bool IsEmpty() { return cargo.Count == 0; }
 
-		public Actor Peek(Actor self) { return cargo.Last(); }
+		public Actor Peek() { return cargo.Last(); }
 
 		public Actor Unload(Actor self, Actor passenger = null)
 		{
@@ -379,7 +378,7 @@ namespace OpenRA.Mods.Common.Traits
 			var p = passenger.Trait<Passenger>();
 			p.Transport = null;
 
-			if (passengerTokens.TryGetValue(passenger.Info.Name, out var passengerToken) && passengerToken.Any())
+			if (passengerTokens.TryGetValue(passenger.Info.Name, out var passengerToken) && passengerToken.Count > 0)
 				self.RevokeCondition(passengerToken.Pop());
 
 			if (passenger.TraitOrDefault<Cargo>() != null)
@@ -394,7 +393,7 @@ namespace OpenRA.Mods.Common.Traits
 				}
 			}
 
-			if (loadedTokens.Any())
+			if (loadedTokens.Count > 0)
 				self.RevokeCondition(loadedTokens.Pop());
 
 			if (cargoFullToken != Actor.InvalidConditionToken)
@@ -495,7 +494,7 @@ namespace OpenRA.Mods.Common.Traits
 		void INotifyKilled.Killed(Actor self, AttackInfo e)
 		{
 			if (Info.EjectOnDeath)
-				while (!IsEmpty(self) && CanUnload(BlockedByActor.All))
+				while (!IsEmpty() && CanUnload(BlockedByActor.All))
 				{
 					var passenger = Unload(self);
 					var cp = self.CenterPosition;
@@ -536,7 +535,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (!Info.EjectOnSell || cargo == null)
 				return;
 
-			while (!IsEmpty(self))
+			while (!IsEmpty())
 				SpawnPassenger(Unload(self));
 		}
 

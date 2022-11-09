@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -9,9 +9,8 @@
  */
 #endregion
 
-using System;
-using System.Net;
-using System.Text;
+using System.Threading.Tasks;
+using OpenRA.Support;
 
 namespace OpenRA.Mods.Common
 {
@@ -31,16 +30,25 @@ namespace OpenRA.Mods.Common
 
 		public void CheckModVersion()
 		{
-			Action<DownloadDataCompletedEventArgs> onComplete = i =>
+			Task.Run(async () =>
 			{
-				if (i.Error != null)
-					return;
+				var queryURL = new HttpQueryBuilder(VersionCheck)
+				{
+					{ "protocol", VersionCheckProtocol },
+					{ "engine", Game.EngineVersion },
+					{ "mod", Game.ModData.Manifest.Id },
+					{ "version", Game.ModData.Manifest.Metadata.Version }
+				}.ToString();
+
 				try
 				{
-					var data = Encoding.UTF8.GetString(i.Result);
+					var client = HttpClientFactory.Create();
+
+					var httpResponseMessage = await client.GetAsync(queryURL);
+					var result = await httpResponseMessage.Content.ReadAsStringAsync();
 
 					var status = ModVersionStatus.Latest;
-					switch (data)
+					switch (result)
 					{
 						case "outdated": status = ModVersionStatus.Outdated; break;
 						case "unknown": status = ModVersionStatus.Unknown; break;
@@ -50,15 +58,7 @@ namespace OpenRA.Mods.Common
 					Game.RunAfterTick(() => ModVersionStatus = status);
 				}
 				catch { }
-			};
-
-			var queryURL = VersionCheck + "?protocol={0}&engine={1}&mod={2}&version={3}".F(
-				VersionCheckProtocol,
-				Uri.EscapeUriString(Game.EngineVersion),
-				Uri.EscapeUriString(Game.ModData.Manifest.Id),
-				Uri.EscapeUriString(Game.ModData.Manifest.Metadata.Version));
-
-			new Download(queryURL, _ => { }, onComplete);
+			});
 		}
 	}
 }

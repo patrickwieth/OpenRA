@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -129,13 +129,13 @@ namespace OpenRA.Network
 		[FieldLoader.Ignore]
 		public readonly bool IsJoinable = false;
 
-		[FieldLoader.LoadUsing("LoadClients")]
+		[FieldLoader.LoadUsing(nameof(LoadClients))]
 		public readonly GameClient[] Clients;
 
 		/// <summary>The list of spawnpoints that are disabled for this game</summary>
-		public readonly int[] DisabledSpawnPoints = { };
+		public readonly int[] DisabledSpawnPoints = Array.Empty<int>();
 
-		public string ModLabel { get { return "{0} ({1})".F(ModTitle, Version); } }
+		public string ModLabel => $"{ModTitle} ({Version})";
 
 		static object LoadClients(MiniYaml yaml)
 		{
@@ -200,9 +200,9 @@ namespace OpenRA.Network
 						.FirstOrDefault(m => m.Id == Mod);
 
 					if (guessMod != null)
-						ModTitle = "{0}".F(guessMod.Title);
+						ModTitle = guessMod.Title;
 					else
-						ModTitle = "Unknown mod: {0}".F(Mod);
+						ModTitle = $"Unknown mod: {Mod}";
 				}
 			}
 
@@ -227,7 +227,7 @@ namespace OpenRA.Network
 			ModWebsite = manifest.Metadata.Website;
 			ModIcon32 = manifest.Metadata.WebIcon32;
 			Protected = !string.IsNullOrEmpty(server.Settings.Password);
-			Authentication = server.Settings.RequireAuthentication || server.Settings.ProfileIDWhitelist.Any();
+			Authentication = server.Settings.RequireAuthentication || server.Settings.ProfileIDWhitelist.Length > 0;
 			Clients = server.LobbyInfo.Clients.Select(c => new GameClient(c)).ToArray();
 			DisabledSpawnPoints = server.LobbyInfo.DisabledSpawnPoints?.ToArray() ?? Array.Empty<int>();
 		}

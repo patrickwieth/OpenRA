@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -22,7 +22,7 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly int PanicChance = 100;
 
 		[Desc("How long (in ticks) the actor should panic for.")]
-		public readonly int PanicLength = 25 * 10;
+		public readonly int PanicDuration = 250;
 
 		[Desc("Panic movement speed as a percentage of the normal speed.")]
 		public readonly int PanicSpeedModifier = 200;
@@ -48,10 +48,10 @@ namespace OpenRA.Mods.Common.Traits
 
 		[Sync]
 		int panicStartedTick;
-		bool Panicking { get { return panicStartedTick > 0; } }
+		bool Panicking => panicStartedTick > 0;
 
-		bool IRenderInfantrySequenceModifier.IsModifyingSequence { get { return Panicking; } }
-		string IRenderInfantrySequenceModifier.SequencePrefix { get { return info.PanicSequencePrefix; } }
+		bool IRenderInfantrySequenceModifier.IsModifyingSequence => Panicking;
+		string IRenderInfantrySequenceModifier.SequencePrefix => info.PanicSequencePrefix;
 
 		public ScaredyCat(Actor self, ScaredyCatInfo info)
 		{
@@ -76,7 +76,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (!Panicking)
 				return;
 
-			if (self.World.WorldTick >= panicStartedTick + info.PanicLength)
+			if (self.World.WorldTick >= panicStartedTick + info.PanicDuration)
 			{
 				self.CancelActivity();
 				panicStartedTick = 0;

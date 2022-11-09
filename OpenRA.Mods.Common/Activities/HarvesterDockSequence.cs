@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -33,7 +33,7 @@ namespace OpenRA.Mods.Common.Activities
 
 		protected DockingState dockingState;
 
-		public HarvesterDockSequence(Actor self, Actor refinery, WAngle dockAngle, bool isDragRequired, WVec dragOffset, int dragLength)
+		public HarvesterDockSequence(Actor self, Actor refinery, WAngle dockAngle, bool isDragRequired, in WVec dragOffset, int dragLength)
 		{
 			dockingState = DockingState.Turn;
 			Refinery = refinery;
@@ -59,7 +59,7 @@ namespace OpenRA.Mods.Common.Activities
 					return false;
 
 				case DockingState.Drag:
-					if (IsCanceling || !Refinery.IsInWorld || Refinery.IsDead)
+					if (IsCanceling || !Refinery.IsInWorld || Refinery.IsDead || Harv.IsTraitDisabled)
 						return true;
 
 					dockingState = DockingState.Dock;
@@ -69,7 +69,7 @@ namespace OpenRA.Mods.Common.Activities
 					return false;
 
 				case DockingState.Dock:
-					if (!IsCanceling && Refinery.IsInWorld && !Refinery.IsDead)
+					if (!IsCanceling && Refinery.IsInWorld && !Refinery.IsDead && !Harv.IsTraitDisabled)
 						OnStateDock(self);
 					else
 						dockingState = DockingState.Undock;
@@ -77,7 +77,7 @@ namespace OpenRA.Mods.Common.Activities
 					return false;
 
 				case DockingState.Loop:
-					if (IsCanceling || !Refinery.IsInWorld || Refinery.IsDead || Harv.TickUnload(self, Refinery))
+					if (IsCanceling || !Refinery.IsInWorld || Refinery.IsDead || Harv.IsTraitDisabled || Harv.TickUnload(self, Refinery))
 						dockingState = DockingState.Undock;
 
 					return false;
@@ -88,7 +88,7 @@ namespace OpenRA.Mods.Common.Activities
 
 				case DockingState.Complete:
 					Harv.LastLinkedProc = Harv.LinkedProc;
-					Harv.LinkProc(self, null);
+					Harv.LinkProc(null);
 					if (IsDragRequired)
 						QueueChild(new Drag(self, EndDrag, StartDrag, DragLength));
 

@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -20,7 +20,7 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 {
 	class ImportLegacyTilesetCommand : IUtilityCommand
 	{
-		string IUtilityCommand.Name { get { return "--tileset-import"; } }
+		string IUtilityCommand.Name => "--tileset-import";
 
 		bool IUtilityCommand.ValidateArguments(string[] args)
 		{
@@ -63,8 +63,8 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 			metadata.AppendLine("General:");
 
 			var name = args.Length > 3 ? args[3] : Path.GetFileNameWithoutExtension(args[2]);
-			metadata.AppendLine("\tName: {0}".F(name));
-			metadata.AppendLine("\tId: {0}".F(name.ToUpperInvariant()));
+			metadata.AppendLine($"\tName: {name}");
+			metadata.AppendLine($"\tId: {name.ToUpperInvariant()}");
 			metadata.AppendLine("\tHeightDebugColors: 00000080, 00004480, 00008880, 0000CC80, 0000FF80, 4400CC80," +
 				" 88008880, CC004480, FF110080, FF550080, FF990080, FFDD0080, DDFF0080, 99FF0080, 55FF0080, 11FF0080");
 
@@ -77,7 +77,7 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 			{
 				for (var tilesetGroupIndex = 0; ; tilesetGroupIndex++)
 				{
-					var section = file.GetSection("TileSet{0:D4}".F(tilesetGroupIndex));
+					var section = file.GetSection($"TileSet{tilesetGroupIndex:D4}");
 
 					var sectionCount = int.Parse(section.GetValue("TilesInSet", "1"));
 					var sectionFilename = section.GetValue("FileName", "").ToLowerInvariant();
@@ -88,29 +88,30 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 					// Loop over templates
 					for (var i = 1; i <= sectionCount; i++, templateIndex++)
 					{
-						var templateFilename = "{0}{1:D2}.{2}".F(sectionFilename, i, extension);
+						var templateFilename = $"{sectionFilename}{i:D2}.{extension}";
 						if (!modData.DefaultFileSystem.Exists(templateFilename))
 							continue;
 
 						using (var s = modData.DefaultFileSystem.Open(templateFilename))
 						{
-							data.AppendLine("\tTemplate@{0}:".F(templateIndex));
-							data.AppendLine("\t\tCategories: {0}".F(sectionCategory));
+							data.AppendLine($"\tTemplate@{templateIndex}:");
+							data.AppendLine($"\t\tCategories: {sectionCategory}");
 							usedCategories.Add(sectionCategory);
 
-							data.AppendLine("\t\tId: {0}".F(templateIndex));
+							data.AppendLine($"\t\tId: {templateIndex}");
 
-							var images = new List<string>();
-
-							images.Add("{0}{1:D2}.{2}".F(sectionFilename, i, extension));
+							var images = new List<string>
+							{
+								$"{sectionFilename}{i:D2}.{extension}"
+							};
 							for (var v = 'a'; v <= 'z'; v++)
 							{
-								var variant = "{0}{1:D2}{2}.{3}".F(sectionFilename, i, v, extension);
+								var variant = $"{sectionFilename}{i:D2}{v}.{extension}";
 								if (modData.DefaultFileSystem.Exists(variant))
 									images.Add(variant);
 							}
 
-							data.AppendLine("\t\tImages: {0}".F(images.JoinWith(", ")));
+							data.AppendLine($"\t\tImages: {images.JoinWith(", ")}");
 
 							var templateWidth = s.ReadUInt32();
 							var templateHeight = s.ReadUInt32();
@@ -120,7 +121,7 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 							for (var j = 0; j < offsets.Length; j++)
 								offsets[j] = s.ReadUInt32();
 
-							data.AppendLine("\t\tSize: {0}, {1}".F(templateWidth, templateHeight));
+							data.AppendLine($"\t\tSize: {templateWidth}, {templateHeight}");
 							data.AppendLine("\t\tTiles:");
 
 							for (var j = 0; j < offsets.Length; j++)
@@ -134,18 +135,18 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 								var rampType = s.ReadUInt8();
 
 								if (terrainType >= terrainTypes.Length)
-									throw new InvalidDataException("Unknown terrain type {0} in {1}".F(terrainType, templateFilename));
+									throw new InvalidDataException($"Unknown terrain type {terrainType} in {templateFilename}");
 
-								data.AppendLine("\t\t\t{0}: {1}".F(j, terrainTypes[terrainType]));
+								data.AppendLine($"\t\t\t{j}: {terrainTypes[terrainType]}");
 								if (height != 0)
-									data.AppendLine("\t\t\t\tHeight: {0}".F(height));
+									data.AppendLine($"\t\t\t\tHeight: {height}");
 
 								if (rampType != 0)
-									data.AppendLine("\t\t\t\tRampType: {0}".F(rampType));
+									data.AppendLine($"\t\t\t\tRampType: {rampType}");
 
-								data.AppendLine("\t\t\t\tMinColor: {0:X2}{1:X2}{2:X2}".F(s.ReadUInt8(), s.ReadUInt8(), s.ReadUInt8()));
-								data.AppendLine("\t\t\t\tMaxColor: {0:X2}{1:X2}{2:X2}".F(s.ReadUInt8(), s.ReadUInt8(), s.ReadUInt8()));
-								data.AppendLine("\t\t\t\tZOffset: {0}".F(-tileSize.Height / 2.0f));
+								data.AppendLine($"\t\t\t\tMinColor: {s.ReadUInt8():X2}{s.ReadUInt8():X2}{s.ReadUInt8():X2}");
+								data.AppendLine($"\t\t\t\tMaxColor: {s.ReadUInt8():X2}{s.ReadUInt8():X2}{s.ReadUInt8():X2}");
+								data.AppendLine($"\t\t\t\tZOffset: {(-tileSize.Height / 2.0f)}");
 								data.AppendLine("\t\t\t\tZRamp: 0");
 							}
 						}
@@ -169,8 +170,8 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 			terrainTypes = terrainTypes.Distinct().ToArray();
 			foreach (var terrainType in terrainTypes)
 			{
-				metadata.AppendLine("\tTerrainType@{0}:".F(terrainType));
-				metadata.AppendLine("\t\tType: {0}".F(terrainType));
+				metadata.AppendLine($"\tTerrainType@{terrainType}:");
+				metadata.AppendLine($"\t\tType: {terrainType}");
 
 				if (terrainType == "Water")
 					metadata.AppendLine("\t\tTargetTypes: Water");

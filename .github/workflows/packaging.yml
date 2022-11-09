@@ -39,6 +39,11 @@ jobs:
       - name: Clone Repository
         uses: actions/checkout@v2
 
+      - name: Install .NET 6.0
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '6.0.x'
+
       - name: Prepare Environment
         run: echo "GIT_TAG=${GITHUB_REF#refs/tags/}" >> ${GITHUB_ENV}
 
@@ -58,10 +63,15 @@ jobs:
 
   macos:
     name: macOS Disk Images
-    runs-on: macos-10.15
+    runs-on: macos-11
     steps:
       - name: Clone Repository
         uses: actions/checkout@v2
+
+      - name: Install .NET 6.0
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '6.0.x'
 
       - name: Prepare Environment
         run: echo "GIT_TAG=${GITHUB_REF#refs/tags/}" >> ${GITHUB_ENV}
@@ -93,11 +103,16 @@ jobs:
       - name: Clone Repository
         uses: actions/checkout@v2
 
+      - name: Install .NET 6.0
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '6.0.x'
+
       - name: Prepare Environment
         run: |
           echo "GIT_TAG=${GITHUB_REF#refs/tags/}" >> ${GITHUB_ENV}
           sudo apt-get update
-          sudo apt-get install nsis
+          sudo apt-get install nsis wine64
 
       - name: Package Installers
         run: |

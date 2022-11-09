@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -9,6 +9,7 @@
  */
 #endregion
 
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -17,12 +18,12 @@ namespace OpenRA
 {
 	public class ModContent : IGlobalModData
 	{
-		public enum SourceType { Disc, Install }
+		public enum SourceType { Disc, RegistryDirectory, RegistryDirectoryFromFile }
 		public class ModPackage
 		{
 			public readonly string Title;
-			public readonly string[] TestFiles = { };
-			public readonly string[] Sources = { };
+			public readonly string[] TestFiles = Array.Empty<string>();
+			public readonly string[] Sources = Array.Empty<string>();
 			public readonly bool Required;
 			public readonly string Download;
 
@@ -91,7 +92,7 @@ namespace OpenRA
 		public readonly string HeaderMessage;
 		public readonly string ContentInstallerMod = "modcontent";
 
-		[FieldLoader.LoadUsing("LoadPackages")]
+		[FieldLoader.LoadUsing(nameof(LoadPackages))]
 		public readonly Dictionary<string, ModPackage> Packages = new Dictionary<string, ModPackage>();
 
 		static object LoadPackages(MiniYaml yaml)
@@ -105,22 +106,22 @@ namespace OpenRA
 			return packages;
 		}
 
-		[FieldLoader.LoadUsing("LoadDownloads")]
-		public readonly string[] Downloads = { };
+		[FieldLoader.LoadUsing(nameof(LoadDownloads))]
+		public readonly string[] Downloads = Array.Empty<string>();
 
 		static object LoadDownloads(MiniYaml yaml)
 		{
 			var downloadNode = yaml.Nodes.FirstOrDefault(n => n.Key == "Downloads");
-			return downloadNode != null ? downloadNode.Value.Nodes.Select(n => n.Key).ToArray() : new string[0];
+			return downloadNode != null ? downloadNode.Value.Nodes.Select(n => n.Key).ToArray() : Array.Empty<string>();
 		}
 
-		[FieldLoader.LoadUsing("LoadSources")]
-		public readonly string[] Sources = { };
+		[FieldLoader.LoadUsing(nameof(LoadSources))]
+		public readonly string[] Sources = Array.Empty<string>();
 
 		static object LoadSources(MiniYaml yaml)
 		{
 			var sourceNode = yaml.Nodes.FirstOrDefault(n => n.Key == "Sources");
-			return sourceNode != null ? sourceNode.Value.Nodes.Select(n => n.Key).ToArray() : new string[0];
+			return sourceNode != null ? sourceNode.Value.Nodes.Select(n => n.Key).ToArray() : Array.Empty<string>();
 		}
 	}
 }

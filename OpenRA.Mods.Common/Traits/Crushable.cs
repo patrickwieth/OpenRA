@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -10,7 +10,6 @@
 #endregion
 
 using OpenRA.Primitives;
-using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
 {
@@ -57,7 +56,7 @@ namespace OpenRA.Mods.Common.Traits
 			Game.Sound.Play(SoundType.World, Info.CrushSound, crusher.CenterPosition);
 
 			var crusherMobile = crusher.TraitOrDefault<Mobile>();
-			self.Kill(crusher, crusherMobile != null ? crusherMobile.Info.LocomotorInfo.CrushDamageTypes : default(BitSet<DamageType>));
+			self.Kill(crusher, crusherMobile != null ? crusherMobile.Info.LocomotorInfo.CrushDamageTypes : default);
 		}
 
 		bool ICrushable.CrushableBy(Actor self, Actor crusher, BitSet<CrushClass> crushClasses)
@@ -67,19 +66,15 @@ namespace OpenRA.Mods.Common.Traits
 
 		LongBitSet<PlayerBitMask> ICrushable.CrushableBy(Actor self, BitSet<CrushClass> crushClasses)
 		{
-			if (IsTraitDisabled || !self.IsAtGroundLevel() || !Info.CrushClasses.Overlaps(crushClasses))
+			if (IsTraitDisabled || !Info.CrushClasses.Overlaps(crushClasses))
 				return self.World.NoPlayersMask;
 
-			return Info.CrushedByFriendlies ? self.World.AllPlayersMask : ~self.Owner.AlliedPlayersMask;
+			return Info.CrushedByFriendlies ? self.World.AllPlayersMask : self.World.AllPlayersMask.Except(self.Owner.AlliedPlayersMask);
 		}
 
 		bool CrushableInner(BitSet<CrushClass> crushClasses, Player crushOwner)
 		{
 			if (IsTraitDisabled)
-				return false;
-
-			// Only make actor crushable if it is on the ground.
-			if (!self.IsAtGroundLevel())
 				return false;
 
 			if (!Info.CrushedByFriendlies && crushOwner.IsAlliedWith(self.Owner))

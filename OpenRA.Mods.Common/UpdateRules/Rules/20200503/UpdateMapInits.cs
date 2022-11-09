@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -15,7 +15,8 @@ namespace OpenRA.Mods.Common.UpdateRules.Rules
 {
 	class UpdateMapInits : UpdateRule
 	{
-		public override string Name { get { return "Update map actor definitions"; } }
+		public override string Name => "Update map actor definitions";
+
 		public override string Description
 		{
 			get
@@ -35,10 +36,10 @@ namespace OpenRA.Mods.Common.UpdateRules.Rules
 		public override IEnumerable<string> UpdateMapActorNode(ModData modData, MiniYamlNode actorNode)
 		{
 			if (actorNode.RemoveNodes("Plugs") > 0)
-				yield return "Initial plugs for actor {0} will need to be reconfigured using the map editor.".F(actorNode.Key);
+				yield return $"Initial plugs for actor {actorNode.Key} will need to be reconfigured using the map editor.";
 
 			if (actorNode.RemoveNodes("TurretFacings") > 0)
-				yield return "Initial turret facings for actor {0} will need to be reconfigured using the map editor.".F(actorNode.Key);
+				yield return $"Initial turret facings for actor {actorNode.Key} will need to be reconfigured using the map editor.";
 
 			var bodyFacing = WAngle.Zero;
 			foreach (var facing in actorNode.ChildrenMatching("Facing"))

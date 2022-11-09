@@ -1,5 +1,5 @@
 --[[
-   Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+   Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
    This file is part of OpenRA, which is free software. It is made
    available to you under the terms of the GNU General Public License
    as published by the Free Software Foundation, either version 3 of
@@ -13,29 +13,47 @@ CmdAtk = { Attacker1, Attacker2, Attacker3, Attacker4 }
 FleeingUnits = { Fleeing1, Fleeing2 }
 HuntingUnits = { Hunter1, Hunter2, Hunter3, Hunter4 }
 
+AttackWaypoints = { AttackWaypoint1, AttackWaypoint2 }
+AttackGroup = { }
+AttackGroupSize = 3
+AlliedInfantry = { "e1", "e1", "e3" }
+
+SendAttackGroup = function()
+	if #AttackGroup < AttackGroupSize then
+		return
+	end
+
+	local way = Utils.Random(AttackWaypoints)
+	Utils.Do(AttackGroup, function(unit)
+		if not unit.IsDead then
+			unit.AttackMove(way.Location)
+			Trigger.OnIdle(unit, unit.Hunt)
+		end
+	end)
+
+	AttackGroup = { }
+end
+
+ProduceInfantry = function()
+	if Tent.IsDead then
+		return
+	end
+
+	greece.Build({ Utils.Random(AlliedInfantry) }, function(units)
+		table.insert(AttackGroup, units[1])
+		SendAttackGroup()
+		Trigger.AfterDelay(DateTime.Seconds(10), ProduceInfantry)
+	end)
+end
+
 WorldLoaded = function()
 	player = Player.GetPlayer("USSR")
 	greece = Player.GetPlayer("Greece")
 
-	Trigger.OnObjectiveAdded(player, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "New " .. string.lower(p.GetObjectiveType(id)) .. " objective")
-	end)
-	Trigger.OnObjectiveCompleted(player, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "Objective completed")
-	end)
-	Trigger.OnObjectiveFailed(player, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "Objective failed")
-	end)
+	InitObjectives(player)
 
-	CommandCenterIntact = player.AddPrimaryObjective("Protect the Command Center.")
-	DestroyAllAllied = player.AddPrimaryObjective("Destroy all Allied units and structures.")
-
-	Trigger.OnPlayerWon(player, function()
-		Media.PlaySpeechNotification(player, "MissionAccomplished")
-	end)
-	Trigger.OnPlayerLost(player, function()
-		Media.PlaySpeechNotification(player, "MissionFailed")
-	end)
+	CommandCenterIntact = player.AddObjective("Protect the Command Center.")
+	DestroyAllAllied = player.AddObjective("Destroy all Allied units and structures.")
 
 	Camera.Position	= CameraWaypoint.CenterPosition
 
@@ -127,6 +145,9 @@ WorldLoaded = function()
 		powerproxy.TargetParatroopers(ParadropLZ.CenterPosition, Angle.SouthEast)
 		powerproxy.Destroy()
 	end)
+
+	greece.Resources = 2000
+	Trigger.AfterDelay(DateTime.Seconds(30), ProduceInfantry)
 end
 
 Tick = function()

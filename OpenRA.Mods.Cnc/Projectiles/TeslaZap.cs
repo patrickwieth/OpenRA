@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -17,26 +17,36 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Cnc.Projectiles
 {
+	[Desc("Instant-hit projectile used to create electricity-like effects.")]
 	public class TeslaZapInfo : IProjectileInfo
 	{
 		public readonly string Image = "litning";
 
 		[SequenceReference(nameof(Image))]
+		[Desc("Sprite sequence to play at the center.")]
 		public readonly string BrightSequence = "bright";
 
 		[SequenceReference(nameof(Image))]
+		[Desc("Sprite sequence to play at the borders.")]
 		public readonly string DimSequence = "dim";
 
 		[PaletteReference]
+		[Desc("The palette used to draw this electric zap.")]
 		public readonly string Palette = "effect";
 
+		[Desc("How many sprite sequences to play at the center.")]
 		public readonly int BrightZaps = 1;
+
+		[Desc("How many sprite sequences to play at the borders.")]
 		public readonly int DimZaps = 2;
 
+		[Desc("How long (in ticks) to play the sprite sequences.")]
 		public readonly int Duration = 2;
 
+		[Desc("How long (in ticks) until applying damage. Can't be longer than `" + nameof(Duration) + "`")]
 		public readonly int DamageDuration = 1;
 
+		[Desc("Follow the targeted actor when it moves.")]
 		public readonly bool TrackTarget = true;
 
 		public IProjectile Create(ProjectileArgs args) { return new TeslaZap(this, args); }

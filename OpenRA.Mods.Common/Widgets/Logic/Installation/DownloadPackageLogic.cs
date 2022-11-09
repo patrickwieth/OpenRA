@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -11,10 +11,10 @@
 
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.IO;
-using System.Net;
-using System.Text;
+using System.Net.Http;
+using System.Threading;
+using System.Threading.Tasks;
 using ICSharpCode.SharpZipLib.Zip;
 using OpenRA.Support;
 using OpenRA.Widgets;
@@ -24,6 +24,41 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 	public class DownloadPackageLogic : ChromeLogic
 	{
 		static readonly string[] SizeSuffixes = { "bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB" };
+
+		[TranslationReference("title")]
+		static readonly string Downloading = "downloading";
+
+		[TranslationReference]
+		static readonly string FetchingMirrorList = "fetching-mirror-list";
+
+		[TranslationReference]
+		static readonly string UnknownHost = "unknown-host";
+
+		[TranslationReference("host", "received", "suffix")]
+		static readonly string DownloadingFrom = "downloading-from";
+
+		[TranslationReference("host", "received", "total", "suffix", "progress")]
+		static readonly string DownloadingFromProgress = "downloading-from-progress";
+
+		[TranslationReference]
+		static readonly string VerifyingArchive = "verifying-archive";
+
+		[TranslationReference]
+		static readonly string ArchiveValidationFailed = "archive-validation-failed";
+
+		[TranslationReference]
+		static readonly string Extracting = "extracting";
+
+		[TranslationReference("entry")]
+		static readonly string ExtractingEntry = "extracting-entry";
+
+		[TranslationReference]
+		static readonly string ArchiveExtractionFailed = "archive-extraction-failed";
+
+		[TranslationReference]
+		static readonly string MirrorSelectionFailed = "mirror-selection-failed";
+
+		readonly ModData modData;
 		readonly ModContent.ModDownload download;
 		readonly Action onSuccess;
 
@@ -34,8 +69,9 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		string downloadHost;
 
 		[ObjectCreator.UseCtor]
-		public DownloadPackageLogic(Widget widget, ModContent.ModDownload download, Action onSuccess)
+		public DownloadPackageLogic(Widget widget, ModData modData, ModContent.ModDownload download, Action onSuccess)
 		{
+			this.modData = modData;
 			this.download = download;
 			this.onSuccess = onSuccess;
 
@@ -49,7 +85,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			var status = new CachedTransform<string, string>(s => WidgetUtils.TruncateText(s, statusLabel.Bounds.Width, statusFont));
 			statusLabel.GetText = () => status.Update(getStatusText());
 
-			var text = "Downloading {0}".F(download.Title);
+			var text = modData.Translation.GetString(Downloading, Translation.Arguments("title", download.Title));
 			panel.Get<LabelWidget>("TITLE").Text = text;
 
 			ShowDownloadDialog();
@@ -57,7 +93,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 		void ShowDownloadDialog()
 		{
-			getStatusText = () => "Fetching list of mirrors...";
+			getStatusText = () => modData.Translation.GetString(FetchingMirrorList);
 			progressBar.Indeterminate = true;
 
 			var retryButton = panel.Get<ButtonWidget>("RETRY_BUTTON");
@@ -65,47 +101,39 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 			var cancelButton = panel.Get<ButtonWidget>("CANCEL_BUTTON");
 
-			var file = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
-
-			Action deleteTempFile = () =>
-			{
-				Log.Write("install", "Deleting temporary file " + file);
-				File.Delete(file);
-			};
-
-			Action<DownloadProgressChangedEventArgs> onDownloadProgress = i =>
+			void OnDownloadProgress(long total, long read, int progressPercentage)
 			{
 				var dataReceived = 0.0f;
 				var dataTotal = 0.0f;
 				var mag = 0;
 				var dataSuffix = "";
+				var host = downloadHost ?? UnknownHost;
 
-				if (i.TotalBytesToReceive < 0)
+				if (total < 0)
 				{
-					mag = (int)Math.Log(i.BytesReceived, 1024);
-					dataReceived = i.BytesReceived / (float)(1L << (mag * 10));
+					mag = (int)Math.Log(read, 1024);
+					dataReceived = read / (float)(1L << (mag * 10));
 					dataSuffix = SizeSuffixes[mag];
 
-					getStatusText = () => "Downloading from {2} {0:0.00} {1}".F(dataReceived,
-						dataSuffix,
-						downloadHost ?? "unknown host");
+					getStatusText = () => modData.Translation.GetString(DownloadingFrom,
+						Translation.Arguments("host", host, "received", $"{dataReceived:0.00}", "suffix", dataSuffix));
 					progressBar.Indeterminate = true;
 				}
 				else
 				{
-					mag = (int)Math.Log(i.TotalBytesToReceive, 1024);
-					dataTotal = i.TotalBytesToReceive / (float)(1L << (mag * 10));
-					dataReceived = i.BytesReceived / (float)(1L << (mag * 10));
+					mag = (int)Math.Log(total, 1024);
+					dataTotal = total / (float)(1L << (mag * 10));
+					dataReceived = read / (float)(1L << (mag * 10));
 					dataSuffix = SizeSuffixes[mag];
 
-					getStatusText = () => "Downloading from {4} {1:0.00}/{2:0.00} {3} ({0}%)".F(i.ProgressPercentage,
-						dataReceived, dataTotal, dataSuffix,
-						downloadHost ?? "unknown host");
+					getStatusText = () => modData.Translation.GetString(DownloadingFromProgress,
+						Translation.Arguments("host", host, "received", $"{dataReceived:0.00}", "total", $"{dataTotal:0.00}",
+							"suffix", dataSuffix, "progress", progressPercentage));
 					progressBar.Indeterminate = false;
 				}
 
-				progressBar.Percentage = i.ProgressPercentage;
-			};
+				progressBar.Percentage = progressPercentage;
+			}
 
 			Action<string> onExtractProgress = s => Game.RunAfterTick(() => getStatusText = () => s);
 
@@ -120,150 +148,149 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				cancelButton.OnClick = Ui.CloseWindow;
 			});
 
-			Action<AsyncCompletedEventArgs> onDownloadComplete = i =>
-			{
-				if (i.Cancelled)
-				{
-					deleteTempFile();
-					Game.RunAfterTick(Ui.CloseWindow);
-					return;
-				}
-
-				if (i.Error != null)
-				{
-					deleteTempFile();
-					onError(Download.FormatErrorMessage(i.Error));
-					return;
-				}
-
-				// Validate integrity
-				if (!string.IsNullOrEmpty(download.SHA1))
-				{
-					getStatusText = () => "Verifying archive...";
-					progressBar.Indeterminate = true;
-
-					var archiveValid = false;
-					try
-					{
-						using (var stream = File.OpenRead(file))
-						{
-							var archiveSHA1 = CryptoUtil.SHA1Hash(stream);
-							Log.Write("install", "Downloaded SHA1: " + archiveSHA1);
-							Log.Write("install", "Expected SHA1: " + download.SHA1);
-
-							archiveValid = archiveSHA1 == download.SHA1;
-						}
-					}
-					catch (Exception e)
-					{
-						Log.Write("install", "SHA1 calculation failed: " + e.ToString());
-					}
-
-					if (!archiveValid)
-					{
-						onError("Archive validation failed");
-						deleteTempFile();
-						return;
-					}
-				}
-
-				// Automatically extract
-				getStatusText = () => "Extracting...";
-				progressBar.Indeterminate = true;
-
-				var extracted = new List<string>();
-				try
-				{
-					using (var stream = File.OpenRead(file))
-					using (var z = new ZipFile(stream))
-					{
-						foreach (var kv in download.Extract)
-						{
-							var entry = z.GetEntry(kv.Value);
-							if (entry == null || !entry.IsFile)
-								continue;
-
-							onExtractProgress("Extracting " + entry.Name);
-							Log.Write("install", "Extracting " + entry.Name);
-							var targetPath = Platform.ResolvePath(kv.Key);
-							Directory.CreateDirectory(Path.GetDirectoryName(targetPath));
-							extracted.Add(targetPath);
-
-							using (var zz = z.GetInputStream(entry))
-							using (var f = File.Create(targetPath))
-								zz.CopyTo(f);
-						}
-
-						z.Close();
-					}
-
-					Game.RunAfterTick(() => { Ui.CloseWindow(); onSuccess(); });
-				}
-				catch (Exception e)
-				{
-					Log.Write("install", "Archive extraction failed: " + e.ToString());
-
-					foreach (var f in extracted)
-					{
-						Log.Write("install", "Deleting " + f);
-						File.Delete(f);
-					}
-
-					onError("Archive extraction failed");
-				}
-				finally
-				{
-					deleteTempFile();
-				}
-			};
-
 			Action<string> downloadUrl = url =>
 			{
 				Log.Write("install", "Downloading " + url);
 
+				var tokenSource = new CancellationTokenSource();
+				var token = tokenSource.Token;
 				downloadHost = new Uri(url).Host;
-				var dl = new Download(url, file, onDownloadProgress, onDownloadComplete);
-				cancelButton.OnClick = dl.CancelAsync;
+
+				cancelButton.OnClick = () =>
+				{
+					tokenSource.Cancel();
+					Game.RunAfterTick(Ui.CloseWindow);
+				};
+
 				retryButton.OnClick = ShowDownloadDialog;
+
+				Task.Run(async () =>
+				{
+					var file = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+
+					try
+					{
+						var client = HttpClientFactory.Create();
+
+						var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, token);
+
+						using (var fileStream = new FileStream(file, FileMode.Create, FileAccess.Write, FileShare.ReadWrite, 8192, true))
+						{
+							await response.ReadAsStreamWithProgress(fileStream, OnDownloadProgress, token);
+						}
+
+						// Validate integrity
+						if (!string.IsNullOrEmpty(download.SHA1))
+						{
+							getStatusText = () => modData.Translation.GetString(VerifyingArchive);
+							progressBar.Indeterminate = true;
+
+							var archiveValid = false;
+							try
+							{
+								using (var stream = File.OpenRead(file))
+								{
+									var archiveSHA1 = CryptoUtil.SHA1Hash(stream);
+									Log.Write("install", "Downloaded SHA1: " + archiveSHA1);
+									Log.Write("install", "Expected SHA1: " + download.SHA1);
+
+									archiveValid = archiveSHA1 == download.SHA1;
+								}
+							}
+							catch (Exception e)
+							{
+								Log.Write("install", "SHA1 calculation failed: " + e.ToString());
+							}
+
+							if (!archiveValid)
+							{
+								onError(modData.Translation.GetString(ArchiveValidationFailed));
+								return;
+							}
+						}
+
+						// Automatically extract
+						getStatusText = () => modData.Translation.GetString(Extracting);
+						progressBar.Indeterminate = true;
+
+						var extracted = new List<string>();
+						try
+						{
+							using (var stream = File.OpenRead(file))
+							using (var z = new ZipFile(stream))
+							{
+								foreach (var kv in download.Extract)
+								{
+									var entry = z.GetEntry(kv.Value);
+									if (entry == null || !entry.IsFile)
+										continue;
+
+									onExtractProgress(modData.Translation.GetString(ExtractingEntry, Translation.Arguments("entry", entry.Name)));
+									Log.Write("install", "Extracting " + entry.Name);
+									var targetPath = Platform.ResolvePath(kv.Key);
+									Directory.CreateDirectory(Path.GetDirectoryName(targetPath));
+									extracted.Add(targetPath);
+
+									using (var zz = z.GetInputStream(entry))
+									using (var f = File.Create(targetPath))
+										zz.CopyTo(f);
+								}
+
+								z.Close();
+							}
+
+							Game.RunAfterTick(() =>
+							{
+								Ui.CloseWindow();
+								onSuccess();
+							});
+						}
+						catch (Exception e)
+						{
+							Log.Write("install", "Archive extraction failed: " + e.ToString());
+
+							foreach (var f in extracted)
+							{
+								Log.Write("install", "Deleting " + f);
+								File.Delete(f);
+							}
+
+							onError(modData.Translation.GetString(ArchiveExtractionFailed));
+						}
+					}
+					catch (Exception e)
+					{
+						onError(e.ToString());
+					}
+					finally
+					{
+						File.Delete(file);
+					}
+				}, token);
 			};
 
 			if (download.MirrorList != null)
 			{
 				Log.Write("install", "Fetching mirrors from " + download.MirrorList);
 
-				Action<DownloadDataCompletedEventArgs> onFetchMirrorsComplete = i =>
+				Task.Run(async () =>
 				{
-					progressBar.Indeterminate = true;
-
-					if (i.Cancelled)
-					{
-						Game.RunAfterTick(Ui.CloseWindow);
-						return;
-					}
-
-					if (i.Error != null)
-					{
-						onError(Download.FormatErrorMessage(i.Error));
-						return;
-					}
-
 					try
 					{
-						var data = Encoding.UTF8.GetString(i.Result);
-						var mirrorList = data.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
+						var client = HttpClientFactory.Create();
+						var httpResponseMessage = await client.GetAsync(download.MirrorList);
+						var result = await httpResponseMessage.Content.ReadAsStringAsync();
+
+						var mirrorList = result.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
 						downloadUrl(mirrorList.Random(new MersenneTwister()));
 					}
 					catch (Exception e)
 					{
 						Log.Write("install", "Mirror selection failed with error:");
 						Log.Write("install", e.ToString());
-						onError("Online mirror is not available. Please install from an original disc.");
+						onError(modData.Translation.GetString(MirrorSelectionFailed));
 					}
-				};
-
-				var updateMirrors = new Download(download.MirrorList, onDownloadProgress, onFetchMirrorsComplete);
-				cancelButton.OnClick = updateMirrors.CancelAsync;
-				retryButton.OnClick = ShowDownloadDialog;
+				});
 			}
 			else
 				downloadUrl(download.URL);

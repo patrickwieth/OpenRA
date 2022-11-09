@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -12,25 +12,29 @@
 using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Graphics;
+using OpenRA.Mods.Common.Terrain;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
 {
 	public enum EditorCursorType { None, Actor, TerrainTemplate, Resource }
 
+	[TraitLocation(SystemActors.EditorWorld)]
 	[Desc("Required for the map editor to work. Attach this to the world actor.")]
-	public class EditorCursorLayerInfo : TraitInfo, Requires<EditorActorLayerInfo>
+	public class EditorCursorLayerInfo : TraitInfo, Requires<EditorActorLayerInfo>, Requires<ITiledTerrainRendererInfo>
 	{
 		public readonly WAngle PreviewFacing = new WAngle(384);
 
 		public override object Create(ActorInitializer init) { return new EditorCursorLayer(init.Self, this); }
 	}
 
-	public class EditorCursorLayer : ITickRender, IRenderAboveShroud, IRenderAnnotations
+	public class EditorCursorLayer : IWorldLoaded, ITickRender, IRenderAboveShroud, IRenderAnnotations
 	{
 		readonly EditorCursorLayerInfo info;
 		readonly EditorActorLayer editorLayer;
+		readonly ITiledTerrainRenderer terrainRenderer;
 		readonly World world;
+		IResourceRenderer[] resourceRenderers;
 
 		public int CurrentToken { get; private set; }
 		public EditorCursorType Type { get; private set; }
@@ -41,7 +45,7 @@ namespace OpenRA.Mods.Common.Traits
 		bool actorSharesCell;
 
 		public TerrainTemplateInfo TerrainTemplate { get; private set; }
-		public ResourceTypeInfo Resource { get; private set; }
+		public string ResourceType { get; private set; }
 		CPos terrainOrResourceCell;
 		bool terrainOrResourceDirty;
 		readonly List<IRenderable> terrainOrResourcePreview = new List<IRenderable>();
@@ -51,8 +55,14 @@ namespace OpenRA.Mods.Common.Traits
 			this.info = info;
 			world = self.World;
 			editorLayer = self.Trait<EditorActorLayer>();
+			terrainRenderer = self.Trait<ITiledTerrainRenderer>();
 
 			Type = EditorCursorType.None;
+		}
+
+		void IWorldLoaded.WorldLoaded(World w, WorldRenderer wr)
+		{
+			resourceRenderers = w.WorldActor.TraitsImplementing<IResourceRenderer>().ToArray();
 		}
 
 		void ITickRender.TickRender(WorldRenderer wr, Actor self)
@@ -68,39 +78,12 @@ namespace OpenRA.Mods.Common.Traits
 					terrainOrResourceCell = cell;
 					terrainOrResourceDirty = false;
 					terrainOrResourcePreview.Clear();
+
 					var pos = world.Map.CenterOfCell(cell);
-
 					if (Type == EditorCursorType.TerrainTemplate)
-					{
-						var i = 0;
-						for (var y = 0; y < TerrainTemplate.Size.Y; y++)
-						{
-							for (var x = 0; x < TerrainTemplate.Size.X; x++)
-							{
-								var tile = new TerrainTile(TerrainTemplate.Id, (byte)i++);
-								var tileInfo = world.Map.Rules.TileSet.GetTileInfo(tile);
-
-								// Empty tile
-								if (tileInfo == null)
-									continue;
-
-								var sprite = wr.Theater.TileSprite(tile, 0);
-								var offset = world.Map.Offset(new CVec(x, y), tileInfo.Height);
-								var palette = wr.Palette(TerrainTemplate.Palette ?? TileSet.TerrainPaletteInternalName);
-
-								terrainOrResourcePreview.Add(new SpriteRenderable(sprite, pos, offset, 0, palette, 1, false, false));
-							}
-						}
-					}
+						terrainOrResourcePreview.AddRange(terrainRenderer.RenderPreview(wr, TerrainTemplate, pos));
 					else
-					{
-						var variant = Resource.Sequences.FirstOrDefault();
-						var sequence = wr.World.Map.Rules.Sequences.GetSequence("resources", variant);
-						var sprite = sequence.GetSprite(Resource.MaxDensity - 1);
-						var palette = wr.Palette(Resource.Palette);
-
-						terrainOrResourcePreview.Add(new SpriteRenderable(sprite, pos, WVec.Zero, 0, palette, 1, false, sequence.IgnoreWorldTint));
-					}
+						terrainOrResourcePreview.AddRange(resourceRenderers.SelectMany(r => r.RenderPreview(wr, ResourceType, pos)));
 				}
 			}
 			else if (Type == EditorCursorType.Actor)
@@ -152,7 +135,7 @@ namespace OpenRA.Mods.Common.Traits
 			return NoRenderables;
 		}
 
-		bool IRenderAboveShroud.SpatiallyPartitionable { get { return false; } }
+		bool IRenderAboveShroud.SpatiallyPartitionable => false;
 
 		public IEnumerable<IRenderable> RenderAnnotations(Actor self, WorldRenderer wr)
 		{
@@ -162,13 +145,13 @@ namespace OpenRA.Mods.Common.Traits
 			return Type == EditorCursorType.Actor ? Actor.RenderAnnotations() : NoRenderables;
 		}
 
-		bool IRenderAnnotations.SpatiallyPartitionable { get { return false; } }
+		bool IRenderAnnotations.SpatiallyPartitionable => false;
 
 		public int SetActor(WorldRenderer wr, ActorInfo actor, PlayerReference owner)
 		{
 			var ios = actor.TraitInfoOrDefault<IOccupySpaceInfo>();
 			var buildingInfo = ios as BuildingInfo;
-			actorCenterOffset = buildingInfo != null ? buildingInfo.CenterOffset(world) : WVec.Zero;
+			actorCenterOffset = buildingInfo?.CenterOffset(world) ?? WVec.Zero;
 			actorSharesCell = ios != null && ios.SharesCell;
 			actorSubCell = SubCell.Invalid;
 
@@ -178,9 +161,11 @@ namespace OpenRA.Mods.Common.Traits
 			if (specificOwnerInfo != null && !specificOwnerInfo.ValidOwnerNames.Contains(ownerName))
 				ownerName = specificOwnerInfo.ValidOwnerNames.First();
 
-			var reference = new ActorReference(actor.Name);
-			reference.Add(new OwnerInit(ownerName));
-			reference.Add(new FactionInit(owner.Faction));
+			var reference = new ActorReference(actor.Name)
+			{
+				new OwnerInit(ownerName),
+				new FactionInit(owner.Faction)
+			};
 
 			var worldPx = wr.Viewport.ViewToWorldPx(Viewport.LastMousePos) - wr.ScreenPxOffset(actorCenterOffset);
 			var cell = wr.Viewport.ViewToWorld(wr.Viewport.WorldToViewPx(worldPx));
@@ -199,7 +184,7 @@ namespace OpenRA.Mods.Common.Traits
 			Type = EditorCursorType.Actor;
 			Actor = new EditorActorPreview(wr, null, reference, owner);
 			TerrainTemplate = null;
-			Resource = null;
+			ResourceType = null;
 
 			return ++CurrentToken;
 		}
@@ -211,18 +196,18 @@ namespace OpenRA.Mods.Common.Traits
 			Type = EditorCursorType.TerrainTemplate;
 			TerrainTemplate = template;
 			Actor = null;
-			Resource = null;
+			ResourceType = null;
 			terrainOrResourceDirty = true;
 
 			return ++CurrentToken;
 		}
 
-		public int SetResource(WorldRenderer wr, ResourceTypeInfo resource)
+		public int SetResource(WorldRenderer wr, string resourceType)
 		{
 			terrainOrResourceCell = wr.Viewport.ViewToWorld(wr.Viewport.WorldToViewPx(Viewport.LastMousePos));
 
 			Type = EditorCursorType.Resource;
-			Resource = resource;
+			ResourceType = resourceType;
 			Actor = null;
 			TerrainTemplate = null;
 			terrainOrResourceDirty = true;
@@ -238,7 +223,7 @@ namespace OpenRA.Mods.Common.Traits
 			Type = EditorCursorType.None;
 			Actor = null;
 			TerrainTemplate = null;
-			Resource = null;
+			ResourceType = null;
 		}
 	}
 }

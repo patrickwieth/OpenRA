@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -15,8 +15,8 @@ using OpenRA.Primitives;
 
 namespace OpenRA
 {
-	[SuppressMessage("StyleCop.CSharp.NamingRules", "SA1300:ElementMustBeginWithUpperCaseLetter", Justification = "Mimic a built-in type alias.")]
-	public struct int2 : IEquatable<int2>
+	[SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Mimic a built-in type alias.")]
+	public readonly struct int2 : IEquatable<int2>
 	{
 		public readonly int X, Y;
 		public int2(int x, int y) { X = x; Y = y; }
@@ -43,8 +43,8 @@ namespace OpenRA
 
 		public int2 Sign() { return new int2(Math.Sign(X), Math.Sign(Y)); }
 		public int2 Abs() { return new int2(Math.Abs(X), Math.Abs(Y)); }
-		public int LengthSquared { get { return X * X + Y * Y; } }
-		public int Length { get { return Exts.ISqrt(LengthSquared); } }
+		public int LengthSquared => X * X + Y * Y;
+		public int Length => Exts.ISqrt(LengthSquared);
 
 		public int2 WithX(int newX)
 		{

@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -44,7 +44,7 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("The condition to grant to self for each ammo point in this pool.")]
 		public readonly string AmmoCondition = null;
 
-		public override object Create(ActorInitializer init) { return new AmmoPool(init.Self, this); }
+		public override object Create(ActorInitializer init) { return new AmmoPool(this); }
 	}
 
 	public class AmmoPool : INotifyCreated, INotifyAttack, ISync
@@ -59,10 +59,10 @@ namespace OpenRA.Mods.Common.Traits
 		[Sync]
 		public int CurrentAmmoCount { get; private set; }
 
-		public bool HasAmmo { get { return CurrentAmmoCount > 0; } }
-		public bool HasFullAmmo { get { return CurrentAmmoCount == Info.Ammo; } }
+		public bool HasAmmo => CurrentAmmoCount > 0;
+		public bool HasFullAmmo => CurrentAmmoCount == Info.Ammo;
 
-		public AmmoPool(Actor self, AmmoPoolInfo info)
+		public AmmoPool(AmmoPoolInfo info)
 		{
 			Info = info;
 			CurrentAmmoCount = Info.InitialAmmo < Info.Ammo && Info.InitialAmmo >= 0 ? Info.InitialAmmo : Info.Ammo;
@@ -99,7 +99,7 @@ namespace OpenRA.Mods.Common.Traits
 		void INotifyAttack.Attacking(Actor self, in Target target, Armament a, Barrel barrel)
 		{
 			if (a != null && Info.Armaments.Contains(a.Info.Name))
-				TakeAmmo(self, 1);
+				TakeAmmo(self, a.Info.AmmoUsage);
 		}
 
 		void INotifyAttack.PreparingAttack(Actor self, in Target target, Armament a, Barrel barrel) { }

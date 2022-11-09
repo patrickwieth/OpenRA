@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -9,6 +9,7 @@
  */
 #endregion
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Primitives;
@@ -17,6 +18,7 @@ using OpenRA.Traits;
 namespace OpenRA.Mods.Common.Traits
 {
 	[Desc("Controls the spawning of specified actor types. Attach this to the world actor.")]
+	[TraitLocation(SystemActors.World)]
 	public class ActorSpawnManagerInfo : ConditionalTraitInfo, Requires<MapCreepsInfo>
 	{
 		[Desc("Minimum number of actors.")]
@@ -25,20 +27,35 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Maximum number of actors.")]
 		public readonly int Maximum = 4;
 
-		[Desc("Time (in ticks) between actor spawn.")]
-		public readonly int SpawnInterval = 6000;
+		[Desc("Time (in ticks) between actor spawn. Supports 1 or 2 values.",
+			"If 2 values are provided they are used as a range from which a value is randomly selected.")]
+		public readonly int[] SpawnInterval = { 6000 };
 
 		[FieldLoader.Require]
 		[ActorReference]
 		[Desc("Name of the actor that will be randomly picked to spawn.")]
-		public readonly string[] Actors = { };
+		public readonly string[] Actors = Array.Empty<string>();
 
 		public readonly string Owner = "Creeps";
 
 		[Desc("Type of ActorSpawner with which it connects.")]
 		public readonly HashSet<string> Types = new HashSet<string>() { };
 
-		public override object Create(ActorInitializer init) { return new ActorSpawnManager(init.Self, this); }
+		public override void RulesetLoaded(Ruleset rules, ActorInfo ai)
+		{
+			base.RulesetLoaded(rules, ai);
+
+			if (SpawnInterval.Length == 0 || SpawnInterval.Length > 2)
+				throw new YamlException($"{nameof(ActorSpawnManager)}.{nameof(SpawnInterval)} must be either 1 or 2 values");
+
+			if (SpawnInterval.Length == 2 && SpawnInterval[0] >= SpawnInterval[1])
+				throw new YamlException($"{nameof(ActorSpawnManager)}.{nameof(SpawnInterval)}'s first value must be less than the second value");
+
+			if (SpawnInterval.Any(it => it < 0))
+				throw new YamlException($"{nameof(ActorSpawnManager)}.{nameof(SpawnInterval)}'s value(s) must not be less than 0");
+		}
+
+		public override object Create(ActorInitializer init) { return new ActorSpawnManager(this); }
 	}
 
 	public class ActorSpawnManager : ConditionalTrait<ActorSpawnManagerInfo>, ITick
@@ -49,7 +66,7 @@ namespace OpenRA.Mods.Common.Traits
 		int spawnCountdown;
 		int actorsPresent;
 
-		public ActorSpawnManager(Actor self, ActorSpawnManagerInfo info)
+		public ActorSpawnManager(ActorSpawnManagerInfo info)
 			: base(info)
 		{
 			this.info = info;
@@ -77,7 +94,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (spawnPoint == null)
 				return;
 
-			spawnCountdown = info.SpawnInterval;
+			spawnCountdown = Util.RandomInRange(self.World.SharedRandom, info.SpawnInterval);
 
 			do
 			{
@@ -104,10 +121,10 @@ namespace OpenRA.Mods.Common.Traits
 		Actor GetRandomSpawnPoint(World world, Support.MersenneTwister random)
 		{
 			var spawnPointActors = world.ActorsWithTrait<ActorSpawner>()
-				.Where(x => !x.Trait.IsTraitDisabled && (info.Types.Overlaps(x.Trait.Types) || !x.Trait.Types.Any()))
+				.Where(x => !x.Trait.IsTraitDisabled && (info.Types.Overlaps(x.Trait.Types) || x.Trait.Types.Count == 0))
 				.ToArray();
 
-			return spawnPointActors.Any() ? spawnPointActors.Random(random).Actor : null;
+			return spawnPointActors.Length > 0 ? spawnPointActors.Random(random).Actor : null;
 		}
 
 		public void DecreaseActorCount()

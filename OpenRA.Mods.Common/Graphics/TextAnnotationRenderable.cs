@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -15,7 +15,7 @@ using OpenRA.Widgets;
 
 namespace OpenRA.Mods.Common.Graphics
 {
-	public struct TextAnnotationRenderable : IRenderable, IFinalizedRenderable
+	public class TextAnnotationRenderable : IRenderable, IFinalizedRenderable
 	{
 		readonly SpriteFont font;
 		readonly WPos pos;
@@ -42,14 +42,12 @@ namespace OpenRA.Mods.Common.Graphics
 				ChromeMetrics.Get<Color>("TextContrastColorLight"),
 				text) { }
 
-		public WPos Pos { get { return pos; } }
-		public PaletteReference Palette { get { return null; } }
-		public int ZOffset { get { return zOffset; } }
-		public bool IsDecoration { get { return true; } }
+		public WPos Pos => pos;
+		public int ZOffset => zOffset;
+		public bool IsDecoration => true;
 
-		public IRenderable WithPalette(PaletteReference newPalette) { return new TextAnnotationRenderable(font, pos, zOffset, color, text); }
 		public IRenderable WithZOffset(int newOffset) { return new TextAnnotationRenderable(font, pos, zOffset, color, text); }
-		public IRenderable OffsetBy(WVec vec) { return new TextAnnotationRenderable(font, pos + vec, zOffset, color, text); }
+		public IRenderable OffsetBy(in WVec vec) { return new TextAnnotationRenderable(font, pos + vec, zOffset, color, text); }
 		public IRenderable AsDecoration() { return this; }
 
 		public IFinalizedRenderable PrepareRender(WorldRenderer wr) { return this; }

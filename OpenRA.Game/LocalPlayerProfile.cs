@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -12,10 +12,10 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using OpenRA.Support;
 
 namespace OpenRA
 {
@@ -24,11 +24,11 @@ namespace OpenRA
 		const int AuthKeySize = 2048;
 		public enum LinkState { Uninitialized, GeneratingKeys, Unlinked, CheckingLink, ConnectionFailed, Linked }
 
-		public LinkState State { get { return innerState; } }
-		public string Fingerprint { get { return innerFingerprint; } }
-		public string PublicKey { get { return innerPublicKey; } }
+		public LinkState State => innerState;
+		public string Fingerprint => innerFingerprint;
+		public string PublicKey => innerPublicKey;
 
-		public PlayerProfile ProfileData { get { return innerData; } }
+		public PlayerProfile ProfileData => innerData;
 
 		volatile LinkState innerState;
 		volatile PlayerProfile innerData;
@@ -76,17 +76,16 @@ namespace OpenRA
 			if (State != LinkState.Unlinked && State != LinkState.Linked && State != LinkState.ConnectionFailed)
 				return;
 
-			Action<DownloadDataCompletedEventArgs> onQueryComplete = i =>
+			Task.Run(async () =>
 			{
 				try
 				{
-					if (i.Error != null)
-					{
-						innerState = LinkState.ConnectionFailed;
-						return;
-					}
+					var client = HttpClientFactory.Create();
 
-					var yaml = MiniYaml.FromString(Encoding.UTF8.GetString(i.Result)).First();
+					var httpResponseMessage = await client.GetAsync(playerDatabase.Profile + Fingerprint);
+					var result = await httpResponseMessage.Content.ReadAsStreamAsync();
+
+					var yaml = MiniYaml.FromStream(result).First();
 					if (yaml.Key == "Player")
 					{
 						innerData = FieldLoader.Load<PlayerProfile>(yaml.Value);
@@ -110,10 +109,9 @@ namespace OpenRA
 				{
 					onComplete?.Invoke();
 				}
-			};
+			});
 
 			innerState = LinkState.CheckingLink;
-			new Download(playerDatabase.Profile + Fingerprint, _ => { }, onQueryComplete);
 		}
 
 		public void GenerateKeypair()
@@ -159,7 +157,7 @@ namespace OpenRA
 			}
 
 			innerState = LinkState.Uninitialized;
-			parameters = default(RSAParameters);
+			parameters = default;
 			innerFingerprint = null;
 			innerData = null;
 		}

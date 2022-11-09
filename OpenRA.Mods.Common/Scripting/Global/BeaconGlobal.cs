@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -30,7 +30,7 @@ namespace OpenRA.Mods.Common.Scripting
 		[Desc("Creates a new beacon that stays for the specified time at the specified WPos. " +
 			"Does not remove player set beacons, nor gets removed by placing them. " +
 			"Requires the 'PlaceBeacon' trait on the player actor.")]
-		public void New(Player owner, WPos position, int duration = 30 * 25, bool showRadarPings = true)
+		public void New(Player owner, WPos position, int duration = 750, bool showRadarPings = true)
 		{
 			var beacon = owner.PlayerActor.Info.TraitInfoOrDefault<PlaceBeaconInfo>();
 			if (beacon == null)

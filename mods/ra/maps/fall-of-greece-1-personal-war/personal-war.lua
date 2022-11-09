@@ -1,5 +1,5 @@
 --[[
-   Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+   Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
    This file is part of OpenRA, which is free software. It is made
    available to you under the terms of the GNU General Public License
    as published by the Free Software Foundation, either version 3 of
@@ -52,8 +52,6 @@ lstReinforcements =
 	}
 }
 
-IdleHunt = function(actor) if not actor.IsDead then Trigger.OnIdle(actor, actor.Hunt) end end
-
 VIPs = { }
 MissionStart = function()
 	FlareBoy.Move(LightFlare.Location)
@@ -64,7 +62,7 @@ MissionStart = function()
 			local insertionFlare = Actor.Create("flare", true, { Owner = Allies, Location = LightFlare.Location })
 			Trigger.AfterDelay(DateTime.Seconds(2), function()
 				FlareBoy.AttackMove(FlareBoyAttack.Location)
-				if Map.LobbyOption("difficulty") == "normal" then
+				if Difficulty == "normal" then
 					local normalDrop = InsertionDrop.TargetParatroopers(InsertionPoint.CenterPosition, Angle.New(892))
 					Utils.Do(normalDrop, function(a)
 						Trigger.OnPassengerExited(a, function(t,p)
@@ -79,7 +77,7 @@ MissionStart = function()
 							VIPs[#VIPs + 1] = p
 							FailTrigger()
 						end)
-					end)		
+					end)
 					Trigger.AfterDelay(DateTime.Seconds(6), function()
 						Media.DisplayMessage("Commander, there are several civilians in the area.\nWe'll need you to call out targets.", "Tanya")
 					end)
@@ -97,7 +95,7 @@ FailTrigger = function()
 	Trigger.OnAnyKilled(VIPs, function()
 		Allies.MarkFailedObjective(ProtectVIPs)
 	end)
-end	
+end
 
 FootprintTriggers = function()
 	local foot1Triggered
@@ -210,7 +208,7 @@ FootprintTriggers = function()
 				Media.DisplayMessage("Extraction point is compromised. Evacuate the base!", "Headquarters")
 				local defenders = Reinforcements.Reinforce(England, TentTeam, { Tent.Location, TentMove.Location }, 0)
 				Utils.Do(defenders, IdleHunt)
-				if Map.LobbyOption("difficulty") == "hard" then
+				if Difficulty == "hard" then
 					Trigger.AfterDelay(DateTime.Seconds(30), function()
 						local wave2 = Reinforcements.Reinforce(USSR, SovietAttackers, { BaseAttackersSpawn.Location, SovietAttack.Location })
 						Utils.Do(wave2, IdleHunt)
@@ -369,7 +367,7 @@ FootprintTriggers = function()
 	end)
 end
 
-SetupTriggers = function()	
+SetupTriggers = function()
 	Utils.Do(USSR.GetGroundAttackers(), function(unit)
 		Trigger.OnDamaged(unit, function() IdleHunt(unit) end)
 	end)
@@ -453,7 +451,7 @@ SovBaseAttack = function()
 			end
 		end)
 
-		if Map.LobbyOption("difficulty") == "hard" then
+		if Difficulty == "hard" then
 			local barracksTeam = Reinforcements.Reinforce(USSR, RaxTeam, { SovRaxSpawn.Location, SovBaseCam.Location }, 0)
 			Utils.Do(barracksTeam, IdleHunt)
 		end
@@ -492,27 +490,11 @@ WorldLoaded = function()
 	England = Player.GetPlayer("England")
 	Civilians = Player.GetPlayer("GreekCivilians")
 
-	Trigger.OnObjectiveAdded(Allies, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "New " .. string.lower(p.GetObjectiveType(id)) .. " objective")
-	end)
+	InitObjectives(Allies)
 
 	SovietObj = USSR.AddObjective("Kill Stavros.")
 	ProtectVIPs = Allies.AddObjective("Keep Stavros and Tanya alive.")
 	ExtractStavros = Allies.AddObjective("Get Stavros and Tanya to the extraction helicopter.")
-
-	Trigger.OnObjectiveCompleted(Allies, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "Objective completed")
-	end)
-	Trigger.OnObjectiveFailed(Allies, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "Objective failed")
-	end)
-
-	Trigger.OnPlayerLost(Allies, function()
-		Media.PlaySpeechNotification(Allies, "Lose")
-	end)
-	Trigger.OnPlayerWon(Allies, function()
-		Media.PlaySpeechNotification(Allies, "Win")
-	end)
 
 	InsertionDrop = Actor.Create("insertiondrop", false, { Owner = Allies })
 	InsertionDropHard = Actor.Create("insertiondrophard", false, { Owner = Allies })
@@ -525,10 +507,4 @@ WorldLoaded = function()
 	SetupTriggers()
 	Trigger.OnDamaged(Church, ChurchAttack)
 	OnAnyDamaged(SovBase, SovBaseAttack)
-end
-
-OnAnyDamaged = function(actors, func)
-	Utils.Do(actors, function(actor)
-		Trigger.OnDamaged(actor, func)
-	end)
 end

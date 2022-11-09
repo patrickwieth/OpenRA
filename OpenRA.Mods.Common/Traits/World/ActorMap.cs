@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -18,6 +18,7 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
 {
+	[TraitLocation(SystemActors.World | SystemActors.EditorWorld)]
 	public class ActorMapInfo : TraitInfo
 	{
 		[Desc("Size of partition bins (cells)")]
@@ -170,9 +171,10 @@ namespace OpenRA.Mods.Common.Traits
 		readonly Dictionary<int, ProximityTrigger> proximityTriggers = new Dictionary<int, ProximityTrigger>();
 		int nextTriggerId;
 
-		readonly CellLayer<InfluenceNode> influence;
-		readonly Dictionary<int, CellLayer<InfluenceNode>> customInfluence = new Dictionary<int, CellLayer<InfluenceNode>>();
-		public readonly Dictionary<int, ICustomMovementLayer> CustomMovementLayers = new Dictionary<int, ICustomMovementLayer>();
+		CellLayer<InfluenceNode>[] influence;
+
+		// Index 0 is kept null as layer 0 is used for the ground layer.
+		public ICustomMovementLayer[] CustomMovementLayers = new ICustomMovementLayer[] { null };
 		public event Action<CPos> CellUpdated;
 		readonly Bin[] bins;
 		readonly int rows, cols;
@@ -183,14 +185,14 @@ namespace OpenRA.Mods.Common.Traits
 		readonly HashSet<Actor> removeActorPosition = new HashSet<Actor>();
 		readonly Predicate<Actor> actorShouldBeRemoved;
 
-		public WDist LargestActorRadius { get; private set; }
-		public WDist LargestBlockingActorRadius { get; private set; }
+		public WDist LargestActorRadius { get; }
+		public WDist LargestBlockingActorRadius { get; }
 
 		public ActorMap(World world, ActorMapInfo info)
 		{
 			this.info = info;
 			map = world.Map;
-			influence = new CellLayer<InfluenceNode>(world.Map);
+			influence = new[] { new CellLayer<InfluenceNode>(world.Map) };
 
 			cols = CellCoordToBinIndex(world.Map.MapSize.X) + 1;
 			rows = CellCoordToBinIndex(world.Map.MapSize.Y) + 1;
@@ -209,10 +211,18 @@ namespace OpenRA.Mods.Common.Traits
 
 		void INotifyCreated.Created(Actor self)
 		{
-			foreach (var cml in self.TraitsImplementing<ICustomMovementLayer>())
+			var customMovementLayers = self.TraitsImplementing<ICustomMovementLayer>().ToList();
+			if (customMovementLayers.Count == 0)
+				return;
+
+			var length = customMovementLayers.Max(cml => cml.Index) + 1;
+			Array.Resize(ref CustomMovementLayers, length);
+			Array.Resize(ref influence, length);
+
+			foreach (var cml in customMovementLayers)
 			{
 				CustomMovementLayers[cml.Index] = cml;
-				customInfluence.Add(cml.Index, new CellLayer<InfluenceNode>(self.World.Map));
+				influence[cml.Index] = new CellLayer<InfluenceNode>(self.World.Map);
 			}
 		}
 
@@ -228,12 +238,9 @@ namespace OpenRA.Mods.Common.Traits
 			}
 
 			public void Reset() { throw new NotSupportedException(); }
-			public Actor Current
-			{
-				get { return current; }
-			}
+			public Actor Current => current;
 
-			object IEnumerator.Current { get { return current; } }
+			object IEnumerator.Current => current;
 			public void Dispose() { }
 			public bool MoveNext()
 			{
@@ -241,15 +248,14 @@ namespace OpenRA.Mods.Common.Traits
 				{
 					current = node.Actor;
 					node = node.Next;
-					if (!current.Disposed)
-						return true;
+					return true;
 				}
 
 				return false;
 			}
 		}
 
-		struct ActorsAtEnumerable : IEnumerable<Actor>
+		readonly struct ActorsAtEnumerable : IEnumerable<Actor>
 		{
 			readonly InfluenceNode node;
 			public ActorsAtEnumerable(InfluenceNode node) { this.node = node; }
@@ -261,22 +267,23 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			// PERF: Custom enumerator for efficiency - using `yield` is slower.
 			var uv = a.ToMPos(map);
-			if (!influence.Contains(uv))
+			var layer = influence[a.Layer];
+			if (!layer.Contains(uv))
 				return Enumerable.Empty<Actor>();
 
-			var layer = a.Layer == 0 ? influence : customInfluence[a.Layer];
 			return new ActorsAtEnumerable(layer[uv]);
 		}
 
 		public IEnumerable<Actor> GetActorsAt(CPos a, SubCell sub)
 		{
 			var uv = a.ToMPos(map);
-			if (!influence.Contains(uv))
+			var layer = influence[a.Layer];
+			if (!layer.Contains(uv))
 				yield break;
 
-			var layer = a.Layer == 0 ? influence : customInfluence[a.Layer];
+			var always = sub == SubCell.FullCell || sub == SubCell.Any;
 			for (var i = layer[uv]; i != null; i = i.Next)
-				if (!i.Actor.Disposed && (i.SubCell == sub || i.SubCell == SubCell.FullCell || sub == SubCell.FullCell || sub == SubCell.Any))
+				if (i.SubCell == sub || i.SubCell == SubCell.FullCell || always)
 					yield return i.Actor;
 		}
 
@@ -287,14 +294,19 @@ namespace OpenRA.Mods.Common.Traits
 
 		public SubCell FreeSubCell(CPos cell, SubCell preferredSubCell = SubCell.Any, bool checkTransient = true)
 		{
-			if (preferredSubCell != SubCell.Any && !AnyActorsAt(cell, preferredSubCell, checkTransient))
+			var uv = cell.ToMPos(map);
+			var layer = influence[cell.Layer];
+			if (!layer.Contains(uv))
+				return preferredSubCell != SubCell.Any ? preferredSubCell : SubCell.First;
+
+			if (preferredSubCell != SubCell.Any && !AnyActorsAt(uv, cell, layer, preferredSubCell, checkTransient))
 				return preferredSubCell;
 
-			if (!AnyActorsAt(cell))
+			if (!AnyActorsAt(uv, layer))
 				return map.Grid.DefaultSubCell;
 
 			for (var i = (int)SubCell.First; i < map.Grid.SubCellOffsets.Length; i++)
-				if (i != (int)preferredSubCell && !AnyActorsAt(cell, (SubCell)i, checkTransient))
+				if (i != (int)preferredSubCell && !AnyActorsAt(uv, cell, layer, (SubCell)i, checkTransient))
 					return (SubCell)i;
 
 			return SubCell.Invalid;
@@ -302,38 +314,45 @@ namespace OpenRA.Mods.Common.Traits
 
 		public SubCell FreeSubCell(CPos cell, SubCell preferredSubCell, Func<Actor, bool> checkIfBlocker)
 		{
-			if (preferredSubCell != SubCell.Any && !AnyActorsAt(cell, preferredSubCell, checkIfBlocker))
+			var uv = cell.ToMPos(map);
+			var layer = influence[cell.Layer];
+			if (!layer.Contains(uv))
+				return preferredSubCell != SubCell.Any ? preferredSubCell : SubCell.First;
+
+			if (preferredSubCell != SubCell.Any && !AnyActorsAt(uv, layer, preferredSubCell, checkIfBlocker))
 				return preferredSubCell;
 
-			if (!AnyActorsAt(cell))
+			if (!AnyActorsAt(uv, layer))
 				return map.Grid.DefaultSubCell;
 
 			for (var i = (byte)SubCell.First; i < map.Grid.SubCellOffsets.Length; i++)
-				if (i != (byte)preferredSubCell && !AnyActorsAt(cell, (SubCell)i, checkIfBlocker))
+				if (i != (byte)preferredSubCell && !AnyActorsAt(uv, layer, (SubCell)i, checkIfBlocker))
 					return (SubCell)i;
+
 			return SubCell.Invalid;
+		}
+
+		// NOTE: pos required to be in map bounds
+		bool AnyActorsAt(MPos uv, CellLayer<InfluenceNode> layer)
+		{
+			return layer[uv] != null;
 		}
 
 		// NOTE: always includes transients with influence
 		public bool AnyActorsAt(CPos a)
 		{
 			var uv = a.ToMPos(map);
-			if (!influence.Contains(uv))
+			var layer = influence[a.Layer];
+			if (!layer.Contains(uv))
 				return false;
 
-			var layer = a.Layer == 0 ? influence : customInfluence[a.Layer];
-			return layer[uv] != null;
+			return AnyActorsAt(uv, layer);
 		}
 
-		// NOTE: can not check aircraft
-		public bool AnyActorsAt(CPos a, SubCell sub, bool checkTransient = true)
+		// NOTE: pos required to be in map bounds
+		bool AnyActorsAt(MPos uv, CPos a, CellLayer<InfluenceNode> layer, SubCell sub, bool checkTransient)
 		{
-			var uv = a.ToMPos(map);
-			if (!influence.Contains(uv))
-				return false;
-
 			var always = sub == SubCell.FullCell || sub == SubCell.Any;
-			var layer = a.Layer == 0 ? influence : customInfluence[a.Layer];
 			for (var i = layer[uv]; i != null; i = i.Next)
 			{
 				if (always || i.SubCell == sub || i.SubCell == SubCell.FullCell)
@@ -351,19 +370,48 @@ namespace OpenRA.Mods.Common.Traits
 		}
 
 		// NOTE: can not check aircraft
-		public bool AnyActorsAt(CPos a, SubCell sub, Func<Actor, bool> withCondition)
+		public bool AnyActorsAt(CPos a, SubCell sub, bool checkTransient = true)
 		{
 			var uv = a.ToMPos(map);
-			if (!influence.Contains(uv))
+			var layer = influence[a.Layer];
+			if (!layer.Contains(uv))
 				return false;
 
+			return AnyActorsAt(uv, a, layer, sub, checkTransient);
+		}
+
+		// NOTE: can not check aircraft
+		bool AnyActorsAt(MPos uv, CellLayer<InfluenceNode> layer, SubCell sub, Func<Actor, bool> withCondition)
+		{
 			var always = sub == SubCell.FullCell || sub == SubCell.Any;
-			var layer = a.Layer == 0 ? influence : customInfluence[a.Layer];
 			for (var i = layer[uv]; i != null; i = i.Next)
-				if ((always || i.SubCell == sub || i.SubCell == SubCell.FullCell) && !i.Actor.Disposed && withCondition(i.Actor))
+				if ((always || i.SubCell == sub || i.SubCell == SubCell.FullCell) && withCondition(i.Actor))
 					return true;
 
 			return false;
+		}
+
+		// NOTE: can not check aircraft
+		public bool AnyActorsAt(CPos a, SubCell sub, Func<Actor, bool> withCondition)
+		{
+			var uv = a.ToMPos(map);
+			var layer = influence[a.Layer];
+			if (!layer.Contains(uv))
+				return false;
+
+			return AnyActorsAt(uv, layer, sub, withCondition);
+		}
+
+		public IEnumerable<Actor> AllActors()
+		{
+			foreach (var layer in influence)
+			{
+				if (layer == null)
+					continue;
+				foreach (var node in layer)
+					for (var i = node; i != null; i = i.Next)
+						yield return i.Actor;
+			}
 		}
 
 		public void AddInfluence(Actor self, IOccupySpace ios)
@@ -371,10 +419,10 @@ namespace OpenRA.Mods.Common.Traits
 			foreach (var c in ios.OccupiedCells())
 			{
 				var uv = c.Cell.ToMPos(map);
-				if (!influence.Contains(uv))
+				var layer = influence[c.Cell.Layer];
+				if (!layer.Contains(uv))
 					continue;
 
-				var layer = c.Cell.Layer == 0 ? influence : customInfluence[c.Cell.Layer];
 				layer[uv] = new InfluenceNode { Next = layer[uv], SubCell = c.SubCell, Actor = self };
 
 				if (cellTriggerInfluence.TryGetValue(c.Cell, out var triggers))
@@ -390,10 +438,10 @@ namespace OpenRA.Mods.Common.Traits
 			foreach (var c in ios.OccupiedCells())
 			{
 				var uv = c.Cell.ToMPos(map);
-				if (!influence.Contains(uv))
+				var layer = influence[c.Cell.Layer];
+				if (!layer.Contains(uv))
 					continue;
 
-				var layer = c.Cell.Layer == 0 ? influence : customInfluence[c.Cell.Layer];
 				var temp = layer[uv];
 				RemoveInfluenceInner(ref temp, self);
 				layer[uv] = temp;
@@ -430,15 +478,18 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			// Position updates are done in one pass
 			// to ensure consistency during a tick
-			foreach (var bin in bins)
+			if (removeActorPosition.Count > 0)
 			{
-				var removed = bin.Actors.RemoveAll(actorShouldBeRemoved);
-				if (removed > 0)
-					foreach (var t in bin.ProximityTriggers)
-						t.Dirty = true;
-			}
+				foreach (var bin in bins)
+				{
+					var removed = bin.Actors.RemoveAll(actorShouldBeRemoved);
+					if (removed > 0)
+						foreach (var t in bin.ProximityTriggers)
+							t.Dirty = true;
+				}
 
-			removeActorPosition.Clear();
+				removeActorPosition.Clear();
+			}
 
 			foreach (var a in addActorPosition)
 			{
@@ -467,9 +518,10 @@ namespace OpenRA.Mods.Common.Traits
 			var t = new CellTrigger(cells, onEntry, onExit);
 			cellTriggers.Add(id, t);
 
+			var layer = influence[0];
 			foreach (var c in cells)
 			{
-				if (!influence.Contains(c))
+				if (!layer.Contains(c))
 					continue;
 
 				if (!cellTriggerInfluence.ContainsKey(c))
@@ -479,6 +531,11 @@ namespace OpenRA.Mods.Common.Traits
 			}
 
 			return id;
+		}
+
+		public IEnumerable<CPos> TriggerPositions()
+		{
+			return cellTriggerInfluence.Keys;
 		}
 
 		public void RemoveCellTrigger(int id)
@@ -620,7 +677,15 @@ namespace OpenRA.Mods.Common.Traits
 
 	public static class ActorMapWorldExts
 	{
-		public static Dictionary<int, ICustomMovementLayer> GetCustomMovementLayers(this World world)
+		/// <summary>
+		/// Returns an array of custom movement layers.
+		/// The <see cref="ICustomMovementLayer.Index"/> of a layer is used to index into this array.
+		/// This array may contain null entries for layers which are not present in the world.
+		/// This array is guaranteed to have a length of at least one. Index 0 is always null.
+		/// Index 0 is kept null as layer 0 is used for the ground layer, consumers can combine
+		/// the ground layer and custom layers into a single array for easy indexing.
+		/// </summary>
+		public static ICustomMovementLayer[] GetCustomMovementLayers(this World world)
 		{
 			return ((ActorMap)world.ActorMap).CustomMovementLayers;
 		}

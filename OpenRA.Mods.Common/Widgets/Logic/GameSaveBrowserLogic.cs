@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -32,6 +32,45 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 		readonly string defaultSaveFilename;
 		string selectedSave;
+
+		[TranslationReference]
+		static readonly string RenameSaveTitle = "rename-save-title";
+
+		[TranslationReference]
+		static readonly string RenameSavePrompt = "rename-save-prompt";
+
+		[TranslationReference]
+		static readonly string RenameSaveAccept = "rename-save-accept";
+
+		[TranslationReference]
+		static readonly string DeleteSaveTitle = "delete-save-title";
+
+		[TranslationReference("save")]
+		static readonly string DeleteSavePrompt = "delete-save-prompt";
+
+		[TranslationReference]
+		static readonly string DeleteSaveAccept = "delete-save-accept";
+
+		[TranslationReference]
+		static readonly string DeleteAllSavesTitle = "delete-all-saves-title";
+
+		[TranslationReference("count")]
+		static readonly string DeleteAllSavesPrompt = "delete-all-saves-prompt";
+
+		[TranslationReference]
+		static readonly string DeleteAllSavesAccept = "delete-all-saves-accept";
+
+		[TranslationReference("savePath")]
+		static readonly string SaveDeletionFailed = "save-deletion-failed";
+
+		[TranslationReference]
+		static readonly string OverwriteSaveTitle = "overwrite-save-title";
+
+		[TranslationReference("file")]
+		static readonly string OverwriteSavePrompt = "overwrite-save-prompt";
+
+		[TranslationReference]
+		static readonly string OverwriteSaveAccpet = "overwrite-save-accept";
 
 		[ObjectCreator.UseCtor]
 		public GameSaveBrowserLogic(Widget widget, ModData modData, Action onExit, Action onStart, bool isSavePanel, World world)
@@ -69,10 +108,11 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					if (!File.Exists(Path.Combine(baseSavePath, defaultSaveFilename + ".orasav")))
 						break;
 
-					defaultSaveFilename = world.Map.Title + " ({0})".F(++filenameAttempt);
+					defaultSaveFilename = world.Map.Title + $" ({++filenameAttempt})";
 				}
 
 				var saveButton = panel.Get<ButtonWidget>("SAVE_BUTTON");
+				saveButton.IsDisabled = () => string.IsNullOrWhiteSpace(saveTextField.Text);
 				saveButton.OnClick = () => { Save(world); };
 				saveButton.IsVisible = () => true;
 
@@ -100,13 +140,13 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				var initialName = Path.GetFileNameWithoutExtension(selectedSave);
 				var invalidChars = Path.GetInvalidFileNameChars();
 
-				ConfirmationDialogs.TextInputPrompt(
-					"Rename Save",
-					"Enter a new file name:",
+				ConfirmationDialogs.TextInputPrompt(modData,
+					RenameSaveTitle,
+					RenameSavePrompt,
 					initialName,
 					onAccept: newName => Rename(initialName, newName),
 					onCancel: null,
-					acceptText: "Rename",
+					acceptText: RenameSaveAccept,
 					cancelText: null,
 					inputValidator: newName =>
 					{
@@ -130,14 +170,15 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			deleteButton.IsDisabled = () => selectedSave == null;
 			deleteButton.OnClick = () =>
 			{
-				ConfirmationDialogs.ButtonPrompt(
-					title: "Delete selected game save?",
-					text: "Delete '{0}'?".F(Path.GetFileNameWithoutExtension(selectedSave)),
+				ConfirmationDialogs.ButtonPrompt(modData,
+					title: DeleteSaveTitle,
+					text: DeleteSavePrompt,
+					textArguments: Translation.Arguments("save", Path.GetFileNameWithoutExtension(selectedSave)),
 					onConfirm: () =>
 					{
 						Delete(selectedSave);
 
-						if (!games.Any() && !isSavePanel)
+						if (games.Count == 0 && !isSavePanel)
 						{
 							Ui.CloseWindow();
 							onExit();
@@ -145,17 +186,18 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 						else
 							SelectFirstVisible();
 					},
-					confirmText: "Delete",
+					confirmText: DeleteSaveAccept,
 					onCancel: () => { });
 			};
 
 			var deleteAllButton = panel.Get<ButtonWidget>("DELETE_ALL_BUTTON");
-			deleteAllButton.IsDisabled = () => !games.Any();
+			deleteAllButton.IsDisabled = () => games.Count == 0;
 			deleteAllButton.OnClick = () =>
 			{
-				ConfirmationDialogs.ButtonPrompt(
-					title: "Delete all game saves?",
-					text: "Delete {0} game saves?".F(games.Count),
+				ConfirmationDialogs.ButtonPrompt(modData,
+					title: DeleteAllSavesTitle,
+					text: DeleteAllSavesPrompt,
+					textArguments: Translation.Arguments("count", games.Count),
 					onConfirm: () =>
 					{
 						foreach (var s in games.ToList())
@@ -164,7 +206,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 						Ui.CloseWindow();
 						onExit();
 					},
-					confirmText: "Delete All",
+					confirmText: DeleteAllSavesAccept,
 					onCancel: () => { });
 			};
 
@@ -226,8 +268,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				games[games.IndexOf(oldPath)] = newPath;
 				foreach (var c in gameList.Children)
 				{
-					var item = c as ScrollItemWidget;
-					if (item == null || item.ItemKey != oldPath)
+					if (!(c is ScrollItemWidget item) || item.ItemKey != oldPath)
 						continue;
 
 					item.ItemKey = newPath;
@@ -252,7 +293,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			}
 			catch (Exception ex)
 			{
-				Game.Debug("Failed to delete save file '{0}'. See the logs for details.", savePath);
+				TextNotificationsManager.Debug(modData.Translation.GetString(SaveDeletionFailed, Translation.Arguments("savePath", savePath)));
 				Log.Write("debug", ex.ToString());
 				return;
 			}
@@ -295,7 +336,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			var orders = new List<Order>()
 			{
 				Order.FromTargetString("LoadGameSave", Path.GetFileName(selectedSave), true),
-				Order.Command("state {0}".F(Session.ClientState.Ready))
+				Order.Command($"state {Session.ClientState.Ready}")
 			};
 
 			Game.CreateAndStartLocalServer(map.Uid, orders);
@@ -320,11 +361,12 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 			if (selectedSave != null || File.Exists(testPath))
 			{
-				ConfirmationDialogs.ButtonPrompt(
-					title: "Overwrite save game?",
-					text: "Overwrite {0}?".F(saveTextField.Text),
+				ConfirmationDialogs.ButtonPrompt(modData,
+					title: OverwriteSaveTitle,
+					text: OverwriteSavePrompt,
+					textArguments: Translation.Arguments("file", saveTextField.Text),
 					onConfirm: inner,
-					confirmText: "Overwrite",
+					confirmText: OverwriteSaveAccpet,
 					onCancel: () => { });
 			}
 			else
@@ -355,7 +397,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			if (!Directory.Exists(baseSavePath))
 				return false;
 
-			return Directory.GetFiles(baseSavePath, "*.orasav", SearchOption.AllDirectories).Any();
+			return Directory.GetFiles(baseSavePath, "*.orasav", SearchOption.AllDirectories).Length > 0;
 		}
 	}
 }

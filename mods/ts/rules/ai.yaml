@@ -22,6 +22,7 @@ Player:
 		VehiclesFactoryTypes: gaweap, naweap
 		ProductionTypes: gapile, nahand, gaweap, naweap, gahpad, nahpad
 		SiloTypes: gasilo
+		DefenseTypes: gavulc,garock,gacsam,gactwr,naobel,nalasr,nasam
 		BuildingLimits:
 			proc: 4
 			gasilo: 2
@@ -70,8 +71,10 @@ Player:
 	SquadManagerBotModule@test:
 		RequiresCondition: enable-test-ai
 		SquadSize: 20
-		ExcludeFromSquadsTypes: harv, mcv
+		ExcludeFromSquadsTypes: harv, mcv, dpod, hunter
 		ConstructionYardTypes: gacnst
+		AirUnitsTypes: orca, orcab, scrin, apache, jumpjet
+		ProtectionTypes: gapowr, gapowrup, gapile, gaweap, gahpad, gadept, garadr, gatech, gaplug, gagate_a, gagate_b, gactwr, gavulc, garock, gacsam, napowr, naapwr, nahand, naweap, nahpad, naradr, natech, nastlh, natmpl, namisl, nawast, nagate_a, nagate_b, nalasr, naobel, nasam, weed, gacnst, proc, gasilo, napuls, mcv, harv
 	UnitBuilderBotModule@test:
 		RequiresCondition: enable-test-ai
 		UnitQueues: Vehicle, Infantry, Air

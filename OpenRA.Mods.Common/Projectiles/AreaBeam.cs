@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -21,6 +21,7 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Projectiles
 {
+	[Desc("Beam projectile that travels in a straight line.")]
 	public class AreaBeamInfo : IProjectileInfo
 	{
 		[Desc("Projectile speed in WDist / tick, two values indicate a randomly picked velocity per beam.")]
@@ -85,6 +86,7 @@ namespace OpenRA.Mods.Common.Projectiles
 		readonly AttackBase actorAttackBase;
 		readonly Color color;
 		readonly WDist speed;
+		readonly WDist weaponRange;
 
 		[Sync]
 		WPos headPos;
@@ -103,13 +105,7 @@ namespace OpenRA.Mods.Common.Projectiles
 		bool isTailTravelling;
 		bool continueTracking = true;
 
-		bool IsBeamComplete
-		{
-			get
-			{
-				return !isHeadTravelling && headTicks >= length && !isTailTravelling && tailTicks >= length;
-			}
-		}
+		bool IsBeamComplete => !isHeadTravelling && headTicks >= length && !isTailTravelling && tailTicks >= length;
 
 		public AreaBeam(AreaBeamInfo info, ProjectileArgs args, Color color)
 		{
@@ -143,6 +139,7 @@ namespace OpenRA.Mods.Common.Projectiles
 			target += dir * info.BeyondTargetRange.Length / 1024;
 
 			length = Math.Max((target - headPos).Length / speed.Length, 1);
+			weaponRange = new WDist(Util.ApplyPercentageModifiers(args.Weapon.Range.Length, args.RangeModifiers));
 		}
 
 		void TrackTarget()
@@ -157,7 +154,7 @@ namespace OpenRA.Mods.Common.Projectiles
 
 				// Only continue tracking target if it's within weapon range +
 				// BeyondTargetRange to avoid edge case stuttering (start firing and immediately stop again).
-				if (targetDistance > args.Weapon.Range + info.BeyondTargetRange)
+				if (targetDistance > weaponRange + info.BeyondTargetRange)
 					StopTargeting();
 				else
 				{
@@ -198,7 +195,7 @@ namespace OpenRA.Mods.Common.Projectiles
 			}
 
 			// Allow for leniency to avoid edge case stuttering (start firing and immediately stop again).
-			var outOfWeaponRange = args.Weapon.Range + info.BeyondTargetRange < new WDist((args.PassiveTarget - args.Source).Length);
+			var outOfWeaponRange = weaponRange + info.BeyondTargetRange < new WDist((args.PassiveTarget - args.Source).Length);
 
 			// While the head is travelling, the tail must start to follow Duration ticks later.
 			// Alternatively, also stop emitting the beam if source actor dies or is ordered to stop.
@@ -218,7 +215,7 @@ namespace OpenRA.Mods.Common.Projectiles
 			}
 
 			// Check for blocking actors
-			if (info.Blockable && BlocksProjectiles.AnyBlockingActorsBetween(world, tailPos, headPos, info.Width, out var blockedPos))
+			if (info.Blockable && BlocksProjectiles.AnyBlockingActorsBetween(world, args.SourceActor.Owner, tailPos, headPos, info.Width, out var blockedPos))
 			{
 				headPos = blockedPos;
 				target = headPos;

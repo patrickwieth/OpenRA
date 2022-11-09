@@ -1,5 +1,5 @@
 --[[
-   Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+   Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
    This file is part of OpenRA, which is free software. It is made
    available to you under the terms of the GNU General Public License
    as published by the Free Software Foundation, either version 3 of
@@ -113,12 +113,15 @@ end)
 WorldLoaded = function()
 	player = Player.GetPlayer("USSR")
 	enemy = Player.GetPlayer("Greece")
+
 	Camera.Position = CameraStart.CenterPosition
+
 	Mcv.Move(McvWaypoint.Location)
 	Harvester.FindResources()
 	Utils.Do(IntroAttackers, function(actor)
 		IdleHunt(actor)
 	end)
+
 	Utils.Do(Map.NamedActors, function(actor)
 		if actor.Owner == enemy and actor.HasProperty("StartBuildingRepairs") then
 			Trigger.OnDamaged(actor, function(building)
@@ -128,27 +131,16 @@ WorldLoaded = function()
 			end)
 		end
 	end)
+
 	Reinforcements.ReinforceWithTransport(player, "apc", SovietReinforcements1, SovietReinforcements1Waypoints)
 	Reinforcements.ReinforceWithTransport(player, "apc", SovietReinforcements2, SovietReinforcements2Waypoints)
-	Trigger.OnObjectiveAdded(player, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "New " .. string.lower(p.GetObjectiveType(id)) .. " objective")
-	end)
-	Trigger.OnObjectiveCompleted(player, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "Objective completed")
-	end)
-	Trigger.OnObjectiveFailed(player, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "Objective failed")
-	end)
-	Trigger.OnPlayerWon(player, function()
-		Media.PlaySpeechNotification(player, "Win")
-	end)
-	Trigger.OnPlayerLost(player, function()
-		Media.PlaySpeechNotification(player, "Lose")
-	end)
-	alliedObjective = enemy.AddPrimaryObjective("Destroy all Soviet troops.")
-	sovietObjective = player.AddPrimaryObjective("Escort the Convoy.")
-	sovietObjective2 = player.AddSecondaryObjective("Destroy or capture the Allied radar dome to stop\nenemy reinforcements.")
-	SaveAllTrucks = player.AddSecondaryObjective("Keep all trucks alive.")
+
+	InitObjectives(player)
+
+	alliedObjective = enemy.AddObjective("Destroy all Soviet troops.")
+	sovietObjective = player.AddObjective("Escort the Convoy.")
+	sovietObjective2 = player.AddObjective("Destroy or capture the Allied radar dome to stop\nenemy reinforcements.", "Secondary", false)
+	SaveAllTrucks = player.AddObjective("Keep all trucks alive.", "Secondary", false)
 end
 
 Tick = function()

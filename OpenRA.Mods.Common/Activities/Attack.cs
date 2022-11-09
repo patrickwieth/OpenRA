@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -51,7 +51,7 @@ namespace OpenRA.Mods.Common.Activities
 			this.targetLineColor = targetLineColor;
 			this.forceAttack = forceAttack;
 
-			attackTraits = self.TraitsImplementing<AttackFrontal>().ToArray().Where(Exts.IsTraitEnabled);
+			attackTraits = self.TraitsImplementing<AttackFrontal>().ToArray().Where(t => !t.IsTraitDisabled);
 			revealsShroud = self.TraitsImplementing<RevealsShroud>().ToArray();
 			facing = self.Trait<IFacing>();
 			positionable = self.Trait<IPositionable>();
@@ -67,8 +67,7 @@ namespace OpenRA.Mods.Common.Activities
 
 				// Lambdas can't use 'in' variables, so capture a copy for later
 				var rangeTarget = target;
-				lastVisibleMaximumRange = attackTraits.Where(x => !x.IsTraitDisabled)
-					.Min(x => x.GetMaximumRangeVersusTarget(rangeTarget));
+				lastVisibleMaximumRange = attackTraits.Min(x => x.GetMaximumRangeVersusTarget(rangeTarget));
 
 				if (target.Type == TargetType.Actor)
 				{
@@ -155,6 +154,12 @@ namespace OpenRA.Mods.Common.Activities
 			return true;
 		}
 
+		protected override void OnLastRun(Actor self)
+		{
+			foreach (var attack in attackTraits)
+				attack.IsAiming = false;
+		}
+
 		protected virtual AttackStatus TickAttack(Actor self, AttackFrontal attack)
 		{
 			if (!target.IsValidFor(self))
@@ -170,7 +175,7 @@ namespace OpenRA.Mods.Common.Activities
 					return AttackStatus.UnableToAttack;
 
 				var rs = revealsShroud
-					.Where(Exts.IsTraitEnabled)
+					.Where(t => !t.IsTraitDisabled)
 					.MaxByOrDefault(s => s.Range);
 
 				// Default to 2 cells if there are no active traits
@@ -191,10 +196,9 @@ namespace OpenRA.Mods.Common.Activities
 			maxRange = armaments.Min(a => a.MaxRange());
 
 			var pos = self.CenterPosition;
-			var mobile = move as Mobile;
 			if (!target.IsInRange(pos, maxRange)
 				|| (minRange.Length != 0 && target.IsInRange(pos, minRange))
-				|| (mobile != null && !mobile.CanInteractWithGroundLayer(self)))
+				|| (move is Mobile mobile && !mobile.CanInteractWithGroundLayer(self)))
 			{
 				// Try to move within range, drop the target otherwise
 				if (move == null)

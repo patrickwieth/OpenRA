@@ -1,6 +1,6 @@
 World:
 	LuaScript:
-		Scripts: situation-critical.lua
+		Scripts: campaign.lua, utils.lua, situation-critical.lua
 	MissionData:
 		WinVideo: flare.vqa
 		LossVideo: nukestok.vqa
@@ -28,6 +28,7 @@ VOLK:
 		Voice: Action
 	AttackFrontal:
 		Voice: Action
+		FacingTolerance: 0
 	AttackMove:
 		Voice: Action
 	Passenger:

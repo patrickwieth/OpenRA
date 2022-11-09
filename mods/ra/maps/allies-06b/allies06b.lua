@@ -1,5 +1,5 @@
 --[[
-   Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+   Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
    This file is part of OpenRA, which is free software. It is made
    available to you under the terms of the GNU General Public License
    as published by the Free Software Foundation, either version 3 of
@@ -131,14 +131,14 @@ CaptureRadarDome = function()
 			end
 
 			Beacon.New(player, a.CenterPosition)
-			if Map.LobbyOption("difficulty") ~= "hard" then
+			if Difficulty ~= "hard" then
 				Actor.Create("TECH.CAM", true, { Owner = player, Location = a.Location + CVec.New(1, 1) })
 			end
 		end)
 
 		Media.DisplayMessage("Coordinates of the Soviet tech centers discovered.")
 
-		if Map.LobbyOption("difficulty") == "easy" then
+		if Difficulty == "easy" then
 			Actor.Create("Camera", true, { Owner = player, Location = Weapcam.Location })
 		end
 	end)
@@ -151,7 +151,7 @@ InfiltrateTechCenter = function()
 				return
 			end
 			infiltrated = true
-			DestroySovietsObj = player.AddPrimaryObjective("Destroy all Soviet buildings and units in the area.")
+			DestroySovietsObj = player.AddObjective("Destroy all Soviet buildings and units in the area.")
 			player.MarkCompletedObjective(InfiltrateTechCenterObj)
 		end)
 
@@ -183,31 +183,14 @@ WorldLoaded = function()
 	player = Player.GetPlayer("Greece")
 	ussr = Player.GetPlayer("USSR")
 
-	Trigger.OnObjectiveAdded(player, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "New " .. string.lower(p.GetObjectiveType(id)) .. " objective")
-	end)
+	InitObjectives(player)
 
-	Trigger.OnObjectiveCompleted(player, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "Objective completed")
-	end)
-
-	Trigger.OnObjectiveFailed(player, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "Objective failed")
-	end)
-
-	Trigger.OnPlayerLost(player, function()
-		Media.PlaySpeechNotification(player, "MissionFailed")
-	end)
-	Trigger.OnPlayerWon(player, function()
-		Media.PlaySpeechNotification(player, "MissionAccomplished")
-	end)
-
-	InfiltrateTechCenterObj = player.AddPrimaryObjective("Infiltrate one of the Soviet tech centers with a spy.")
-	CaptureRadarDomeObj = player.AddSecondaryObjective("Capture the Radar Dome at the shore.")
+	InfiltrateTechCenterObj = player.AddObjective("Infiltrate one of the Soviet tech centers with a spy.")
+	CaptureRadarDomeObj = player.AddObjective("Capture the Radar Dome at the shore.", "Secondary", false)
 
 	Camera.Position = DefaultCameraPosition.CenterPosition
 
-	if Map.LobbyOption("difficulty") == "easy" then
+	if Difficulty == "easy" then
 		Trigger.OnEnteredProximityTrigger(SovietDefenseCam.CenterPosition, WDist.New(1024 * 7), function(a, id)
 			if a.Owner == player then
 				Trigger.RemoveProximityTrigger(id)
@@ -225,7 +208,7 @@ WorldLoaded = function()
 		end)
 	end
 
-	if Map.LobbyOption("difficulty") ~= "hard" then
+	if Difficulty ~= "hard" then
 		Trigger.OnKilled(DefBrl1, function(a, b)
 			if not DefenseFlame1.IsDead then
 				DefenseFlame1.Kill()

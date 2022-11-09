@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -54,9 +54,9 @@ namespace OpenRA.Mods.Common.Traits
 
 		public override object Create(ActorInitializer init) { return new IsometricSelectable(init.Self, this); }
 
-		int ISelectableInfo.Priority { get { return Priority; } }
-		SelectionPriorityModifiers ISelectableInfo.PriorityModifiers { get { return PriorityModifiers; } }
-		string ISelectableInfo.Voice { get { return Voice; } }
+		int ISelectableInfo.Priority => Priority;
+		SelectionPriorityModifiers ISelectableInfo.PriorityModifiers => PriorityModifiers;
+		string ISelectableInfo.Voice => Voice;
 
 		public virtual void RulesetLoaded(Ruleset rules, ActorInfo ai)
 		{
@@ -87,12 +87,13 @@ namespace OpenRA.Mods.Common.Traits
 			int2 left, right, top, bottom;
 			if (bounds != null)
 			{
-				var offset = bounds.Length >= 4 ? new int2(bounds[2], bounds[3]) : int2.Zero;
+				// Convert from WDist to pixels
+				var offset = bounds.Length >= 4 ? new int2(bounds[2] * wr.TileSize.Width / wr.TileScale, bounds[3] * wr.TileSize.Height / wr.TileScale) : int2.Zero;
 				var center = wr.ScreenPxPosition(self.CenterPosition) + offset;
-				left = center - new int2(bounds[0] / 2, 0);
-				right = left + new int2(bounds[0], 0);
-				top = center - new int2(0, bounds[1] / 2);
-				bottom = top + new int2(0, bounds[1]);
+				left = center - new int2(bounds[0] * wr.TileSize.Width / (2 * wr.TileScale), 0);
+				right = left + new int2(bounds[0] * wr.TileSize.Width / wr.TileScale, 0);
+				top = center - new int2(0, bounds[1] * wr.TileSize.Height / (2 * wr.TileScale));
+				bottom = top + new int2(0, bounds[1] * wr.TileSize.Height / wr.TileScale);
 			}
 			else
 			{
@@ -136,6 +137,6 @@ namespace OpenRA.Mods.Common.Traits
 			return Bounds(self, wr);
 		}
 
-		string ISelectable.Class { get { return selectionClass; } }
+		string ISelectable.Class => selectionClass;
 	}
 }

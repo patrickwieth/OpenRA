@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -73,7 +73,7 @@ namespace OpenRA.Traits
 			return actors.MaxByOrDefault(a => CalculateActorSelectionPriority(a.Info, a.MouseBounds, selectionPixel, modifiers));
 		}
 
-		static long CalculateActorSelectionPriority(ActorInfo info, Polygon bounds, int2 selectionPixel, Modifiers modifiers)
+		static long CalculateActorSelectionPriority(ActorInfo info, in Polygon bounds, int2 selectionPixel, Modifiers modifiers)
 		{
 			if (bounds.IsEmpty)
 				return info.SelectionPriority(modifiers);
@@ -90,7 +90,7 @@ namespace OpenRA.Traits
 			return info.SelectionPriority(modifiers) - (long)pixelDistance << 16;
 		}
 
-		static readonly Actor[] NoActors = { };
+		static readonly Actor[] NoActors = Array.Empty<Actor>();
 
 		public static IEnumerable<Actor> SubsetWithHighestSelectionPriority(this IEnumerable<Actor> actors, Modifiers modifiers)
 		{

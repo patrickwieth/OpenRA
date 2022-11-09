@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -27,7 +27,7 @@ namespace OpenRA.Scripting
 		public static bool TryGetClrValue<T>(this LuaValue value, out T clrObject)
 		{
 			var ret = value.TryGetClrValue(typeof(T), out object temp);
-			clrObject = ret ? (T)temp : default(T);
+			clrObject = ret ? (T)temp : default;
 			return ret;
 		}
 
@@ -61,30 +61,33 @@ namespace OpenRA.Scripting
 				return true;
 			}
 
-			if (value is LuaNumber && t.IsAssignableFrom(typeof(double)))
+			if (value is LuaNumber)
 			{
-				clrObject = value.ToNumber().Value;
-				return true;
-			}
+				if (t.IsAssignableFrom(typeof(double)))
+				{
+					clrObject = value.ToNumber().Value;
+					return true;
+				}
 
-			// Need an explicit test for double -> int
-			// TODO: Lua 5.3 will introduce an integer type, so this will be able to go away
-			if (value is LuaNumber && t.IsAssignableFrom(typeof(int)))
-			{
-				clrObject = (int)value.ToNumber().Value;
-				return true;
-			}
+				// Need an explicit test for double -> int
+				// TODO: Lua 5.3 will introduce an integer type, so this will be able to go away
+				if (t.IsAssignableFrom(typeof(int)))
+				{
+					clrObject = (int)value.ToNumber().Value;
+					return true;
+				}
 
-			if (value is LuaNumber && t.IsAssignableFrom(typeof(short)))
-			{
-				clrObject = (short)value.ToNumber().Value;
-				return true;
-			}
+				if (t.IsAssignableFrom(typeof(short)))
+				{
+					clrObject = (short)value.ToNumber().Value;
+					return true;
+				}
 
-			if (value is LuaNumber && t.IsAssignableFrom(typeof(byte)))
-			{
-				clrObject = (byte)value.ToNumber().Value;
-				return true;
+				if (t.IsAssignableFrom(typeof(byte)))
+				{
+					clrObject = (byte)value.ToNumber().Value;
+					return true;
+				}
 			}
 
 			if (value is LuaString && t.IsAssignableFrom(typeof(string)))
@@ -126,7 +129,7 @@ namespace OpenRA.Scripting
 							if (!elementHasClrValue || !(element is LuaValue))
 								kv.Value.Dispose();
 							if (!elementHasClrValue)
-								throw new LuaException("Unable to convert table value of type {0} to type {1}".F(kv.Value.WrappedClrType(), innerType));
+								throw new LuaException($"Unable to convert table value of type {kv.Value.WrappedClrType()} to type {innerType}");
 						}
 
 						array.SetValue(element, i++);
@@ -186,7 +189,7 @@ namespace OpenRA.Scripting
 				return table;
 			}
 
-			throw new InvalidOperationException("Cannot convert type '{0}' to Lua. Class must implement IScriptBindable.".F(obj.GetType()));
+			throw new InvalidOperationException($"Cannot convert type '{obj.GetType()}' to Lua. Class must implement IScriptBindable.");
 		}
 	}
 }

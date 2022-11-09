@@ -1,5 +1,5 @@
 --[[
-   Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+   Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
    This file is part of OpenRA, which is free software. It is made
    available to you under the terms of the GNU General Public License
    as published by the Free Software Foundation, either version 3 of
@@ -28,18 +28,10 @@ GuardTanks = { Heavy1, Heavy2, Heavy3 }
 CheckpointGuards = { USSRCheckpointGuard1, USSRCheckpointGuard2 }
 CheckpointGuardWaypoints = { CheckpointGuardWaypoint1, CheckpointGuardWaypoint2 }
 
-if Map.LobbyOption("difficulty") == "easy" then
+if Difficulty == "easy" then
 	TanyaType = "e7"
 else
 	TanyaType = "e7.noautotarget"
-end
-
-IdleHunt = function(actor)
-	Trigger.OnIdle(actor, function(a)
-		if a.IsInWorld then
-			a.Hunt()
-		end
-	end)
 end
 
 Tick = function()
@@ -178,34 +170,14 @@ InitPlayers = function()
 	ussr.Cash = 10000
 end
 
-InitObjectives = function()
-	Trigger.OnObjectiveAdded(player, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "New " .. string.lower(p.GetObjectiveType(id)) .. " objective")
-	end)
+AddObjectives = function()
+	InitObjectives(player)
 
-	KillBridges = player.AddPrimaryObjective("Destroy all bridges.")
-	TanyaSurvive = player.AddPrimaryObjective("Tanya must survive.")
-	FindAllies = player.AddSecondaryObjective("Find our lost tanks.")
-	FreePrisoners = player.AddSecondaryObjective("Free all Allied soldiers and keep them alive.")
-	ussr.AddPrimaryObjective("Bridges must not be destroyed.")
-
-	Trigger.OnObjectiveCompleted(player, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "Objective completed")
-	end)
-	Trigger.OnObjectiveFailed(player, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "Objective failed")
-	end)
-
-	Trigger.OnPlayerLost(player, function()
-		Trigger.AfterDelay(DateTime.Seconds(1), function()
-			Media.PlaySpeechNotification(player, "Lose")
-		end)
-	end)
-	Trigger.OnPlayerWon(player, function()
-		Trigger.AfterDelay(DateTime.Seconds(1), function()
-			Media.PlaySpeechNotification(player, "Win")
-		end)
-	end)
+	KillBridges = player.AddObjective("Destroy all bridges.")
+	TanyaSurvive = player.AddObjective("Tanya must survive.")
+	FindAllies = player.AddObjective("Find our lost tanks.", "Secondary", false)
+	FreePrisoners = player.AddObjective("Free all Allied soldiers and keep them alive.", "Secondary", false)
+	ussr.AddObjective("Bridges must not be destroyed.")
 end
 
 InitTriggers = function()
@@ -389,7 +361,7 @@ WorldLoaded = function()
 
 	InitPlayers()
 
-	InitObjectives()
+	AddObjectives()
 	InitTriggers()
 	SetupAlliedUnits()
 end

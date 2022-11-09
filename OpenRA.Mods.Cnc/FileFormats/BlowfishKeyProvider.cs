@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -22,18 +22,18 @@ namespace OpenRA.Mods.Cnc.FileFormats
 
 		class PublicKey
 		{
-			public uint[] KeyOne = new uint[64];
-			public uint[] KeyTwo = new uint[64];
+			public readonly uint[] KeyOne = new uint[64];
+			public readonly uint[] KeyTwo = new uint[64];
 			public uint Len;
 		}
 
-		PublicKey pubkey = new PublicKey();
+		readonly PublicKey pubkey = new PublicKey();
 
-		uint[] globOne = new uint[64];
+		readonly uint[] globOne = new uint[64];
 		uint globOneBitLen, globOneLenXTwo;
-		uint[] globTwo = new uint[130];
-		uint[] globOneHigh = new uint[4];
-		uint[] globOneHighInv = new uint[4];
+		readonly uint[] globTwo = new uint[130];
+		readonly uint[] globOneHigh = new uint[4];
+		readonly uint[] globOneHighInv = new uint[4];
 		uint globOneHighBitLen;
 		uint globOneHighInvLow, globOneHighInvHigh;
 
@@ -90,9 +90,8 @@ namespace OpenRA.Mods.Cnc.FileFormats
 
 		static uint LenBigNum(uint[] n, uint len)
 		{
-			uint i;
-			i = len - 1;
-			while ((i >= 0) && (n[i] == 0)) i--;
+			var i = len - 1;
+			while (n[i] == 0) i--;
 			return i + 1;
 		}
 
@@ -225,13 +224,11 @@ namespace OpenRA.Mods.Cnc.FileFormats
 			uint nTwoByteLen, bit;
 			int nTwoBitLen;
 
-			var j = 0;
-
 			InitBigNum(nTmp, 0, len);
 			InitBigNum(n1, 0, len);
 			nTwoBitLen = (int)BitLenBigNum(n2, len);
 			bit = 1U << (nTwoBitLen % 32);
-			j = ((nTwoBitLen + 32) / 32) - 1;
+			var j = ((nTwoBitLen + 32) / 32) - 1;
 			nTwoByteLen = (uint)((nTwoBitLen - 1) / 32) * 4;
 			nTmp[nTwoByteLen / 4] |= 1U << ((nTwoBitLen - 1) & 0x1f);
 

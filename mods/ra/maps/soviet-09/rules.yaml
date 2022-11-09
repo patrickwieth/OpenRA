@@ -1,6 +1,6 @@
 World:
 	LuaScript:
-		Scripts: campaign-global.lua, soviet09.lua, soviet09-AI.lua
+		Scripts: campaign.lua, utils.lua, soviet09.lua, soviet09-AI.lua
 	MissionData:
 		BriefingVideo: soviet9.vqa
 		WinVideo: v2rocket.vqa
@@ -10,11 +10,12 @@ World:
 	ScriptLobbyDropdown@difficulty:
 		ID: difficulty
 		Label: Difficulty
+		Description: The difficulty of the mission
 		Values:
 			easy: Easy
 			normal: Normal
 			hard: Hard
-		Default: easy
+		Default: normal
 	SmudgeLayer@SCORCH:
 		InitialSmudges:
 			98,87: sc3,0
@@ -53,8 +54,6 @@ MSLO:
 		Prerequisites: ~disabled
 
 TRUK:
-	Buildable:
-		Prerequisites: ~disabled
 	-SpawnActorOnDeath:
 
 FTRK:

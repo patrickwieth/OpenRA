@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -13,7 +13,7 @@ using System;
 
 namespace OpenRA
 {
-	public struct Hotkey : IEquatable<Hotkey>
+	public readonly struct Hotkey : IEquatable<Hotkey>
 	{
 		public static Hotkey Invalid = new Hotkey(Keycode.UNKNOWN, Modifiers.None);
 		public bool IsValid()
@@ -81,11 +81,10 @@ namespace OpenRA
 
 		public override bool Equals(object obj)
 		{
-			var o = obj as Hotkey?;
-			return o != null && o == this;
+			return obj is Hotkey o && (Hotkey?)o == this;
 		}
 
-		public override string ToString() { return "{0} {1}".F(Key, Modifiers.ToString("F")); }
+		public override string ToString() { return $"{Key} {Modifiers.ToString("F")}"; }
 
 		public string DisplayString()
 		{

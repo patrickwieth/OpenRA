@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -14,6 +14,7 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
 {
+	[TraitLocation(SystemActors.World)]
 	[Desc("Used to detect exploits. Attach this to the world actor.")]
 	public class ValidateOrderInfo : TraitInfo<ValidateOrder> { }
 
@@ -29,7 +30,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			if (subjectClient == null)
 			{
-				Log.Write("debug", "Tick {2}: Order sent to {0}: resolved ClientIndex `{1}` doesn't exist", order.Subject.Owner.PlayerName, subjectClientId, world.WorldTick);
+				Log.Write("debug", "Tick {0}: Order sent to {1}: resolved ClientIndex `{2}` doesn't exist", world.WorldTick, order.Subject.Owner.PlayerName, subjectClientId);
 				return false;
 			}
 

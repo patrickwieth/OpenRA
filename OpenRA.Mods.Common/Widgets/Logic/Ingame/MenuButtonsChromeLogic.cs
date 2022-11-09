@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -10,7 +10,6 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Mods.Common.Traits;
 using OpenRA.Widgets;
@@ -22,13 +21,12 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		readonly World world;
 		readonly Widget worldRoot;
 		readonly Widget menuRoot;
-		readonly string clickSound = ChromeMetrics.Get<string>("ClickSound");
 
 		bool disableSystemButtons;
 		Widget currentWidget;
 
 		[ObjectCreator.UseCtor]
-		public MenuButtonsChromeLogic(Widget widget, ModData modData, World world, Dictionary<string, MiniYaml> logicArgs)
+		public MenuButtonsChromeLogic(Widget widget, World world)
 		{
 			this.world = world;
 
@@ -47,7 +45,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					blinking = false;
 					OpenMenuPanel(options, new WidgetArgs()
 					{
-						{ "activePanel", IngameInfoPanel.AutoSelect }
+						{ "initialPanel", IngameInfoPanel.AutoSelect }
 					});
 				};
 				options.IsHighlighted = () => blinking && Game.LocalTick % 50 < 25;
@@ -73,18 +71,15 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				// Can't use DeveloperMode.Enabled because there is a hardcoded hack to *always*
 				// enable developer mode for singleplayer games, but we only want to show the button
 				// if it has been explicitly enabled
-				var def = world.Map.Rules.Actors["player"].TraitInfo<DeveloperModeInfo>().CheckboxEnabled;
+				var def = world.Map.Rules.Actors[SystemActors.Player].TraitInfo<DeveloperModeInfo>().CheckboxEnabled;
 				var enabled = world.LobbyInfo.GlobalSettings.OptionOrDefault("cheats", def);
 				debug.IsVisible = () => enabled;
 				debug.IsDisabled = () => disableSystemButtons;
 				debug.OnClick = () => OpenMenuPanel(debug, new WidgetArgs()
 				{
-					{ "activePanel", IngameInfoPanel.Debug }
+					{ "initialPanel", IngameInfoPanel.Debug }
 				});
 			}
-
-			if (logicArgs.TryGetValue("ClickSound", out var yaml))
-				clickSound = yaml.Value;
 		}
 
 		void OpenMenuPanel(MenuButtonWidget button, WidgetArgs widgetArgs = null)

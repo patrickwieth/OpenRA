@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -16,29 +16,29 @@ namespace OpenRA.Platforms.Default
 {
 	static class MultiTapDetection
 	{
-		static Cache<(Keycode Key, Modifiers Mods), TapHistory> keyHistoryCache =
+		static readonly Cache<(Keycode Key, Modifiers Mods), TapHistory> KeyHistoryCache =
 			new Cache<(Keycode, Modifiers), TapHistory>(_ => new TapHistory(DateTime.Now - TimeSpan.FromSeconds(1)));
-		static Cache<byte, TapHistory> clickHistoryCache =
+		static readonly Cache<byte, TapHistory> ClickHistoryCache =
 			new Cache<byte, TapHistory>(_ => new TapHistory(DateTime.Now - TimeSpan.FromSeconds(1)));
 
 		public static int DetectFromMouse(byte button, int2 xy)
 		{
-			return clickHistoryCache[button].GetTapCount(xy);
+			return ClickHistoryCache[button].GetTapCount(xy);
 		}
 
 		public static int InfoFromMouse(byte button)
 		{
-			return clickHistoryCache[button].LastTapCount();
+			return ClickHistoryCache[button].LastTapCount();
 		}
 
 		public static int DetectFromKeyboard(Keycode key, Modifiers mods)
 		{
-			return keyHistoryCache[(key, mods)].GetTapCount(int2.Zero);
+			return KeyHistoryCache[(key, mods)].GetTapCount(int2.Zero);
 		}
 
 		public static int InfoFromKeyboard(Keycode key, Modifiers mods)
 		{
-			return keyHistoryCache[(key, mods)].LastTapCount();
+			return KeyHistoryCache[(key, mods)].LastTapCount();
 		}
 	}
 

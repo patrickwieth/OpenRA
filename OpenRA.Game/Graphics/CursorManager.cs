@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -35,7 +35,7 @@ namespace OpenRA.Graphics
 		Cursor cursor;
 		bool isLocked = false;
 		int2 lockedPosition;
-		bool hardwareCursorsDisabled = false;
+		readonly bool hardwareCursorsDisabled = false;
 		bool hardwareCursorsDoubled = false;
 
 		public CursorManager(CursorProvider cursorProvider)
@@ -69,9 +69,16 @@ namespace OpenRA.Graphics
 					// Hotspot is specified relative to the center of the frame
 					var hotspot = f.Offset.ToInt2() - kv.Value.Hotspot - new int2(f.Size) / 2;
 
-					// SheetBuilder expects data in BGRA
-					var data = FrameToBGRA(kv.Key, f, palette);
-					c.Sprites[c.Length++] = sheetBuilder.Add(data, f.Size, 0, hotspot);
+					// Resolve indexed data to real colours
+					var data = f.Data;
+					var type = f.Type;
+					if (type == SpriteFrameType.Indexed8)
+					{
+						data = ConvertIndexedToBgra(kv.Key, f, palette);
+						type = SpriteFrameType.Bgra32;
+					}
+
+					c.Sprites[c.Length++] = sheetBuilder.Add(data, type, f.Size, 0, hotspot);
 
 					// Bounds relative to the hotspot
 					c.Bounds = Rectangle.Union(c.Bounds, new Rectangle(hotspot, f.Size));
@@ -99,33 +106,27 @@ namespace OpenRA.Graphics
 			// Dispose any existing cursors to avoid leaking native resources
 			ClearHardwareCursors();
 
-			try
+			foreach (var kv in cursors)
 			{
-				foreach (var kv in cursors)
+				var template = kv.Value;
+				for (var i = 0; i < template.Sprites.Length; i++)
 				{
-					var template = kv.Value;
-					for (var i = 0; i < template.Sprites.Length; i++)
+					if (template.Cursors[i] != null)
+						template.Cursors[i].Dispose();
+
+					// Calculate the padding to position the frame within sequenceBounds
+					var paddingTL = -(template.Bounds.Location - template.Sprites[i].Offset.XY.ToInt2());
+					var paddingBR = template.PaddedSize - new int2(template.Sprites[i].Bounds.Size) - paddingTL;
+
+					var hardwareCursor = CreateHardwareCursor(kv.Key, template.Sprites[i], paddingTL, paddingBR, -template.Bounds.Location);
+					if (hardwareCursor != null)
+						template.Cursors[i] = hardwareCursor;
+					else
 					{
-						if (template.Cursors[i] != null)
-							template.Cursors[i].Dispose();
-
-						// Calculate the padding to position the frame within sequenceBounds
-						var paddingTL = -(template.Bounds.Location - template.Sprites[i].Offset.XY.ToInt2());
-						var paddingBR = template.PaddedSize - new int2(template.Sprites[i].Bounds.Size) - paddingTL;
-
-						template.Cursors[i] = CreateHardwareCursor(kv.Key, template.Sprites[i], paddingTL, paddingBR, -template.Bounds.Location);
+						Log.Write("debug", $"Failed to initialize hardware cursor for {template.Name}.");
+						Console.WriteLine($"Failed to initialize hardware cursor for {template.Name}.");
 					}
 				}
-			}
-			catch (Exception e)
-			{
-				Log.Write("debug", "Failed to initialize hardware cursors. Falling back to software cursors.");
-				Log.Write("debug", "Error was: " + e.Message);
-
-				Console.WriteLine("Failed to initialize hardware cursors. Falling back to software cursors.");
-				Console.WriteLine("Error was: " + e.Message);
-
-				ClearHardwareCursors();
 			}
 
 			hardwareCursorsDoubled = graphicSettings.CursorDouble;
@@ -170,10 +171,11 @@ namespace OpenRA.Graphics
 			if (cursor != null && frame >= cursor.Cursors.Length)
 				frame %= cursor.Cursors.Length;
 
-			if (cursor == null || isLocked)
+			var hardwareCursor = cursor?.Cursors[frame];
+			if (hardwareCursor == null || isLocked)
 				Game.Renderer.Window.SetHardwareCursor(null);
 			else
-				Game.Renderer.Window.SetHardwareCursor(cursor.Cursors[frame]);
+				Game.Renderer.Window.SetHardwareCursor(hardwareCursor);
 		}
 
 		public void Render(Renderer renderer)
@@ -189,17 +191,17 @@ namespace OpenRA.Graphics
 			// Render cursor in software
 			var doubleCursor = graphicSettings.CursorDouble;
 			var cursorSprite = cursor.Sprites[frame % cursor.Length];
-			var cursorSize = doubleCursor ? 2.0f * cursorSprite.Size : cursorSprite.Size;
+			var cursorScale = doubleCursor ? 2 : 1;
 
 			// Cursor is rendered in native window coordinates
 			// Apply same scaling rules as hardware cursors
 			if (Game.Renderer.NativeWindowScale > 1.5f)
-				cursorSize = 2 * cursorSize;
+				cursorScale *= 2;
 
 			var mousePos = isLocked ? lockedPosition : Viewport.LastMousePos;
 			renderer.RgbaSpriteRenderer.DrawSprite(cursorSprite,
 				mousePos,
-				cursorSize / Game.Renderer.WindowScale);
+				cursorScale / Game.Renderer.WindowScale);
 		}
 
 		public void Lock()
@@ -217,33 +219,27 @@ namespace OpenRA.Graphics
 			Update();
 		}
 
-		public static byte[] FrameToBGRA(string name, ISpriteFrame frame, ImmutablePalette palette)
+		public static byte[] ConvertIndexedToBgra(string name, ISpriteFrame frame, ImmutablePalette palette)
 		{
-			// Data is already in BGRA format
-			if (frame.Type == SpriteFrameType.BGRA)
-				return frame.Data;
+			if (frame.Type != SpriteFrameType.Indexed8)
+				throw new ArgumentException("ConvertIndexedToBgra requires input frames to be indexed.", nameof(frame));
 
-			// Cursors may be either native BGRA or Indexed.
-			// Indexed sprites are converted to BGRA using the referenced palette.
 			// All palettes must be explicitly referenced, even if they are embedded in the sprite.
-			if (frame.Type == SpriteFrameType.Indexed && palette == null)
-				throw new InvalidOperationException("Cursor sequence `{0}` attempted to load an indexed sprite but does not define Palette".F(name));
+			if (palette == null)
+				throw new InvalidOperationException($"Cursor sequence `{name}` attempted to load an indexed sprite but does not define Palette");
 
 			var width = frame.Size.Width;
 			var height = frame.Size.Height;
 			var data = new byte[4 * width * height];
-			for (var j = 0; j < height; j++)
+			unsafe
 			{
-				for (var i = 0; i < width; i++)
+				// Cast the data to an int array so we can copy the src data directly
+				fixed (byte* bd = &data[0])
 				{
-					var rgba = palette[frame.Data[j * width + i]];
-					var k = 4 * (j * width + i);
-
-					// Convert RGBA to BGRA
-					data[k] = (byte)(rgba >> 16);
-					data[k + 1] = (byte)(rgba >> 8);
-					data[k + 2] = (byte)(rgba >> 0);
-					data[k + 3] = (byte)(rgba >> 24);
+					var rgba = (uint*)bd;
+					for (var j = 0; j < height; j++)
+						for (var i = 0; i < width; i++)
+							rgba[j * width + i] = palette[frame.Data[j * width + i]];
 				}
 			}
 

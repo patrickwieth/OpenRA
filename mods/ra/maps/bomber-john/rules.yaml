@@ -3,7 +3,7 @@ World:
 		CheckboxEnabled: False
 		CheckboxLocked: True
 		CheckboxVisible: False
-	-SpawnMPUnits:
+	-SpawnStartingUnits:
 	MapBuildRadius:
 		AllyBuildRadiusCheckboxLocked: True
 		AllyBuildRadiusCheckboxEnabled: False
@@ -12,10 +12,13 @@ World:
 		BuildRadiusCheckboxEnabled: True
 		BuildRadiusCheckboxVisible: False
 	MapOptions:
+		ShortGameCheckboxVisible: False
+		ShortGameCheckboxLocked: True
+		ShortGameCheckboxEnabled: False
 		TechLevelDropdownLocked: True
 		TechLevelDropdownVisible: False
 		TechLevel: unrestricted
-	MPStartLocations:
+	MapStartingLocations:
 		SeparateTeamSpawnsCheckboxVisible: false
 	Locomotor@LIGHTTRACKED:
 		WaitAverage: 1
@@ -80,8 +83,8 @@ Player:
 	ChronoshiftPower:
 		Icon: chrono
 		ChargeInterval: 1500
-		Description: Chronoshift
-		LongDesc: Teleport a group of vehicles across\nthe map.
+		Name: Chronoshift
+		Description: Teleport a group of vehicles across\nthe map.
 		SelectTargetSound: slcttgt1.aud
 		BeginChargeSound: chrochr1.aud
 		EndChargeSound: chrordy1.aud
@@ -91,12 +94,17 @@ Player:
 	GrantExternalConditionPower@IRONCURTAIN:
 		Icon: invuln
 		ChargeInterval: 750
-		Description: Invulnerability
-		LongDesc: Makes a unit invulnerable\nfor 3 seconds.
+		Name: Invulnerability
+		Description: Makes a unit invulnerable\nfor 3 seconds.
 		Duration: 75
-		SelectTargetSound: slcttgt1.aud
-		BeginChargeSound: ironchg1.aud
-		EndChargeSound: ironrdy1.aud
+		SelectTargetSpeechNotification: SelectTarget
+		InsufficientPowerSpeechNotification: InsufficientPower
+		BeginChargeSpeechNotification: IronCurtainCharging
+		EndChargeSpeechNotification: IronCurtainReady
+		SelectTargetTextNotification: Select target.
+		InsufficientPowerTextNotification: Insufficient power.
+		BeginChargeTextNotification: Iron curtain charging.
+		EndChargeTextNotification: Iron curtain ready.
 		Condition: invulnerability
 		Sequence: idle
 		OnFireSound: ironcur9.aud
@@ -109,6 +117,8 @@ Player:
 		Locked: True
 		Visible: False
 	LobbyPrerequisiteCheckbox@GLOBALFACTUNDEPLOY:
+		Visible: False
+	LobbyPrerequisiteCheckbox@REUSABLEENGINEERS:
 		Visible: False
 
 MNLYR:

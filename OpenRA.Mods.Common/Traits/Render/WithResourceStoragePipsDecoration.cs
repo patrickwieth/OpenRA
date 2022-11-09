@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -21,7 +21,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 		[Desc("Number of pips to display how filled unit is.")]
 		public readonly int PipCount = 0;
 
-		[Desc("If non-zero, override the spacing between adjacing pips.")]
+		[Desc("If non-zero, override the spacing between adjacent pips.")]
 		public readonly int2 PipStride = int2.Zero;
 
 		[Desc("Image that defines the pip sequences.")]
@@ -65,7 +65,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 			for (var i = 0; i < Info.PipCount; i++)
 			{
 				pips.PlayRepeating(player.Resources * Info.PipCount > i * player.ResourceCapacity ? Info.FullSequence : Info.EmptySequence);
-				yield return new UISpriteRenderable(pips.Image, self.CenterPosition, screenPos, 0, palette, 1f);
+				yield return new UISpriteRenderable(pips.Image, self.CenterPosition, screenPos, 0, palette);
 
 				screenPos += pipStride;
 			}

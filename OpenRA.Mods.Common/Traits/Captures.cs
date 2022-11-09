@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -22,7 +22,7 @@ namespace OpenRA.Mods.Common.Traits
 	{
 		[FieldLoader.Require]
 		[Desc("Types of actors that it can capture, as long as the type also exists in the Capturable Type: trait.")]
-		public readonly BitSet<CaptureType> CaptureTypes = default(BitSet<CaptureType>);
+		public readonly BitSet<CaptureType> CaptureTypes = default;
 
 		[Desc("Targets with health above this percentage will be sabotaged instead of captured.",
 			"Set to 0 to disable sabotaging.")]
@@ -32,7 +32,7 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly int SabotageHPRemoval = 50;
 
 		[Desc("Damage types that applied with the sabotage damage.")]
-		public readonly BitSet<DamageType> SabotageDamageTypes = default(BitSet<DamageType>);
+		public readonly BitSet<DamageType> SabotageDamageTypes = default;
 
 		[Desc("Delay (in ticks) that to wait next to the target before initiating the capture.")]
 		public readonly int CaptureDelay = 0;
@@ -46,12 +46,15 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Relationships that the structure's previous owner needs to have for the capturing player to receive Experience.")]
 		public readonly PlayerRelationship PlayerExperienceRelationships = PlayerRelationship.Enemy;
 
+		[CursorReference]
 		[Desc("Cursor to display when the health of the target actor is above the sabotage threshold.")]
 		public readonly string SabotageCursor = "capture";
 
+		[CursorReference]
 		[Desc("Cursor to display when able to capture the target actor.")]
 		public readonly string EnterCursor = "enter";
 
+		[CursorReference]
 		[Desc("Cursor to display when unable to capture the target actor.")]
 		public readonly string EnterBlockedCursor = "enter-blocked";
 
@@ -107,8 +110,8 @@ namespace OpenRA.Mods.Common.Traits
 			self.ShowTargetLines();
 		}
 
-		protected override void TraitEnabled(Actor self) { captureManager.RefreshCaptures(self); }
-		protected override void TraitDisabled(Actor self) { captureManager.RefreshCaptures(self); }
+		protected override void TraitEnabled(Actor self) { captureManager.RefreshCaptures(); }
+		protected override void TraitDisabled(Actor self) { captureManager.RefreshCaptures(); }
 
 		class CaptureOrderTargeter : UnitOrderTargeter
 		{

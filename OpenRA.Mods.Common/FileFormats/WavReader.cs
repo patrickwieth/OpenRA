@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -18,14 +18,15 @@ namespace OpenRA.Mods.Common.FileFormats
 {
 	public static class WavReader
 	{
-		enum WaveType { Pcm = 0x1, ImaAdpcm = 0x11 }
+		enum WaveType { Pcm = 0x1, MsAdpcm = 0x2, ImaAdpcm = 0x11 }
 
-		public static bool LoadSound(Stream s, out Func<Stream> result, out short channels, out int sampleBits, out int sampleRate)
+		public static bool LoadSound(Stream s, out Func<Stream> result, out short channels, out int sampleBits, out int sampleRate, out float lengthInSeconds)
 		{
 			result = null;
 			channels = -1;
 			sampleBits = -1;
 			sampleRate = -1;
+			lengthInSeconds = -1;
 
 			var type = s.ReadASCII(4);
 			if (type != "RIFF")
@@ -39,8 +40,8 @@ namespace OpenRA.Mods.Common.FileFormats
 			WaveType audioType = 0;
 			var dataOffset = -1L;
 			var dataSize = -1;
+			var uncompressedSize = -1;
 			short blockAlign = -1;
-			int uncompressedSize = -1;
 			while (s.Position < s.Length)
 			{
 				if ((s.Position & 1) == 1)
@@ -58,14 +59,14 @@ namespace OpenRA.Mods.Common.FileFormats
 						audioType = (WaveType)audioFormat;
 
 						if (!Enum.IsDefined(typeof(WaveType), audioType))
-							throw new NotSupportedException("Compression type {0} is not supported.".F(audioFormat));
+							throw new NotSupportedException($"Compression type {audioFormat} is not supported.");
 
 						channels = s.ReadInt16();
 						sampleRate = s.ReadInt32();
 						s.ReadInt32(); // Byte Rate
 						blockAlign = s.ReadInt16();
 						sampleBits = s.ReadInt16();
-
+						lengthInSeconds = (float)(s.Length * 8) / (channels * sampleRate * sampleBits);
 						s.ReadBytes(fmtChunkSize - 16);
 						break;
 					case "fact":
@@ -89,7 +90,8 @@ namespace OpenRA.Mods.Common.FileFormats
 				}
 			}
 
-			if (audioType == WaveType.ImaAdpcm)
+			// sampleBits refers to the output bitrate, which is always 16 for adpcm.
+			if (audioType != WaveType.Pcm)
 				sampleBits = 16;
 
 			var chan = channels;
@@ -97,7 +99,9 @@ namespace OpenRA.Mods.Common.FileFormats
 			{
 				var audioStream = SegmentStream.CreateWithoutOwningStream(s, dataOffset, dataSize);
 				if (audioType == WaveType.ImaAdpcm)
-					return new WavStream(audioStream, dataSize, blockAlign, chan, uncompressedSize);
+					return new WavStreamImaAdpcm(audioStream, dataSize, blockAlign, chan, uncompressedSize);
+				if (audioType == WaveType.MsAdpcm)
+					return new WavStreamMsAdpcm(audioStream, dataSize, blockAlign, chan);
 
 				return audioStream; // Data is already PCM format.
 			};
@@ -105,26 +109,7 @@ namespace OpenRA.Mods.Common.FileFormats
 			return true;
 		}
 
-		public static float WaveLength(Stream s)
-		{
-			s.Position = 12;
-			var fmt = s.ReadASCII(4);
-
-			if (fmt != "fmt ")
-				return 0;
-
-			s.Position = 22;
-			var channels = s.ReadInt16();
-			var sampleRate = s.ReadInt32();
-
-			s.Position = 34;
-			var bitsPerSample = s.ReadInt16();
-			var length = s.Length * 8;
-
-			return length / (channels * sampleRate * bitsPerSample);
-		}
-
-		sealed class WavStream : ReadOnlyAdapterStream
+		sealed class WavStreamImaAdpcm : ReadOnlyAdapterStream
 		{
 			readonly short channels;
 			readonly int numBlocks;
@@ -137,7 +122,7 @@ namespace OpenRA.Mods.Common.FileFormats
 			int outOffset;
 			int currentBlock;
 
-			public WavStream(Stream stream, int dataSize, short blockAlign, short channels, int uncompressedSize)
+			public WavStreamImaAdpcm(Stream stream, int dataSize, short blockAlign, short channels, int uncompressedSize)
 				: base(stream)
 			{
 				this.channels = channels;
@@ -204,6 +189,100 @@ namespace OpenRA.Mods.Common.FileFormats
 				}
 
 				return ++currentBlock >= numBlocks;
+			}
+		}
+
+		// Format docs https://wiki.multimedia.cx/index.php/Microsoft_ADPCM
+		public sealed class WavStreamMsAdpcm : ReadOnlyAdapterStream
+		{
+			static readonly int[] AdaptationTable =
+			{
+				230, 230, 230, 230, 307, 409, 512, 614,
+				768, 614, 512, 409, 307, 230, 230, 230
+			};
+
+			static readonly int[] AdaptCoeff1 = { 256, 512, 0, 192, 240, 460, 392 };
+
+			static readonly int[] AdaptCoeff2 = { 0, -256, 0, 64, 0, -208, -232 };
+
+			readonly short channels;
+			readonly int blockDataSize;
+			readonly int numBlocks;
+
+			int currentBlock;
+
+			public WavStreamMsAdpcm(Stream stream, int dataSize, short blockAlign, short channels)
+				: base(stream)
+			{
+				this.channels = channels;
+				blockDataSize = blockAlign - channels * 7;
+				numBlocks = dataSize / blockAlign;
+			}
+
+			protected override bool BufferData(Stream baseStream, Queue<byte> data)
+			{
+				var bpred = new byte[channels];
+				var chanIdelta = new short[channels];
+
+				var s1 = new short[channels];
+				var s2 = new short[channels];
+
+				for (var c = 0; c < channels; c++)
+					bpred[c] = baseStream.ReadUInt8();
+
+				for (var c = 0; c < channels; c++)
+					chanIdelta[c] = baseStream.ReadInt16();
+
+				for (var c = 0; c < channels; c++)
+					s1[c] = baseStream.ReadInt16();
+
+				for (var c = 0; c < channels; c++)
+					s2[c] = WriteSample(baseStream.ReadInt16(), data);
+
+				for (var c = 0; c < channels; c++)
+					WriteSample(s1[c], data);
+
+				var channelNumber = channels > 1 ? 1 : 0;
+
+				for (var blockindx = 0; blockindx < blockDataSize; blockindx++)
+				{
+					var bytecode = baseStream.ReadUInt8();
+
+					// Decode the first nibble, this is always left channel
+					WriteSample(DecodeNibble((short)((bytecode >> 4) & 0x0F), bpred[0], ref chanIdelta[0], ref s1[0], ref s2[0]), data);
+
+					// Decode the second nibble, for stereo this will be the right channel
+					WriteSample(DecodeNibble((short)(bytecode & 0x0F), bpred[channelNumber], ref chanIdelta[channelNumber], ref s1[channelNumber], ref s2[channelNumber]), data);
+				}
+
+				return ++currentBlock >= numBlocks;
+			}
+
+			short WriteSample(short t, Queue<byte> data)
+			{
+				data.Enqueue((byte)t);
+				data.Enqueue((byte)(t >> 8));
+				return t;
+			}
+
+			// This code contains elements from libsndfile
+			short DecodeNibble(short nibble, byte bpred, ref short idelta, ref short s1, ref short s2)
+			{
+				var predict = ((s1 * AdaptCoeff1[bpred]) + (s2 * AdaptCoeff2[bpred])) >> 8;
+
+				var twosCompliment = (nibble & 0x8) > 0
+					? nibble - 0x10
+					: nibble;
+
+				s2 = s1;
+				s1 = (short)(twosCompliment * idelta + predict).Clamp(-32768, 32767);
+
+				// Compute next Adaptive Scale Factor (ASF), saturating to lower bound of 16
+				idelta = (short)((AdaptationTable[nibble] * idelta) >> 8);
+				if (idelta < 16)
+					idelta = 16;
+
+				return s1;
 			}
 		}
 	}

@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -119,7 +119,7 @@ namespace OpenRA.Mods.Common.Traits
 				actor =>
 				{
 					var init = actor.GetInitOrDefault<StanceInit>(this);
-					var stance = init != null ? init.Value : InitialStance;
+					var stance = init?.Value ?? InitialStance;
 					return stances[(int)stance];
 				},
 				(actor, value) => actor.ReplaceInit(new StanceInit(this, (UnitStance)stances.IndexOf(value))));
@@ -135,7 +135,7 @@ namespace OpenRA.Mods.Common.Traits
 		[Sync]
 		int nextScanTime = 0;
 
-		public UnitStance Stance { get { return stance; } }
+		public UnitStance Stance => stance;
 
 		[Sync]
 		public Actor Aggressor;
@@ -144,7 +144,7 @@ namespace OpenRA.Mods.Common.Traits
 		public UnitStance PredictedStance;
 
 		UnitStance stance;
-		IDisableAutoTarget[] disableAutoTarget;
+		IOverrideAutoTarget[] overrideAutoTarget;
 		INotifyStanceChanged[] notifyStanceChanged;
 		IEnumerable<AutoTargetPriorityInfo> activeTargetPriorities;
 		int conditionToken = Actor.InvalidConditionToken;
@@ -179,7 +179,7 @@ namespace OpenRA.Mods.Common.Traits
 			: base(info)
 		{
 			var self = init.Self;
-			ActiveAttackBases = self.TraitsImplementing<AttackBase>().ToArray().Where(Exts.IsTraitEnabled);
+			ActiveAttackBases = self.TraitsImplementing<AttackBase>().ToArray().Where(t => !t.IsTraitDisabled);
 
 			stance = init.GetValue<StanceInit, UnitStance>(self.Owner.IsBot || !self.Owner.Playable ? info.InitialStanceAI : info.InitialStance);
 
@@ -195,9 +195,9 @@ namespace OpenRA.Mods.Common.Traits
 			activeTargetPriorities =
 				self.TraitsImplementing<AutoTargetPriority>()
 					.OrderByDescending(ati => ati.Info.Priority).ToArray()
-					.Where(Exts.IsTraitEnabled).Select(atp => atp.Info);
+					.Where(t => !t.IsTraitDisabled).Select(atp => atp.Info);
 
-			disableAutoTarget = self.TraitsImplementing<IDisableAutoTarget>().ToArray();
+			overrideAutoTarget = self.TraitsImplementing<IOverrideAutoTarget>().ToArray();
 			notifyStanceChanged = self.TraitsImplementing<INotifyStanceChanged>().ToArray();
 			ApplyStanceCondition(self);
 
@@ -229,8 +229,9 @@ namespace OpenRA.Mods.Common.Traits
 			if (attacker.Disposed)
 				return;
 
-			foreach (var dat in disableAutoTarget)
-				if (dat.DisableAutoTarget(self))
+			// Don't change targets when there is a target overriding auto-targeting
+			foreach (var oat in overrideAutoTarget)
+				if (oat.TryGetAutoTargetOverride(self, out _))
 					return;
 
 			if (!attacker.IsInWorld)
@@ -257,7 +258,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			Aggressor = attacker;
 
-			Attack(self, Target.FromActor(Aggressor), allowMove);
+			Attack(Target.FromActor(Aggressor), allowMove);
 		}
 
 		void INotifyIdle.TickIdle(Actor self)
@@ -283,9 +284,9 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			if ((ignoreScanInterval || nextScanTime <= 0) && ActiveAttackBases.Any())
 			{
-				foreach (var dat in disableAutoTarget)
-					if (dat.DisableAutoTarget(self))
-						return Target.Invalid;
+				foreach (var oat in overrideAutoTarget)
+					if (oat.TryGetAutoTargetOverride(self, out var existingTarget))
+						return existingTarget;
 
 				if (!ignoreScanInterval)
 					nextScanTime = self.World.SharedRandom.Next(Info.MinimumScanTimeInterval, Info.MaximumScanTimeInterval);
@@ -294,7 +295,7 @@ namespace OpenRA.Mods.Common.Traits
 				{
 					// If we can't attack right now, there's no need to try and find a target.
 					var attackStances = ab.UnforcedAttackTargetStances();
-					if (attackStances != OpenRA.Traits.PlayerRelationship.None)
+					if (attackStances != PlayerRelationship.None)
 					{
 						var range = Info.ScanRadius > 0 ? WDist.FromCells(Info.ScanRadius) : ab.GetMaximumRange();
 						return ChooseTarget(self, ab, attackStances, range, allowMove, allowTurn);
@@ -309,10 +310,10 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			var target = ScanForTarget(self, allowMove, allowTurn);
 			if (target.Type != TargetType.Invalid)
-				Attack(self, target, allowMove);
+				Attack(target, allowMove);
 		}
 
-		void Attack(Actor self, in Target target, bool allowMove)
+		void Attack(in Target target, bool allowMove)
 		{
 			foreach (var ab in ActiveAttackBases)
 				ab.AttackTarget(target, AttackSource.AutoTarget, false, allowMove);
@@ -325,8 +326,8 @@ namespace OpenRA.Mods.Common.Traits
 
 			return activeTargetPriorities.Any(ati =>
 			{
-				// Incompatible stances
-				if (!ati.ValidRelationships.HasStance(self.Owner.RelationshipWith(owner)))
+				// Incompatible relationship
+				if (!ati.ValidRelationships.HasRelationship(self.Owner.RelationshipWith(owner)))
 					return false;
 
 				// Incompatible target types
@@ -393,8 +394,8 @@ namespace OpenRA.Mods.Common.Traits
 					if (ati.Priority < chosenTargetPriority)
 						return false;
 
-					// Incompatible stances
-					if (!ati.ValidRelationships.HasStance(self.Owner.RelationshipWith(owner)))
+					// Incompatible relationship
+					if (!ati.ValidRelationships.HasRelationship(self.Owner.RelationshipWith(owner)))
 						return false;
 
 					// Incompatible target types

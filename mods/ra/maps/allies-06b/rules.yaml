@@ -4,7 +4,7 @@ Player:
 
 World:
 	LuaScript:
-		Scripts: campaign-global.lua, allies06b.lua, allies06b-AI.lua
+		Scripts: campaign.lua, utils.lua, allies06b.lua, allies06b-AI.lua
 	MissionData:
 		BriefingVideo: ally6.vqa
 		WinVideo: allymorf.vqa
@@ -16,11 +16,12 @@ World:
 	ScriptLobbyDropdown@difficulty:
 		ID: difficulty
 		Label: Difficulty
+		Description: The difficulty of the mission
 		Values:
 			easy: Easy
 			normal: Normal
 			hard: Hard
-		Default: easy
+		Default: normal
 
 powerproxy.paratroopers:
 	ParatroopersPower:
@@ -35,10 +36,6 @@ ARTY:
 		Prerequisites: ~disabled
 
 MCV:
-	Buildable:
-		Prerequisites: ~disabled
-
-TRUK:
 	Buildable:
 		Prerequisites: ~disabled
 

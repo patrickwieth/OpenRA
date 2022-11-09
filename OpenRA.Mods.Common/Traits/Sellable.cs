@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -24,7 +24,14 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly int RefundPercent = 50;
 
 		[Desc("List of audio clips to play when the actor is being sold.")]
-		public readonly string[] SellSounds = { };
+		public readonly string[] SellSounds = Array.Empty<string>();
+
+		[NotificationReference("Speech")]
+		[Desc("Speech notification to play.")]
+		public readonly string Notification = null;
+
+		[Desc("Text notification to display.")]
+		public string TextNotification = null;
 
 		[NotificationReference("Speech")]
 		[Desc("The audio notification type to play.")]
@@ -39,6 +46,7 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Skip playing (reversed) make animation.")]
 		public readonly bool SkipMakeAnimation = false;
 
+		[CursorReference]
 		[Desc("Cursor to display when the sell order generator hovers over this actor.")]
 		public readonly string Cursor = "sell";
 

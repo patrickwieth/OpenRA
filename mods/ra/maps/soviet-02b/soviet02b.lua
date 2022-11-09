@@ -1,5 +1,5 @@
 --[[
-   Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+   Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
    This file is part of OpenRA, which is free software. It is made
    available to you under the terms of the GNU General Public License
    as published by the Free Software Foundation, either version 3 of
@@ -14,6 +14,39 @@ TransportTrigger = { CPos.New(75, 58) }
 EnemyBaseShroudTrigger = { CPos.New(64, 52), CPos.New(64, 53), CPos.New(64, 54), CPos.New(64, 55), CPos.New(64, 56), CPos.New(64, 57), CPos.New(64, 58), CPos.New(64, 59), CPos.New(64, 60), CPos.New(64, 61), CPos.New(64, 62), CPos.New(64, 63), CPos.New(64, 64) }
 ParachuteTrigger = { CPos.New(80, 66), CPos.New(81, 66), CPos.New(82, 66), CPos.New(83, 66), CPos.New(84, 66), CPos.New(85, 66),CPos.New(86, 66), CPos.New(87, 66), CPos.New(88, 66), CPos.New(89, 66) }
 EnemyBaseEntranceShroudTrigger = { CPos.New(80, 73), CPos.New(81, 73), CPos.New(82, 73), CPos.New(83, 73), CPos.New(84, 73), CPos.New(85, 73),CPos.New(86, 73), CPos.New(87, 73), CPos.New(88, 73), CPos.New(89, 73) }
+
+AttackWaypoints = { AttackWaypoint1, AttackWaypoint2 }
+AttackGroup = { }
+AttackGroupSize = 3
+AlliedInfantry = { "e1", "e1", "e3" }
+
+SendAttackGroup = function()
+	if #AttackGroup < AttackGroupSize then
+		return
+	end
+
+	local way = Utils.Random(AttackWaypoints)
+	Utils.Do(AttackGroup, function(unit)
+		if not unit.IsDead then
+			unit.AttackMove(way.Location)
+			Trigger.OnIdle(unit, unit.Hunt)
+		end
+	end)
+
+	AttackGroup = { }
+end
+
+ProduceInfantry = function()
+	if Tent.IsDead then
+		return
+	end
+
+	enemy.Build({ Utils.Random(AlliedInfantry) }, function(units)
+		table.insert(AttackGroup, units[1])
+		SendAttackGroup()
+		Trigger.AfterDelay(DateTime.Seconds(10), ProduceInfantry)
+	end)
+end
 
 SendUSSRParadrops = function()
 	paraproxy1 = Actor.Create("powerproxy.paratroopers", false, { Owner = player })
@@ -145,24 +178,14 @@ WorldLoaded = function()
 			end)
 		end)
 	end)
-	Trigger.OnObjectiveAdded(player, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "New " .. string.lower(p.GetObjectiveType(id)) .. " objective")
-	end)
-	Trigger.OnObjectiveCompleted(player, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "Objective completed")
-	end)
-	Trigger.OnObjectiveFailed(player, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "Objective failed")
-	end)
-	Trigger.OnPlayerWon(player, function()
-		Media.PlaySpeechNotification(player, "Win")
-	end)
-	Trigger.OnPlayerLost(player, function()
-		Media.PlaySpeechNotification(player, "Lose")
-	end)
-	alliedObjective = enemy.AddPrimaryObjective("Destroy all Soviet troops.")
-	sovietObjective1 = player.AddPrimaryObjective("Protect the Command Center.")
-	sovietObjective2 = player.AddPrimaryObjective("Destroy all Allied units and structures.")
+
+	InitObjectives(player)
+	alliedObjective = enemy.AddObjective("Destroy all Soviet troops.")
+	sovietObjective1 = player.AddObjective("Protect the Command Center.")
+	sovietObjective2 = player.AddObjective("Destroy all Allied units and structures.")
+
+	enemy.Resources = 2000
+	Trigger.AfterDelay(DateTime.Seconds(30), ProduceInfantry)
 end
 
 Tick = function()

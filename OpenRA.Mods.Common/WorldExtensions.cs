@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -9,8 +9,8 @@
  */
 #endregion
 
+using System;
 using System.Collections.Generic;
-using System.Linq;
 using OpenRA.Mods.Common.Traits;
 
 namespace OpenRA.Mods.Common
@@ -49,11 +49,13 @@ namespace OpenRA.Mods.Common
 			foreach (var currActor in actorsInSquare)
 			{
 				var actorWidth = 0;
-				var shapes = currActor.TraitsImplementing<HitShape>().Where(Exts.IsTraitEnabled);
-				if (shapes.Any())
-					actorWidth = shapes.Max(h => h.Info.Type.OuterRadius.Length);
 
-				var projection = MinimumPointLineProjection(lineStart, lineEnd, currActor.CenterPosition);
+				// PERF: Avoid using TraitsImplementing<HitShape> that needs to find the actor in the trait dictionary.
+				foreach (var targetPos in currActor.EnabledTargetablePositions)
+					if (targetPos is HitShape hitshape)
+						actorWidth = Math.Max(actorWidth, hitshape.Info.Type.OuterRadius.Length);
+
+				var projection = lineStart.MinimumPointLineProjection(lineEnd, currActor.CenterPosition);
 				var distance = (currActor.CenterPosition - projection).HorizontalLength;
 				var maxReach = actorWidth + lineWidth.Length;
 
@@ -84,7 +86,7 @@ namespace OpenRA.Mods.Common
 		/// <param name="lineEnd">The target point (head) of the line</param>
 		/// <param name="point">The target point that the minimum distance should be found to</param>
 		/// <returns>The WPos that is the point on the line that is closest to the target point</returns>
-		public static WPos MinimumPointLineProjection(WPos lineStart, WPos lineEnd, WPos point)
+		public static WPos MinimumPointLineProjection(this WPos lineStart, WPos lineEnd, WPos point)
 		{
 			var squaredLength = (lineEnd - lineStart).HorizontalLengthSquared;
 
@@ -97,7 +99,7 @@ namespace OpenRA.Mods.Common
 			// It falls where t = [(point - target) . (source - target)] / |source - target|^2
 			// The normal DotProduct math would be (xDiff + yDiff) / dist, where dist = (target - source).LengthSquared;
 			// But in order to avoid floating points, we do not divide here, but rather work with the large numbers as far as possible.
-			// We then later divide by dist, only AFTER we have multiplied by the dotproduct.
+			// We then later divide by dist, only AFTER we have multiplied by the dot product.
 			var xDiff = ((long)point.X - lineEnd.X) * (lineStart.X - lineEnd.X);
 			var yDiff = ((long)point.Y - lineEnd.Y) * (lineStart.Y - lineEnd.Y);
 			var t = xDiff + yDiff;

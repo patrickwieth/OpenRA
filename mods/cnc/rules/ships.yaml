@@ -1,5 +1,6 @@
 BOAT:
 	Inherits: ^Ship
+	Inherits@SELECTABLE: ^SelectableCombatUnit
 	Inherits@EXPERIENCE: ^GainsExperience
 	Inherits@AUTOTARGET: ^AutoTargetAll
 	Valued:
@@ -13,7 +14,7 @@ BOAT:
 	Armor:
 		Type: Heavy
 	TDGunboat:
-		Speed: 28
+		Speed: 29
 	RevealsShroud:
 		Range: 7c0
 		Type: CenterPosition
@@ -23,15 +24,18 @@ BOAT:
 	Armament:
 		Weapon: BoatMissile
 		LocalOffset: 85,-85,0, 85,85,0
+	AttackMove:
+		Voice: Attack
 	AttackTDGunboatTurreted:
+		Voice: Attack
 	-QuantizeFacingsFromSequence:
 	BodyOrientation:
 		QuantizedFacings: 2
 	WithGunboatBody:
 		Sequence: left # Just a work-around to avoid crash
 	Selectable:
-		Bounds: 42,24
-		DecorationBounds: 42,24
+		Bounds: 1792, 1024
+		DecorationBounds: 1792, 1024
 	AutoTarget:
 		AllowMovement: false
 	RejectsOrders:
@@ -55,15 +59,11 @@ LST:
 		Cost: 300
 	Tooltip:
 		Name: Landing Craft
-	Buildable:
-		Queue: Vehicle.GDI
-		BuildPaletteOrder: 1000
-		Prerequisites: ~disabled
 	Mobile:
 		Locomotor: lcraft
 		InitialFacing: 0
 		TurnSpeed: 16
-		Speed: 142
+		Speed: 170
 		PauseOnCondition: notmobile
 	Health:
 		HP: 40000
@@ -74,14 +74,15 @@ LST:
 	-BodyOrientation:
 	ClassicFacingBodyOrientation:
 	WithFacingSpriteBody:
-	Selectable:
-		Bounds: 48,48
-	WithRoof:
+	Interactable:
+		Bounds: 2048, 2048
 	WithCargo:
 		DisplayTypes: Infantry, Vehicle
 		LocalOffset: 390,-256,0, 390,256,0, 0,0,0, -390,-256,0, -390,256,0
 	Cargo:
-		Types: Infantry, Vehicle
+		Types: disabled
 		MaxWeight: 5
+		UnloadVoice: Unload
 		PassengerFacing: 0
 		LoadingCondition: notmobile
+	RejectsOrders:

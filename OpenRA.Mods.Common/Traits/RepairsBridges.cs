@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -18,7 +18,7 @@ using OpenRA.Traits;
 namespace OpenRA.Mods.Common.Traits
 {
 	[Desc("Can enter a BridgeHut or LegacyBridgeHut to trigger a repair.")]
-	class RepairsBridgesInfo : TraitInfo
+	public class RepairsBridgesInfo : TraitInfo
 	{
 		[VoiceReference]
 		public readonly string Voice = "Action";
@@ -30,9 +30,11 @@ namespace OpenRA.Mods.Common.Traits
 			"Possible values are Exit, Suicide, Dispose.")]
 		public readonly EnterBehaviour EnterBehaviour = EnterBehaviour.Dispose;
 
+		[CursorReference]
 		[Desc("Cursor to display when targeting an unrepaired bridge.")]
 		public readonly string TargetCursor = "goldwrench";
 
+		[CursorReference]
 		[Desc("Cursor to display when repairing is denied.")]
 		public readonly string TargetBlockedCursor = "goldwrench-blocked";
 
@@ -40,10 +42,13 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Speech notification to play when a bridge is repaired.")]
 		public readonly string RepairNotification = null;
 
+		[Desc("Text notification to display when a bridge is repaired.")]
+		public readonly string RepairTextNotification = null;
+
 		public override object Create(ActorInitializer init) { return new RepairsBridges(this); }
 	}
 
-	class RepairsBridges : IIssueOrder, IResolveOrder, IOrderVoice
+	public class RepairsBridges : IIssueOrder, IResolveOrder, IOrderVoice
 	{
 		readonly RepairsBridgesInfo info;
 
@@ -105,7 +110,7 @@ namespace OpenRA.Mods.Common.Traits
 				else
 					return;
 
-				self.QueueActivity(order.Queued, new RepairBridge(self, order.Target, info.EnterBehaviour, info.RepairNotification, info.TargetLineColor));
+				self.QueueActivity(order.Queued, new RepairBridge(self, order.Target, info.EnterBehaviour, info.RepairNotification, info.RepairTextNotification, info.TargetLineColor));
 				self.ShowTargetLines();
 			}
 		}

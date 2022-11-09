@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2021 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -19,6 +19,39 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 {
 	public class SettingsLogic : ChromeLogic
 	{
+		[TranslationReference]
+		static readonly string SettingsSaveTitle = "settings-save-title";
+
+		[TranslationReference]
+		static readonly string SettingsSavePrompt = "settings-save-prompt";
+
+		[TranslationReference]
+		static readonly string SettingsSaveCancel = "settings-save-cancel";
+
+		[TranslationReference]
+		static readonly string RestartTitle = "restart-title";
+
+		[TranslationReference]
+		static readonly string RestartPrompt = "restart-prompt";
+
+		[TranslationReference]
+		static readonly string RestartAccept = "restart-accept";
+
+		[TranslationReference]
+		static readonly string RestartCancel = "restart-cancel";
+
+		[TranslationReference("panel")]
+		static readonly string ResetTitle = "reset-title";
+
+		[TranslationReference]
+		static readonly string ResetPrompt = "reset-prompt";
+
+		[TranslationReference]
+		static readonly string ResetAccept = "reset-accept";
+
+		[TranslationReference]
+		static readonly string ResetCancel = "reset-cancel";
+
 		readonly Dictionary<string, Func<bool>> leavePanelActions = new Dictionary<string, Func<bool>>();
 		readonly Dictionary<string, Action> resetPanelActions = new Dictionary<string, Action>();
 
@@ -34,13 +67,13 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		static SettingsLogic() { }
 
 		[ObjectCreator.UseCtor]
-		public SettingsLogic(Widget widget, Action onExit, WorldRenderer worldRenderer, Dictionary<string, MiniYaml> logicArgs)
+		public SettingsLogic(Widget widget, Action onExit, WorldRenderer worldRenderer, Dictionary<string, MiniYaml> logicArgs, ModData modData)
 		{
 			panelContainer = widget.Get("PANEL_CONTAINER");
 			var panelTemplate = panelContainer.Get<ContainerWidget>("PANEL_TEMPLATE");
 			panelContainer.RemoveChild(panelTemplate);
 
-			tabContainer = widget.Get("TAB_CONTAINER");
+			tabContainer = widget.Get("SETTINGS_TAB_CONTAINER");
 			tabTemplate = tabContainer.Get<ButtonWidget>("BUTTON_TEMPLATE");
 			tabContainer.RemoveChild(tabTemplate);
 
@@ -75,19 +108,25 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				Action closeAndExit = () => { Ui.CloseWindow(); onExit(); };
 				if (needsRestart)
 				{
-					Action restart = () =>
-					{
-						var external = Game.ExternalMods[ExternalMod.MakeKey(Game.ModData.Manifest)];
-						Game.SwitchToExternalMod(external, null, closeAndExit);
-					};
-
-					ConfirmationDialogs.ButtonPrompt(
-						title: "Restart Now?",
-						text: "Some changes will not be applied until\nthe game is restarted. Restart now?",
-						onConfirm: restart,
+					Action noRestart = () => ConfirmationDialogs.ButtonPrompt(modData,
+						title: SettingsSaveTitle,
+						text: SettingsSavePrompt,
 						onCancel: closeAndExit,
-						confirmText: "Restart Now",
-						cancelText: "Restart Later");
+						cancelText: SettingsSaveCancel);
+
+					if (!Game.ExternalMods.TryGetValue(ExternalMod.MakeKey(Game.ModData.Manifest), out var external))
+					{
+						noRestart();
+						return;
+					}
+
+					ConfirmationDialogs.ButtonPrompt(modData,
+						title: RestartTitle,
+						text: RestartPrompt,
+						onConfirm: () => Game.SwitchToExternalMod(external, null, noRestart),
+						onCancel: closeAndExit,
+						confirmText: RestartAccept,
+						cancelText: RestartCancel);
 				}
 				else
 					closeAndExit();
@@ -101,13 +140,14 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					Game.Settings.Save();
 				};
 
-				ConfirmationDialogs.ButtonPrompt(
-					title: "Reset \"{0}\"".F(panels[activePanel]),
-					text: "Are you sure you want to reset\nall settings in this panel?",
+				ConfirmationDialogs.ButtonPrompt(modData,
+					title: ResetTitle,
+					titleArguments: Translation.Arguments("panel", panels[activePanel]),
+					text: ResetPrompt,
 					onConfirm: reset,
 					onCancel: () => { },
-					confirmText: "Reset",
-					cancelText: "Cancel");
+					confirmText: ResetAccept,
+					cancelText: ResetCancel);
 			};
 		}
 

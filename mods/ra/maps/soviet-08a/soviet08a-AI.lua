@@ -1,5 +1,5 @@
 --[[
-   Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+   Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
    This file is part of OpenRA, which is free software. It is made
    available to you under the terms of the GNU General Public License
    as published by the Free Software Foundation, either version 3 of
@@ -56,8 +56,6 @@ AlliedVehicles =
 	Upgraded = { "2tnk", "arty" }
 }
 
-IdleHunt = function(unit) if not unit.IsDead then Trigger.OnIdle(unit, unit.Hunt) end end
-
 WTransWaves = function()
 	local way = Utils.Random(WTransWays)
 	local units = Utils.Random(WTransUnits)
@@ -94,7 +92,7 @@ ProduceInfantry = function()
 	Greece.Build({ Utils.Random(AlliedInfantry) }, function(units)
 		table.insert(AttackGroup, units[1])
 		SendAttackGroup()
-		Trigger.AfterDelay(ProductionInterval[Map.LobbyOption("difficulty")], ProduceInfantry)
+		Trigger.AfterDelay(ProductionInterval[Difficulty], ProduceInfantry)
 	end)
 end
 
@@ -106,7 +104,7 @@ ProduceVehicles = function()
 	Greece.Build({ Utils.Random(AlliedVehicles[AlliedVehicleType]) }, function(units)
 		table.insert(AttackGroup, units[1])
 		SendAttackGroup()
-		Trigger.AfterDelay(ProductionInterval[Map.LobbyOption("difficulty")], ProduceVehicles)
+		Trigger.AfterDelay(ProductionInterval[Difficulty], ProduceVehicles)
 	end)
 end
 
@@ -122,7 +120,7 @@ BringDDPatrol = function(patrolPath)
 		if GreeceNavalYard.IsDead then
 			return
 		else
-			if Map.LobbyOption("difficulty") == "easy" then
+			if Difficulty == "easy" then
 				Trigger.AfterDelay(DateTime.Minutes(7), function() BringDDPatrol(patrolPath) end)
 			else
 				Trigger.AfterDelay(DateTime.Minutes(4), function() BringDDPatrol(patrolPath) end)
@@ -132,9 +130,8 @@ BringDDPatrol = function(patrolPath)
 end
 
 ActivateAI = function()
-	local difficulty = Map.LobbyOption("difficulty")
-	WTransUnits = WTransUnits[difficulty]
-	WTransDelays = WTransDelays[difficulty]
+	WTransUnits = WTransUnits[Difficulty]
+	WTransDelays = WTransDelays[Difficulty]
 
 	local buildings = Utils.Where(Map.ActorsInWorld, function(self) return self.Owner == Greece and self.HasProperty("StartBuildingRepairs") end)
 	Utils.Do(buildings, function(actor)

@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -14,13 +14,13 @@ using System.Linq;
 
 namespace OpenRA.Primitives
 {
-	public struct Polygon
+	public readonly struct Polygon
 	{
 		public static readonly Polygon Empty = new Polygon(Rectangle.Empty);
 
 		public readonly Rectangle BoundingRect;
 		public readonly int2[] Vertices;
-		bool isRectangle;
+		readonly bool isRectangle;
 
 		public Polygon(Rectangle bounds)
 		{
@@ -57,7 +57,8 @@ namespace OpenRA.Primitives
 			}
 		}
 
-		public bool IsEmpty { get { return BoundingRect.IsEmpty; } }
+		public bool IsEmpty => BoundingRect.IsEmpty;
+
 		public bool Contains(int2 xy)
 		{
 			return isRectangle ? BoundingRect.Contains(xy) : Vertices.PolygonContains(xy);

@@ -17,7 +17,7 @@ TRAN:
 		Speed: 150
 		AltitudeVelocity: 0c100
 	Health:
-		HP: 9000
+		HP: 12500
 	Armor:
 		Type: Light
 	RevealsShroud:
@@ -42,11 +42,12 @@ TRAN:
 	Cargo:
 		Types: Infantry
 		MaxWeight: 10
+		UnloadVoice: Unload
 		AfterUnloadDelay: 40
 	SpawnActorOnDeath:
 		Actor: TRAN.Husk
 	Selectable:
-		DecorationBounds: 41,41
+		DecorationBounds: 1749, 1749
 
 HELI:
 	Inherits: ^Helicopter
@@ -84,6 +85,8 @@ HELI:
 		LocalOffset: 128,-213,-85, 128,213,-85
 		MuzzleSequence: muzzle
 		PauseOnCondition: !ammo
+	AttackMove:
+		Voice: Attack
 	AutoTarget:
 		ScanRadius: 4
 	AttackAircraft:
@@ -91,6 +94,7 @@ HELI:
 		OpportunityFire: false
 		PersistentTargeting: false
 		AttackType: Hover
+		Voice: Attack
 	AmmoPool:
 		Ammo: 10
 		AmmoCondition: ammo
@@ -106,10 +110,10 @@ HELI:
 	SpawnActorOnDeath:
 		Actor: HELI.Husk
 	ReloadAmmoPool:
-		Delay: 40
-		Count: 1
+		Delay: 70
+		Count: 2
 	Selectable:
-		DecorationBounds: 30,24
+		DecorationBounds: 1280, 1024
 	WithAmmoPipsDecoration:
 		Position: BottomLeft
 		Margin: 4, 3
@@ -135,7 +139,7 @@ ORCA:
 		TurnSpeed: 28
 		Speed: 186
 	Health:
-		HP: 9000
+		HP: 10000
 	Armor:
 		Type: Light
 	RevealsShroud:
@@ -149,6 +153,8 @@ ORCA:
 		Weapon: OrcaAAMissiles
 		LocalOffset: 427,-171,-213, 427,171,-213
 		PauseOnCondition: !ammo
+	AttackMove:
+		Voice: Attack
 	AutoTarget:
 		ScanRadius: 5
 	AttackAircraft:
@@ -156,6 +162,7 @@ ORCA:
 		OpportunityFire: false
 		PersistentTargeting: false
 		AttackType: Hover
+		Voice: Attack
 	AmmoPool:
 		Ammo: 6
 		AmmoCondition: ammo
@@ -167,7 +174,7 @@ ORCA:
 		Delay: 100
 		Count: 2
 	Selectable:
-		DecorationBounds: 30,24
+		DecorationBounds: 1280, 1024
 	WithAmmoPipsDecoration:
 		Position: BottomLeft
 		Margin: 4, 3
@@ -201,20 +208,24 @@ C17:
 	Cloak:
 		InitialDelay: 0
 		CloakDelay: 0
-		CloakTypes: C17
+		DetectionTypes: C17
 		RequiresCondition: global-C17-stealth
 	Contrail@1:
 		Offset: -261,-650,0
 		TrailLength: 15
+		StartColorAlpha: 128
 	Contrail@2:
 		Offset: -85,-384,0
 		TrailLength: 16
+		StartColorAlpha: 128
 	Contrail@3:
 		Offset: -85,384,0
 		TrailLength: 16
+		StartColorAlpha: 128
 	Contrail@4:
 		Offset: -261,650,0
 		TrailLength: 15
+		StartColorAlpha: 128
 	-MapEditorData:
 
 A10:
@@ -232,6 +243,7 @@ A10:
 		Repulsable: False
 	AttackBomber:
 		Armaments: gun, bombs
+		FacingTolerance: 8
 	Armament@GUNS:
 		Name: gun
 		Weapon: Vulcan
@@ -244,9 +256,11 @@ A10:
 	Contrail@1:
 		Offset: -640,171,0
 		TrailLength: 15
+		StartColorAlpha: 128
 	Contrail@2:
 		Offset: -640,-171,0
 		TrailLength: 15
+		StartColorAlpha: 128
 	-MapEditorData:
 
 TRAN.Husk:

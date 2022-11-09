@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -9,6 +9,7 @@
  */
 #endregion
 
+using System;
 using System.Collections.Generic;
 using OpenRA.Traits;
 
@@ -29,8 +30,8 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Palette used for the icon.")]
 		public readonly string IconPalette = "chrome";
 
+		public readonly string Name = "";
 		public readonly string Description = "";
-		public readonly string LongDesc = "";
 
 		[Desc("Allow multiple instances of the same support power.")]
 		public readonly bool AllowMultiple = false;
@@ -41,43 +42,63 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Cost to deploy.")]
 		public readonly int Cost = 0;
 
+		[CursorReference]
 		[Desc("Cursor to display for using this support power.")]
 		public readonly string Cursor = "ability";
 
 		[Desc("If set to true, the support power will be fully charged when it becomes available. " +
 			"Normal rules apply for subsequent charges.")]
 		public readonly bool StartFullyCharged = false;
-		public readonly string[] Prerequisites = { };
+		public readonly string[] Prerequisites = Array.Empty<string>();
+
+		public readonly string DetectedSound = null;
+
+		[NotificationReference("Speech")]
+		public readonly string DetectedSpeechNotification = null;
+
+		public readonly string DetectedTextNotification = null;
 
 		public readonly string BeginChargeSound = null;
 
 		[NotificationReference("Speech")]
 		public readonly string BeginChargeSpeechNotification = null;
 
+		public readonly string BeginChargeTextNotification = null;
+
 		public readonly string EndChargeSound = null;
 
 		[NotificationReference("Speech")]
 		public readonly string EndChargeSpeechNotification = null;
+
+		public readonly string EndChargeTextNotification = null;
 
 		public readonly string SelectTargetSound = null;
 
 		[NotificationReference("Speech")]
 		public readonly string SelectTargetSpeechNotification = null;
 
+		public readonly string SelectTargetTextNotification = null;
+
 		public readonly string InsufficientPowerSound = null;
 
 		[NotificationReference("Speech")]
 		public readonly string InsufficientPowerSpeechNotification = null;
+
+		public readonly string InsufficientPowerTextNotification = null;
 
 		public readonly string LaunchSound = null;
 
 		[NotificationReference("Speech")]
 		public readonly string LaunchSpeechNotification = null;
 
+		public readonly string LaunchTextNotification = null;
+
 		public readonly string IncomingSound = null;
 
 		[NotificationReference("Speech")]
 		public readonly string IncomingSpeechNotification = null;
+
+		public readonly string IncomingTextNotification = null;
 
 		[Desc("Defines to which players the timer is shown.")]
 		public readonly PlayerRelationship DisplayTimerRelationships = PlayerRelationship.None;
@@ -116,7 +137,7 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly bool DisplayRadarPing = false;
 
 		[Desc("Measured in ticks.")]
-		public readonly int RadarPingDuration = 5 * 25;
+		public readonly int RadarPingDuration = 125;
 
 		public readonly string OrderName;
 
@@ -139,6 +160,19 @@ namespace OpenRA.Mods.Common.Traits
 			this.info = info;
 		}
 
+		protected override void Created(Actor self)
+		{
+			base.Created(self);
+
+			var player = self.World.LocalPlayer;
+			if (player != null && player != self.Owner)
+			{
+				Game.Sound.Play(SoundType.UI, Info.DetectedSound);
+				Game.Sound.PlayNotification(self.World.Map.Rules, player, "Speech", info.DetectedSpeechNotification, player.Faction.InternalName);
+				TextNotificationsManager.AddTransientLine(info.DetectedTextNotification, player);
+			}
+		}
+
 		public virtual SupportPowerInstance CreateInstance(string key, SupportPowerManager manager)
 		{
 			return new SupportPowerInstance(key, info, manager);
@@ -149,6 +183,8 @@ namespace OpenRA.Mods.Common.Traits
 			Game.Sound.PlayToPlayer(SoundType.UI, self.Owner, Info.BeginChargeSound);
 			Game.Sound.PlayNotification(self.World.Map.Rules, self.Owner, "Speech",
 				Info.BeginChargeSpeechNotification, self.Owner.Faction.InternalName);
+
+			TextNotificationsManager.AddTransientLine(Info.BeginChargeTextNotification, self.Owner);
 		}
 
 		public virtual void Charged(Actor self, string key)
@@ -156,6 +192,8 @@ namespace OpenRA.Mods.Common.Traits
 			Game.Sound.PlayToPlayer(SoundType.UI, self.Owner, Info.EndChargeSound);
 			Game.Sound.PlayNotification(self.World.Map.Rules, self.Owner, "Speech",
 				Info.EndChargeSpeechNotification, self.Owner.Faction.InternalName);
+
+			TextNotificationsManager.AddTransientLine(Info.EndChargeTextNotification, self.Owner);
 
 			foreach (var notify in self.TraitsImplementing<INotifySupportPower>())
 				notify.Charged(self);
@@ -183,14 +221,19 @@ namespace OpenRA.Mods.Common.Traits
 
 		public virtual void PlayLaunchSounds()
 		{
-			var renderPlayer = Self.World.RenderPlayer;
-			var isAllied = Self.Owner.IsAlliedWith(renderPlayer);
+			var localPlayer = Self.World.LocalPlayer;
+
+			if (localPlayer == null || localPlayer.Spectating)
+				return;
+
+			var isAllied = Self.Owner.IsAlliedWith(localPlayer);
 			Game.Sound.Play(SoundType.UI, isAllied ? Info.LaunchSound : Info.IncomingSound);
 
-			// IsAlliedWith returns true if renderPlayer is null, so we are safe here.
-			var toPlayer = isAllied ? renderPlayer ?? Self.Owner : renderPlayer;
+			var toPlayer = isAllied ? localPlayer ?? Self.Owner : localPlayer;
 			var speech = isAllied ? Info.LaunchSpeechNotification : Info.IncomingSpeechNotification;
 			Game.Sound.PlayNotification(Self.World.Map.Rules, toPlayer, "Speech", speech, toPlayer.Faction.InternalName);
+
+			TextNotificationsManager.AddTransientLine(isAllied ? Info.LaunchTextNotification : Info.IncomingTextNotification, toPlayer);
 		}
 
 		public IEnumerable<CPos> CellsMatching(CPos location, char[] footprint, CVec dimensions)

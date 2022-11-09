@@ -1,5 +1,5 @@
 --[[
-   Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+   Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
    This file is part of OpenRA, which is free software. It is made
    available to you under the terms of the GNU General Public License
    as published by the Free Software Foundation, either version 3 of
@@ -33,8 +33,6 @@ GroundWavesDelays =
 	hard = 2
 }
 
-IdleHunt = function(unit) if not unit.IsDead then Trigger.OnIdle(unit, unit.Hunt) end end
-
 SendBGAttackGroup = function()
 	if #BGAttackGroup < BGAttackGroupSize then
 		return
@@ -57,7 +55,7 @@ ProduceBadGuyInfantry = function()
 	badguy.Build({ Utils.Random(SovietInfantry) }, function(units)
 		table.insert(BGAttackGroup, units[1])
 		SendBGAttackGroup()
-		Trigger.AfterDelay(ProductionInterval[Map.LobbyOption("difficulty")], ProduceBadGuyInfantry)
+		Trigger.AfterDelay(ProductionInterval[Difficulty], ProduceBadGuyInfantry)
 	end)
 end
 
@@ -83,7 +81,7 @@ ProduceUSSRInfantry = function()
 	ussr.Build({ Utils.Random(SovietInfantry) }, function(units)
 		table.insert(AttackGroup, units[1])
 		SendAttackGroup()
-		Trigger.AfterDelay(ProductionInterval[Map.LobbyOption("difficulty")], ProduceUSSRInfantry)
+		Trigger.AfterDelay(ProductionInterval[Difficulty], ProduceUSSRInfantry)
 	end)
 end
 
@@ -95,7 +93,7 @@ ProduceVehicles = function()
 	ussr.Build({ Utils.Random(SovietVehicles) }, function(units)
 		table.insert(AttackGroup, units[1])
 		SendAttackGroup()
-		Trigger.AfterDelay(ProductionInterval[Map.LobbyOption("difficulty")], ProduceVehicles)
+		Trigger.AfterDelay(ProductionInterval[Difficulty], ProduceVehicles)
 	end)
 end
 
@@ -108,8 +106,7 @@ GroundWaves = function()
 end
 
 ActivateAI = function()
-	local difficulty = Map.LobbyOption("difficulty")
-	GroundWavesDelays = GroundWavesDelays[difficulty]
+	GroundWavesDelays = GroundWavesDelays[Difficulty]
 
 	ProduceBadGuyInfantry()
 	ProduceUSSRInfantry()

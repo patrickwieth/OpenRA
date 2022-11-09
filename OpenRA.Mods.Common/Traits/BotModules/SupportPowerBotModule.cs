@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -19,7 +19,7 @@ namespace OpenRA.Mods.Common.Traits
 	public class SupportPowerBotModuleInfo : ConditionalTraitInfo, Requires<SupportPowerManagerInfo>
 	{
 		[Desc("Tells the AI how to use its support powers.")]
-		[FieldLoader.LoadUsing("LoadDecisions")]
+		[FieldLoader.LoadUsing(nameof(LoadDecisions))]
 		public readonly List<SupportPowerDecision> Decisions = new List<SupportPowerDecision>();
 
 		static object LoadDecisions(MiniYaml yaml)
@@ -123,7 +123,9 @@ namespace OpenRA.Mods.Common.Traits
 					// Valid target found, delay by a few ticks to avoid rescanning before power fires via order
 					AIUtils.BotDebug("{0} found new target location {1} for support power {2}.", player.PlayerName, attackLocation, sp.Info.OrderName);
 					waitingPowers[sp] += 10;
-					bot.QueueOrder(new Order(sp.Key, supportPowerManager.Self, Target.FromCell(world, attackLocation.Value), false) { SuppressVisualFeedback = true });
+
+					// Note: SelectDirectionalTarget uses uint.MaxValue in ExtraData to indicate that the player did not pick a direction.
+					bot.QueueOrder(new Order(sp.Key, supportPowerManager.Self, Target.FromCell(world, attackLocation.Value), false) { SuppressVisualFeedback = true, ExtraData = uint.MaxValue });
 				}
 			}
 

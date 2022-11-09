@@ -1,5 +1,5 @@
 --[[
-   Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+   Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
    This file is part of OpenRA, which is free software. It is made
    available to you under the terms of the GNU General Public License
    as published by the Free Software Foundation, either version 3 of
@@ -13,7 +13,7 @@ AlliedUnits =
 	{ delay = DateTime.Seconds(7), types = { "e6", "e6", "thf" } }
 }
 ReinforceBaseUnits = { "1tnk", "1tnk", "2tnk", "arty", "arty" }
-CivilianEvacuees = { "c1", "c2", "c5", "c7", "c8" }
+CivilianEvacuees = { "c2", "c3", "c5", "c6", "c8" }
 USSROutpostFlameTurrets = { FlameTurret1, FlameTurret2 }
 ExplosiveBarrels = { ExplosiveBarrel1, ExplosiveBarrel2 }
 SuperTanks = { stnk1, stnk2, stnk3 }
@@ -28,7 +28,6 @@ ExtractionLZ = DemitriLZ.Location
 BeachTrigger = { CPos.New(19, 44), CPos.New(20, 44), CPos.New(21, 44), CPos.New(22, 44), CPos.New(22, 45), CPos.New(23, 45), CPos.New(22, 44), CPos.New(24, 45), CPos.New(24, 46), CPos.New(24, 47), CPos.New(25, 47), CPos.New(25, 48) }
 DemitriAreaTrigger = { CPos.New(32, 98), CPos.New(32, 99), CPos.New(33, 99), CPos.New(33, 100), CPos.New(33, 101), CPos.New(33, 102), CPos.New(32, 102), CPos.New(32, 103) }
 HospitalAreaTrigger = { CPos.New(43, 41), CPos.New(44, 41), CPos.New(45, 41), CPos.New(46, 41), CPos.New(46, 42), CPos.New(46, 43), CPos.New(46, 44), CPos.New(46, 45), CPos.New(46, 46), CPos.New(45, 46), CPos.New(44, 46), CPos.New(43, 46) }
-
 
 EvacuateCivilians = function()
 	local evacuees = Reinforcements.Reinforce(neutral, CivilianEvacuees, { HospitalCivilianSpawnPoint.Location }, 0)
@@ -68,9 +67,9 @@ SetupAlliedBase = function()
 	AlliedBaseHarv.Owner = player
 	AlliedBaseHarv.FindResources()
 
-	FindDemitri = player.AddPrimaryObjective("Find Dr. Demitri. He is likely hiding in the village\n to the far south.")
-	InfiltrateRadarDome = player.AddPrimaryObjective("Reprogram the super tanks by sending a spy into\n the Soviet radar dome.")
-	DefendOutpost = player.AddSecondaryObjective("Defend and repair our outpost.")
+	FindDemitri = player.AddObjective("Find Dr. Demitri. He is likely hiding in the village\n to the far south.")
+	InfiltrateRadarDome = player.AddObjective("Reprogram the super tanks by sending a spy into\n the Soviet radar dome.")
+	DefendOutpost = player.AddObjective("Defend and repair our outpost.", "Secondary", false)
 	player.MarkCompletedObjective(FindOutpost)
 
 	-- Don't fail the Objective instantly
@@ -108,7 +107,7 @@ SetupAlliedBase = function()
 end
 
 SendAlliedUnits = function()
-	InitObjectives()
+	AddObjectives()
 
 	Camera.Position = StartEntryPoint.CenterPosition
 
@@ -125,7 +124,7 @@ SendAlliedUnits = function()
 					Trigger.OnKilled(unit, function()
 						player.MarkFailedObjective(StealMoney)
 					end)
-				end	
+				end
 			end)
 		end)
 	end)
@@ -208,7 +207,7 @@ CreateDemitri = function()
 	demitri.Move(DemitriTriggerAreaCenter.Location)
 
 	Media.PlaySpeechNotification(player, "TargetFreed")
-	EvacuateDemitri = player.AddPrimaryObjective("Evacuate Dr. Demitri with the helicopter waiting\n at our outpost.")
+	EvacuateDemitri = player.AddObjective("Evacuate Dr. Demitri with the helicopter waiting\n at our outpost.")
 	player.MarkCompletedObjective(FindDemitri)
 
 	local flarepos = CPos.New(DemitriLZ.Location.X, DemitriLZ.Location.Y - 1)
@@ -295,40 +294,28 @@ InitPlayers = function()
 	Trigger.AfterDelay(0, function() badguy.Resources = badguy.ResourceCapacity * 0.75 end)
 end
 
-InitObjectives = function()
-	Trigger.OnObjectiveAdded(player, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "New " .. string.lower(p.GetObjectiveType(id)) .. " objective")
-	end)
+AddObjectives = function()
+	InitObjectives(player)
 
-	EliminateSuperTanks = player.AddPrimaryObjective("Eliminate these super tanks.")
-	StealMoney = player.AddPrimaryObjective("Steal money from the nearby outpost with the Thief.")
-	CrossRiver = player.AddPrimaryObjective("Secure transport to the mainland.")
-	FindOutpost = player.AddPrimaryObjective("Find our outpost and start repairs on it.")
-	RescueCivilians = player.AddSecondaryObjective("Evacuate all civilians from the hospital.")
-	BadGuyObj = badguy.AddPrimaryObjective("Deny the destruction of the super tanks.")
-	USSRObj = ussr.AddPrimaryObjective("Deny the destruction of the super tanks.")
-	UkraineObj = ukraine.AddPrimaryObjective("Survive.")
-	TurkeyObj = turkey.AddPrimaryObjective("Destroy.")
-
-	Trigger.OnObjectiveCompleted(player, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "Objective completed")
-	end)
-	Trigger.OnObjectiveFailed(player, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "Objective failed")
-	end)
+	EliminateSuperTanks = player.AddObjective("Eliminate these super tanks.")
+	StealMoney = player.AddObjective("Steal money from the nearby outpost with the Thief.")
+	CrossRiver = player.AddObjective("Secure transport to the mainland.")
+	FindOutpost = player.AddObjective("Find our outpost and start repairs on it.")
+	RescueCivilians = player.AddObjective("Evacuate all civilians from the hospital.", "Secondary", false)
+	BadGuyObj = badguy.AddObjective("Deny the destruction of the super tanks.")
+	USSRObj = ussr.AddObjective("Deny the destruction of the super tanks.")
+	UkraineObj = ukraine.AddObjective("Survive.")
+	TurkeyObj = turkey.AddObjective("Destroy.")
 
 	Trigger.OnPlayerLost(player, function()
-		Media.PlaySpeechNotification(player, "MissionFailed")
-
 		ussr.MarkCompletedObjective(USSRObj)
 		badguy.MarkCompletedObjective(BadGuyObj)
 		ukraine.MarkCompletedObjective(UkraineObj)
 		turkey.MarkCompletedObjective(TurkeyObj)
 	end)
-	Trigger.OnPlayerWon(player, function()
-		Media.PlaySpeechNotification(player, "MissionAccomplished")
-		Media.DisplayMessage("Dr. Demitri has been extracted and the super tanks have been dealt with.")
 
+	Trigger.OnPlayerWon(player, function()
+		Media.DisplayMessage("Dr. Demitri has been extracted and the super tanks have been dealt with.")
 		ussr.MarkFailedObjective(USSRObj)
 		badguy.MarkFailedObjective(BadGuyObj)
 		ukraine.MarkFailedObjective(UkraineObj)
@@ -451,10 +438,7 @@ InitTriggers = function()
 end
 
 WorldLoaded = function()
-
 	InitPlayers()
 	InitTriggers()
-
 	SetupMission()
 end
-

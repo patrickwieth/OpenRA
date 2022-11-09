@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -35,7 +35,7 @@ namespace OpenRA.Mods.Common.Activities
 		bool finishedApproach;
 
 		public Land(Actor self, WAngle? facing = null, Color? targetLineColor = null)
-			: this(self, Target.Invalid, new WDist(-1), WVec.Zero, facing, null)
+			: this(self, Target.Invalid, new WDist(-1), WVec.Zero, facing, targetLineColor: targetLineColor)
 		{
 			assignTargetOnFirstRun = true;
 		}
@@ -46,19 +46,19 @@ namespace OpenRA.Mods.Common.Activities
 		public Land(Actor self, in Target target, WDist landRange, WAngle? facing = null, Color? targetLineColor = null)
 			: this(self, target, landRange, WVec.Zero, facing, targetLineColor: targetLineColor) { }
 
-		public Land(Actor self, in Target target, WVec offset, WAngle? facing = null, Color? targetLineColor = null)
+		public Land(Actor self, in Target target, in WVec offset, WAngle? facing = null, Color? targetLineColor = null)
 			: this(self, target, WDist.Zero, offset, facing, targetLineColor: targetLineColor) { }
 
-		public Land(Actor self, in Target target, WDist landRange, WVec offset, WAngle? facing = null, CPos[] clearCells = null, Color? targetLineColor = null)
+		public Land(Actor self, in Target target, WDist landRange, in WVec offset, WAngle? facing = null, CPos[] clearCells = null, Color? targetLineColor = null)
 		{
 			aircraft = self.Trait<Aircraft>();
 			this.target = target;
 			this.offset = offset;
-			this.clearCells = clearCells ?? new CPos[0];
+			this.clearCells = clearCells ?? Array.Empty<CPos>();
 			this.landRange = landRange.Length >= 0 ? landRange : aircraft.Info.LandRange;
 			this.targetLineColor = targetLineColor;
 
-			// NOTE: desiredFacing = -1 means we should not prefer any particular facing and instead just
+			// NOTE: Assigning null to desiredFacing means we should not prefer any particular facing and instead just
 			// use whatever facing gives us the most direct path to the landing site.
 			if (!facing.HasValue && aircraft.Info.TurnToLand)
 				desiredFacing = aircraft.Info.InitialFacing;
@@ -230,6 +230,9 @@ namespace OpenRA.Mods.Common.Activities
 					var shouldStart = aircraft.Info.AudibleThroughFog || (!self.World.ShroudObscures(self.CenterPosition) && !self.World.FogObscures(self.CenterPosition));
 					Game.Sound.Play(SoundType.World, sound, self.CenterPosition, shouldStart ? aircraft.Info.Volume : 0f);
 				}
+
+				foreach (var notify in self.TraitsImplementing<INotifyLanding>())
+					notify.Landing(self);
 
 				aircraft.AddInfluence(landingCell);
 				aircraft.EnteringCell(self);

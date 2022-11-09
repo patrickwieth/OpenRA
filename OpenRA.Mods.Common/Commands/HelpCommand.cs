@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -15,12 +15,22 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Commands
 {
+	[TraitLocation(SystemActors.World)]
 	[Desc("Shows a list of available commands in the chatbox. Attach this to the world actor.")]
 	public class HelpCommandInfo : TraitInfo<HelpCommand> { }
 
 	public class HelpCommand : IChatCommand, IWorldLoaded
 	{
 		readonly Dictionary<string, string> helpDescriptions;
+
+		[TranslationReference]
+		static readonly string AvailableCommands = "available-commands";
+
+		[TranslationReference]
+		static readonly string NoDescription = "no-description";
+
+		[TranslationReference]
+		static readonly string HelpDescription = "help-description";
 
 		World world;
 		ChatCommands console;
@@ -36,25 +46,25 @@ namespace OpenRA.Mods.Common.Commands
 			console = world.WorldActor.Trait<ChatCommands>();
 
 			console.RegisterCommand("help", this);
-			RegisterHelp("help", "provides useful info about various commands");
+			RegisterHelp("help", HelpDescription);
 		}
 
 		public void InvokeCommand(string name, string arg)
 		{
-			Game.Debug("Here are the available commands:");
+			TextNotificationsManager.Debug(Game.ModData.Translation.GetString(AvailableCommands));
 
 			foreach (var key in console.Commands.Keys)
 			{
 				if (!helpDescriptions.TryGetValue(key, out var description))
-					description = "no description available.";
+					description = Game.ModData.Translation.GetString(NoDescription);
 
-				Game.Debug("{0}: {1}", key, description);
+				TextNotificationsManager.Debug($"{key}: {description}");
 			}
 		}
 
 		public void RegisterHelp(string name, string description)
 		{
-			helpDescriptions[name] = description;
+			helpDescriptions[name] = Game.ModData.Translation.GetString(description);
 		}
 	}
 }

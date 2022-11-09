@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -48,16 +48,16 @@ namespace OpenRA.Mods.Common.Traits
 	class ThrowsParticle : ITick
 	{
 		WVec pos;
-		WVec initialPos;
-		WVec finalPos;
-		WAngle angle;
+		readonly WVec initialPos;
+		readonly WVec finalPos;
+		readonly WAngle angle;
 
 		int tick = 0;
-		int length;
+		readonly int length;
 
 		WAngle facing;
 		WAngle rotation;
-		int direction;
+		readonly int direction;
 
 		public ThrowsParticle(ActorInitializer init, ThrowsParticleInfo info)
 		{
@@ -74,7 +74,7 @@ namespace OpenRA.Mods.Common.Traits
 			var throwRotation = WRot.FromYaw(new WAngle(Game.CosmeticRandom.Next(1024)));
 			var throwDistance = Game.CosmeticRandom.Next(info.MinThrowRange.Length, info.MaxThrowRange.Length);
 
-			initialPos = pos = info.Offset.Rotate(body.QuantizeOrientation(self, WRot.FromYaw(bodyFacing)));
+			initialPos = pos = info.Offset.Rotate(body.QuantizeOrientation(WRot.FromYaw(bodyFacing)));
 			finalPos = initialPos + new WVec(throwDistance, 0, 0).Rotate(throwRotation);
 			angle = new WAngle(Game.CosmeticRandom.Next(info.MinThrowAngle.Angle, info.MaxThrowAngle.Angle));
 			length = (finalPos - initialPos).Length / info.Velocity;

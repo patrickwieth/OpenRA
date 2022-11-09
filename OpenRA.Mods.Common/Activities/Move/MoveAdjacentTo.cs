@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -12,7 +12,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Activities;
-using OpenRA.Mods.Common.Pathfinder;
 using OpenRA.Mods.Common.Traits;
 using OpenRA.Primitives;
 using OpenRA.Traits;
@@ -21,20 +20,10 @@ namespace OpenRA.Mods.Common.Activities
 {
 	public class MoveAdjacentTo : Activity
 	{
-		static readonly List<CPos> NoPath = new List<CPos>();
-
 		protected readonly Mobile Mobile;
-		readonly IPathFinder pathFinder;
-		readonly DomainIndex domainIndex;
 		readonly Color? targetLineColor;
 
-		protected Target Target
-		{
-			get
-			{
-				return useLastVisibleTarget ? lastVisibleTarget : target;
-			}
-		}
+		protected Target Target => useLastVisibleTarget ? lastVisibleTarget : target;
 
 		Target target;
 		Target lastVisibleTarget;
@@ -46,8 +35,6 @@ namespace OpenRA.Mods.Common.Activities
 			this.target = target;
 			this.targetLineColor = targetLineColor;
 			Mobile = self.Trait<Mobile>();
-			pathFinder = self.World.WorldActor.Trait<IPathFinder>();
-			domainIndex = self.World.WorldActor.Trait<DomainIndex>();
 			ChildHasPriority = false;
 
 			// The target may become hidden between the initial order request and the first tick (e.g. if queued)
@@ -119,7 +106,7 @@ namespace OpenRA.Mods.Common.Activities
 			return TickChild(self);
 		}
 
-		List<CPos> searchCells = new List<CPos>();
+		readonly List<CPos> searchCells = new List<CPos>();
 		int searchCellsTick = -1;
 
 		List<CPos> CalculatePathToTarget(Actor self, BlockedByActor check)
@@ -133,16 +120,16 @@ namespace OpenRA.Mods.Common.Activities
 				searchCells.Clear();
 				searchCellsTick = self.World.WorldTick;
 				foreach (var cell in CandidateMovementCells(self))
-					if (domainIndex.IsPassable(loc, cell, Mobile.Locomotor) && Mobile.CanEnterCell(cell))
+					if (Mobile.CanEnterCell(cell))
 						searchCells.Add(cell);
 			}
 
-			if (!searchCells.Any())
-				return NoPath;
+			if (searchCells.Count == 0)
+				return PathFinder.NoPath;
 
-			using (var fromSrc = PathSearch.FromPoints(self.World, Mobile.Locomotor, self, searchCells, loc, check))
-			using (var fromDest = PathSearch.FromPoint(self.World, Mobile.Locomotor, self, loc, lastVisibleTargetLocation, check).Reverse())
-				return pathFinder.FindBidiPath(fromSrc, fromDest);
+			var path = Mobile.PathFinder.FindPathToTargetCell(self, searchCells, loc, check);
+			path.Reverse();
+			return path;
 		}
 
 		public override IEnumerable<Target> GetTargets(Actor self)

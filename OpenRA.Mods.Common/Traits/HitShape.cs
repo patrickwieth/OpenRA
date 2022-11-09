@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -12,6 +12,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Graphics;
+using OpenRA.Mods.Common.Graphics;
 using OpenRA.Mods.Common.HitShapes;
 using OpenRA.Primitives;
 using OpenRA.Traits;
@@ -32,9 +33,9 @@ namespace OpenRA.Mods.Common.Traits
 
 		[Desc("Defines which Armor types apply when the actor receives damage to this HitShape.",
 			"If none specified, all armor types the actor has are valid.")]
-		public readonly BitSet<ArmorType> ArmorTypes = default(BitSet<ArmorType>);
+		public readonly BitSet<ArmorType> ArmorTypes = default;
 
-		[FieldLoader.LoadUsing("LoadShape")]
+		[FieldLoader.LoadUsing(nameof(LoadShape))]
 		[Desc("Engine comes with support for `Circle`, `Capsule`, `Polygon` and `Rectangle`. Defaults to `Circle` when left empty.")]
 		public readonly IHitShape Type;
 
@@ -54,7 +55,7 @@ namespace OpenRA.Mods.Common.Traits
 				}
 				catch (YamlException e)
 				{
-					throw new YamlException("HitShape {0}: {1}".F(shape, e.Message));
+					throw new YamlException($"HitShape {shape}: {e.Message}");
 				}
 			}
 			else
@@ -69,30 +70,54 @@ namespace OpenRA.Mods.Common.Traits
 
 	public class HitShape : ConditionalTrait<HitShapeInfo>, ITargetablePositions
 	{
-		BodyOrientation orientation;
+		readonly BodyOrientation orientation;
 		ITargetableCells targetableCells;
 		Turreted turret;
 
+		((CPos Cell, SubCell SubCell)[] targetableCells,
+			WPos? selfCenterPosition,
+			WRot? selfOrientation,
+			WRot? turretLocalOrientation,
+			WVec? turretOffset) cacheInput;
+
+		WPos[] cachedTargetablePositions;
+
 		public HitShape(Actor self, HitShapeInfo info)
-			: base(info) { }
+			: base(info)
+		{
+			orientation = self.Trait<BodyOrientation>();
+		}
 
 		protected override void Created(Actor self)
 		{
-			orientation = self.Trait<BodyOrientation>();
 			targetableCells = self.TraitOrDefault<ITargetableCells>();
 			turret = self.TraitsImplementing<Turreted>().FirstOrDefault(t => t.Name == Info.Turret);
 
 			base.Created(self);
 		}
 
-		bool ITargetablePositions.AlwaysEnabled { get { return Info.RequiresCondition == null; } }
-
 		IEnumerable<WPos> ITargetablePositions.TargetablePositions(Actor self)
 		{
 			if (IsTraitDisabled)
 				return Enumerable.Empty<WPos>();
 
-			return TargetablePositions(self);
+			// Check for changes in inputs that affect the result of the TargetablePositions method.
+			// If the inputs have not changed we can cache and reuse the result for later calls.
+			// i.e. we are treating the method as a pure function.
+			var newCacheInput = (
+				Info.UseTargetableCellsOffsets ? targetableCells?.TargetableCells() : null,
+				Info.TargetableOffsets.Length > 0 ? self.CenterPosition : (WPos?)null,
+				Info.TargetableOffsets.Length > 0 ? self.Orientation : (WRot?)null,
+				Info.TargetableOffsets.Length > 0 ? turret?.LocalOrientation : null,
+				Info.TargetableOffsets.Length > 0 ? turret?.Offset : null);
+			if (cachedTargetablePositions == null ||
+				cacheInput != newCacheInput)
+			{
+				cachedTargetablePositions = TargetablePositions(self).ToArray();
+				cacheInput = newCacheInput;
+			}
+
+			return cachedTargetablePositions;
 		}
 
 		IEnumerable<WPos> TargetablePositions(Actor self)
@@ -108,10 +133,10 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
-		WVec CalculateTargetableOffset(Actor self, WVec offset)
+		WVec CalculateTargetableOffset(Actor self, in WVec offset)
 		{
 			var localOffset = offset;
-			var quantizedBodyOrientation = orientation.QuantizeOrientation(self, self.Orientation);
+			var quantizedBodyOrientation = orientation.QuantizeOrientation(self.Orientation);
 
 			if (turret != null)
 			{
@@ -129,11 +154,23 @@ namespace OpenRA.Mods.Common.Traits
 			return Info.Type.DistanceFromEdge(pos, origin, orientation);
 		}
 
+		public IEnumerable<IRenderable> RenderDebugAnnotations(Actor self)
+		{
+			var targetPosHLine = new WVec(0, 128, 0);
+			var targetPosVLine = new WVec(128, 0, 0);
+			var targetPosColor = IsTraitDisabled ? Color.Gainsboro : Color.Lime;
+			foreach (var p in TargetablePositions(self))
+			{
+				yield return new LineAnnotationRenderable(p - targetPosHLine, p + targetPosHLine, 1, targetPosColor);
+				yield return new LineAnnotationRenderable(p - targetPosVLine, p + targetPosVLine, 1, targetPosColor);
+			}
+		}
+
 		public IEnumerable<IRenderable> RenderDebugOverlay(Actor self, WorldRenderer wr)
 		{
 			var origin = turret != null ? self.CenterPosition + turret.Position(self) : self.CenterPosition;
 			var orientation = turret != null ? turret.WorldOrientation : self.Orientation;
-			return Info.Type.RenderDebugOverlay(wr, origin, orientation);
+			return Info.Type.RenderDebugOverlay(this, wr, origin, orientation);
 		}
 	}
 }

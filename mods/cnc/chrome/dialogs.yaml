@@ -3,6 +3,7 @@ ScrollPanel@LABEL_DROPDOWN_TEMPLATE:
 	Background: panel-black
 	Children:
 		ScrollItem@HEADER:
+			Background: scrollheader
 			Width: PARENT_RIGHT - 27
 			Height: 13
 			X: 2
@@ -48,7 +49,7 @@ ScrollPanel@FACTION_DROPDOWN_TEMPLATE:
 	Background: panel-black
 	Children:
 		ScrollItem@HEADER:
-			BaseName: scrollheader
+			Background: scrollheader
 			Width: PARENT_RIGHT - 27
 			Height: 13
 			X: 2
@@ -75,7 +76,7 @@ ScrollPanel@FACTION_DROPDOWN_TEMPLATE:
 					Height: 16
 				Label@LABEL:
 					X: 40
-					Width: 60
+					Width: 50
 					Height: 25
 
 ScrollPanel@TEAM_DROPDOWN_TEMPLATE:
@@ -117,6 +118,7 @@ ScrollPanel@SPECTATOR_DROPDOWN_TEMPLATE:
 	Background: panel-black
 	Children:
 		ScrollItem@HEADER:
+			Background: scrollheader
 			Width: PARENT_RIGHT - 27
 			Height: 13
 			X: 2

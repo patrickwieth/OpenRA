@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -17,7 +17,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 {
 	class ReplayMetadataCommand : IUtilityCommand
 	{
-		string IUtilityCommand.Name { get { return "--replay-metadata"; } }
+		string IUtilityCommand.Name => "--replay-metadata";
 
 		bool IUtilityCommand.ValidateArguments(string[] args)
 		{
@@ -41,7 +41,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 			var playerCount = 0;
 			foreach (var p in info.Players)
 			{
-				var playerLines = FieldSaver.Save(p).ToLines("{0}".F(playerCount++));
+				var playerLines = FieldSaver.Save(p).ToLines($"{playerCount++}");
 				foreach (var line in playerLines)
 					Console.WriteLine("\t\t" + line);
 			}

@@ -1,6 +1,6 @@
 World:
 	LuaScript:
-		Scripts: campaign-global.lua, nod08b.lua, nod08b-AI.lua
+		Scripts: campaign.lua, utils.lua, nod08b.lua, nod08b-AI.lua
 	MusicPlaylist:
 		StartingMusic: linefire
 		VictoryMusic: nod_win1
@@ -99,10 +99,6 @@ HARV:
 	Harvester:
 		SearchFromProcRadius: 30
 		SearchFromHarvesterRadius: 30
-
-MTNK:
-	Buildable:
-		Prerequisites: ~weap
 
 HTNK:
 	Buildable:

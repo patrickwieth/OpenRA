@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -18,27 +18,22 @@ namespace OpenRA.Mods.Common.UpdateRules.Rules
 {
 	public class ReformatChromeProvider : UpdateRule
 	{
-		public override string Name { get { return "Reformat UI image definitions."; } }
+		public override string Name => "Reformat UI image definitions.";
 
-		public override string Description
-		{
-			get
-			{
-				return "The format of the chrome.yaml file defining image regions for the UI has\n" +
-					"changed to support additional metadata fields. ";
-			}
-		}
+		public override string Description =>
+			"The format of the chrome.yaml file defining image regions for the UI has\n" +
+			"changed to support additional metadata fields. ";
 
 		readonly List<string> overrideLocations = new List<string>();
 		readonly List<string> panelLocations = new List<string>();
 
 		public override IEnumerable<string> AfterUpdate(ModData modData)
 		{
-			if (overrideLocations.Any())
+			if (overrideLocations.Count > 0)
 				yield return "Region-specific image overrides are no longer supported. The following definitions must be replaced:\n" +
 				             UpdateUtils.FormatMessageList(overrideLocations);
 
-			if (panelLocations.Any())
+			if (panelLocations.Count > 0)
 				yield return "The following definitions appear to be panels, but could not be converted to the new PanelRegion format.\n" +
 					"You may wish to define PanelRegion/PanelSides manually to reduce duplication:\n" +
 				             UpdateUtils.FormatMessageList(panelLocations);
@@ -191,8 +186,8 @@ namespace OpenRA.Mods.Common.UpdateRules.Rules
 				// Reformat region as a list
 				regionsNode.AddNode(n.Key, n.NodeValue<int[]>());
 
-				if (n.Value.Nodes.Any())
-					overrideLocations.Add("{0}.{1} ({2})".F(chromeProviderNode.Key, n.Key, chromeProviderNode.Location.Filename));
+				if (n.Value.Nodes.Count > 0)
+					overrideLocations.Add($"{chromeProviderNode.Key}.{n.Key} ({chromeProviderNode.Location.Filename})");
 			}
 
 			chromeProviderNode.Value.Nodes.RemoveAll(n => n.Key != "Inherits");
@@ -202,9 +197,9 @@ namespace OpenRA.Mods.Common.UpdateRules.Rules
 			chromeProviderNode.Value.Value = "";
 
 			if (!ExtractPanelDefinition(chromeProviderNode, regionsNode))
-				panelLocations.Add("{0} ({1})".F(chromeProviderNode.Key, chromeProviderNode.Location.Filename));
+				panelLocations.Add($"{chromeProviderNode.Key} ({chromeProviderNode.Location.Filename})");
 
-			if (regionsNode.Value.Nodes.Any())
+			if (regionsNode.Value.Nodes.Count > 0)
 				chromeProviderNode.AddNode(regionsNode);
 
 			yield break;

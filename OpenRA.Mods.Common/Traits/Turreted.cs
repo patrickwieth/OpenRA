@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -159,8 +159,8 @@ namespace OpenRA.Mods.Common.Traits
 		// For subclasses that want to move the turret relative to the body
 		protected WVec localOffset = WVec.Zero;
 
-		public WVec Offset { get { return Info.Offset + localOffset; } }
-		public string Name { get { return Info.Turret; } }
+		public WVec Offset => Info.Offset + localOffset;
+		public string Name => Info.Turret;
 
 		public Turreted(ActorInitializer init, TurretedInfo info)
 			: base(info)
@@ -282,7 +282,7 @@ namespace OpenRA.Mods.Common.Traits
 		// Turret offset in world-space
 		public WVec Position(Actor self)
 		{
-			var bodyOrientation = body.QuantizeOrientation(self, self.Orientation);
+			var bodyOrientation = body.QuantizeOrientation(self.Orientation);
 			return body.LocalToWorld(Offset.Rotate(bodyOrientation));
 		}
 

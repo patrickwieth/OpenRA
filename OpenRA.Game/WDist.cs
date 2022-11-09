@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -21,10 +21,10 @@ namespace OpenRA
 	/// <summary>
 	/// 1d world distance - 1024 units = 1 cell.
 	/// </summary>
-	public struct WDist : IComparable, IComparable<WDist>, IEquatable<WDist>, IScriptBindable, ILuaAdditionBinding, ILuaSubtractionBinding, ILuaEqualityBinding, ILuaTableBinding
+	public readonly struct WDist : IComparable, IComparable<WDist>, IEquatable<WDist>, IScriptBindable, ILuaAdditionBinding, ILuaSubtractionBinding, ILuaEqualityBinding, ILuaTableBinding
 	{
 		public readonly int Length;
-		public long LengthSquared { get { return (long)Length * Length; } }
+		public long LengthSquared => (long)Length * Length;
 
 		public WDist(int r) { Length = r; }
 		public static readonly WDist Zero = new WDist(0);
@@ -66,7 +66,7 @@ namespace OpenRA
 			s = s.ToLowerInvariant();
 			var components = s.Split('c');
 			var cell = 0;
-			var subcell = 0;
+			int subcell;
 
 			switch (components.Length)
 			{
@@ -143,15 +143,11 @@ namespace OpenRA
 				switch (key.ToString())
 				{
 					case "Length": return Length;
-					case "Range": Game.Debug("WDist.Range is deprecated. Use WDist.Length instead"); return Length;
-					default: throw new LuaException("WDist does not define a member '{0}'".F(key));
+					default: throw new LuaException($"WDist does not define a member '{key}'");
 				}
 			}
 
-			set
-			{
-				throw new LuaException("WDist is read-only. Use WDist.New to create a new value");
-			}
+			set => throw new LuaException("WDist is read-only. Use WDist.New to create a new value");
 		}
 		#endregion
 	}

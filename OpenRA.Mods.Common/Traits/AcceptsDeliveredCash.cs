@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -9,6 +9,7 @@
  */
 #endregion
 
+using System;
 using System.Collections.Generic;
 using OpenRA.Traits;
 
@@ -24,16 +25,16 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly PlayerRelationship ValidRelationships = PlayerRelationship.Ally;
 
 		[Desc("Play a randomly selected sound from this list when accepting cash.")]
-		public readonly string[] Sounds = { };
+		public readonly string[] Sounds = Array.Empty<string>();
 
-		public override object Create(ActorInitializer init) { return new AcceptsDeliveredCash(init.Self, this); }
+		public override object Create(ActorInitializer init) { return new AcceptsDeliveredCash(this); }
 	}
 
 	public class AcceptsDeliveredCash : INotifyCashTransfer
 	{
 		readonly AcceptsDeliveredCashInfo info;
 
-		public AcceptsDeliveredCash(Actor self, AcceptsDeliveredCashInfo info)
+		public AcceptsDeliveredCash(AcceptsDeliveredCashInfo info)
 		{
 			this.info = info;
 		}

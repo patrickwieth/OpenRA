@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -18,8 +18,11 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 {
 	public class WorldTooltipLogic : ChromeLogic
 	{
+		[TranslationReference]
+		static readonly string UnrevealedTerrain = "unrevealed-terrain";
+
 		[ObjectCreator.UseCtor]
-		public WorldTooltipLogic(Widget widget, World world, TooltipContainerWidget tooltipContainer, ViewportControllerWidget viewport)
+		public WorldTooltipLogic(Widget widget, ModData modData, World world, TooltipContainerWidget tooltipContainer, ViewportControllerWidget viewport)
 		{
 			widget.IsVisible = () => viewport.TooltipType != WorldTooltipType.None;
 			var label = widget.Get<LabelWidget>("LABEL");
@@ -41,6 +44,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			var extraHeightOnDouble = extras.Bounds.Y;
 			var extraHeightOnSingle = extraHeightOnDouble - (doubleHeight - singleHeight);
 
+			var unrevealedTerrain = modData.Translation.GetString(UnrevealedTerrain);
+
 			tooltipContainer.BeforeRender = () =>
 			{
 				if (viewport == null || viewport.TooltipType == WorldTooltipType.None)
@@ -54,10 +59,10 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				switch (viewport.TooltipType)
 				{
 					case WorldTooltipType.Unexplored:
-						labelText = "Unrevealed Terrain";
+						labelText = unrevealedTerrain;
 						break;
 					case WorldTooltipType.Resource:
-						labelText = viewport.ResourceTooltip.Info.Name;
+						labelText = viewport.ResourceTooltip;
 						break;
 					case WorldTooltipType.Actor:
 						{

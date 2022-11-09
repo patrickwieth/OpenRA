@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -16,14 +16,13 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
 {
+	[TraitLocation(SystemActors.Player)]
 	[Desc("Attach this to the player actor.")]
 	public class DeveloperModeInfo : TraitInfo, ILobbyOptions
 	{
-		[Translate]
 		[Desc("Descriptive label for the developer mode checkbox in the lobby.")]
 		public readonly string CheckboxLabel = "Debug Menu";
 
-		[Translate]
 		[Desc("Tooltip description for the developer mode checkbox in the lobby.")]
 		public readonly string CheckboxDescription = "Enables cheats and developer commands";
 
@@ -63,7 +62,7 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Enable the path debug overlay by default.")]
 		public readonly bool PathDebug;
 
-		IEnumerable<LobbyOption> ILobbyOptions.LobbyOptions(Ruleset rules)
+		IEnumerable<LobbyOption> ILobbyOptions.LobbyOptions(MapPreview map)
 		{
 			yield return new LobbyBooleanOption("cheats", CheckboxLabel, CheckboxDescription, CheckboxVisible, CheckboxDisplayOrder, CheckboxEnabled, CheckboxLocked);
 		}
@@ -97,15 +96,18 @@ namespace OpenRA.Mods.Common.Traits
 		[Sync]
 		bool buildAnywhere;
 
-		public bool FastCharge { get { return Enabled && fastCharge; } }
-		public bool AllTech { get { return Enabled && allTech; } }
-		public bool FastBuild { get { return Enabled && fastBuild; } }
-		public bool DisableShroud { get { return Enabled && disableShroud; } }
-		public bool PathDebug { get { return Enabled && pathDebug; } }
-		public bool UnlimitedPower { get { return Enabled && unlimitedPower; } }
-		public bool BuildAnywhere { get { return Enabled && buildAnywhere; } }
+		public bool FastCharge => Enabled && fastCharge;
+		public bool AllTech => Enabled && allTech;
+		public bool FastBuild => Enabled && fastBuild;
+		public bool DisableShroud => Enabled && disableShroud;
+		public bool PathDebug => Enabled && pathDebug;
+		public bool UnlimitedPower => Enabled && unlimitedPower;
+		public bool BuildAnywhere => Enabled && buildAnywhere;
 
 		bool enableAll;
+
+		[TranslationReference("cheat", "player", "suffix")]
+		static readonly string CheatUsed = "cheat-used";
 
 		public DeveloperMode(DeveloperModeInfo info)
 		{
@@ -177,7 +179,7 @@ namespace OpenRA.Mods.Common.Traits
 					var amount = order.ExtraData != 0 ? (int)order.ExtraData : info.Cash;
 					self.Trait<PlayerResources>().ChangeCash(amount);
 
-					debugSuffix = " ({0} credits)".F(amount);
+					debugSuffix = $" ({amount} credits)";
 					break;
 				}
 
@@ -189,7 +191,7 @@ namespace OpenRA.Mods.Common.Traits
 					foreach (var player in receivingPlayers)
 						player.PlayerActor.Trait<PlayerResources>().ChangeCash(amount);
 
-					debugSuffix = " ({0} credits)".F(amount);
+					debugSuffix = $" ({amount} credits)";
 					break;
 				}
 
@@ -274,9 +276,10 @@ namespace OpenRA.Mods.Common.Traits
 					return;
 			}
 
-			Game.Debug("Cheat used: {0} by {1}{2}", order.OrderString, self.Owner.PlayerName, debugSuffix);
+			var arguments = Translation.Arguments("cheat", order.OrderString, "player", self.Owner.PlayerName, "suffix", debugSuffix);
+			TextNotificationsManager.Debug(Game.ModData.Translation.GetString(CheatUsed, arguments));
 		}
 
-		bool IUnlocksRenderPlayer.RenderPlayerUnlocked { get { return Enabled; } }
+		bool IUnlocksRenderPlayer.RenderPlayerUnlocked => Enabled;
 	}
 }

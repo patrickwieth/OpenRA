@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -53,9 +53,8 @@ namespace OpenRA.Mods.Common.Traits.Render
 		[Desc("Paradropped unit's shadow sequence.")]
 		public readonly string ShadowSequence = null;
 
-		[PaletteReference(false)]
-		[Desc("Palette used to render the paradropped unit's shadow.")]
-		public readonly string ShadowPalette = "shadow";
+		[Desc("Color to render the paradropped unit's shadow.")]
+		public readonly Color ShadowColor = Color.FromArgb(140, 0, 0, 0);
 
 		[Desc("Shadow position relative to the paradropped unit's intended landing position.")]
 		public readonly WVec ShadowOffset = new WVec(0, 128, 0);
@@ -65,7 +64,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 
 		public override object Create(ActorInitializer init) { return new WithParachute(init.Self, this); }
 
-		public IEnumerable<IActorPreview> RenderPreviewSprites(ActorPreviewInitializer init, RenderSpritesInfo rs, string image, int facings, PaletteReference p)
+		public IEnumerable<IActorPreview> RenderPreviewSprites(ActorPreviewInitializer init, string image, int facings, PaletteReference p)
 		{
 			if (!EnabledByDefault)
 				yield break;
@@ -99,7 +98,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 				return tmpOffset.Y + tmpOffset.Z + 1;
 			};
 
-			yield return new SpriteActorPreview(anim, offset, zOffset, p, rs.Scale);
+			yield return new SpriteActorPreview(anim, offset, zOffset, p);
 		}
 	}
 
@@ -108,6 +107,8 @@ namespace OpenRA.Mods.Common.Traits.Render
 		readonly Animation shadow;
 		readonly AnimationWithOffset anim;
 		readonly WithParachuteInfo info;
+		readonly float3 shadowColor;
+		readonly float shadowAlpha;
 
 		bool renderProlonged = false;
 
@@ -129,12 +130,15 @@ namespace OpenRA.Mods.Common.Traits.Render
 			var overlay = new Animation(self.World, info.Image);
 			var body = self.Trait<BodyOrientation>();
 			anim = new AnimationWithOffset(overlay,
-				() => body.LocalToWorld(info.Offset.Rotate(body.QuantizeOrientation(self, self.Orientation))),
+				() => body.LocalToWorld(info.Offset.Rotate(body.QuantizeOrientation(self.Orientation))),
 				() => IsTraitDisabled && !renderProlonged,
 				p => RenderUtils.ZOffsetFromCenter(self, p, 1));
 
 			var rs = self.Trait<RenderSprites>();
 			rs.Add(anim, info.Palette, info.IsPlayerPalette);
+
+			shadowColor = new float3(info.ShadowColor.R, info.ShadowColor.G, info.ShadowColor.B) / 255f;
+			shadowAlpha = info.ShadowColor.A / 255f;
 		}
 
 		protected override void TraitEnabled(Actor self)
@@ -175,8 +179,10 @@ namespace OpenRA.Mods.Common.Traits.Render
 
 			var dat = self.World.Map.DistanceAboveTerrain(self.CenterPosition);
 			var pos = self.CenterPosition - new WVec(0, 0, dat.Length);
-			var palette = wr.Palette(info.ShadowPalette);
-			return new IRenderable[] { new SpriteRenderable(shadow.Image, pos, info.ShadowOffset, info.ShadowZOffset, palette, 1, true, shadow.CurrentSequence.IgnoreWorldTint) };
+			var palette = wr.Palette(info.Palette);
+			var alpha = shadow.CurrentSequence.GetAlpha(shadow.CurrentFrame);
+			var tintModifiers = shadow.CurrentSequence.IgnoreWorldTint ? TintModifiers.ReplaceColor | TintModifiers.IgnoreWorldTint : TintModifiers.ReplaceColor;
+			return new IRenderable[] { new SpriteRenderable(shadow.Image, pos, info.ShadowOffset, info.ShadowZOffset, palette, 1, shadowAlpha * alpha, shadowColor, tintModifiers, true) };
 		}
 
 		IEnumerable<Rectangle> IRender.ScreenBounds(Actor self, WorldRenderer wr)
@@ -192,7 +198,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 
 			var dat = self.World.Map.DistanceAboveTerrain(self.CenterPosition);
 			var pos = self.CenterPosition - new WVec(0, 0, dat.Length);
-			return new Rectangle[] { shadow.ScreenBounds(wr, pos, info.ShadowOffset, 1) };
+			return new Rectangle[] { shadow.ScreenBounds(wr, pos, info.ShadowOffset) };
 		}
 	}
 }

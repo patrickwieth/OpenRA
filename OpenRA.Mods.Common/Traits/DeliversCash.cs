@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -9,6 +9,7 @@
  */
 #endregion
 
+using System;
 using System.Collections.Generic;
 using OpenRA.Mods.Common.Activities;
 using OpenRA.Mods.Common.Orders;
@@ -17,7 +18,7 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
 {
-	[Desc("Donate money to actors with the `AcceptsDeliveredCash` trait.")]
+	[Desc("Donate money to actors with the `" + nameof(AcceptsDeliveredCash) + "` trait.")]
 	class DeliversCashInfo : TraitInfo
 	{
 		[Desc("The amount of cash the owner receives.")]
@@ -30,8 +31,9 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly string Type = null;
 
 		[Desc("Sound to play when delivering cash")]
-		public readonly string[] Sounds = { };
+		public readonly string[] Sounds = Array.Empty<string>();
 
+		[CursorReference]
 		[Desc("Cursor to display when hovering over a valid actor to deliver cash to.")]
 		public readonly string Cursor = "enter";
 
@@ -99,7 +101,7 @@ namespace OpenRA.Mods.Common.Traits
 			public override bool CanTargetActor(Actor self, Actor target, TargetModifiers modifiers, ref string cursor)
 			{
 				var targetInfo = target.Info.TraitInfoOrDefault<AcceptsDeliveredCashInfo>();
-				if (targetInfo == null || !targetInfo.ValidRelationships.HasStance(target.Owner.RelationshipWith(self.Owner)))
+				if (targetInfo == null || !targetInfo.ValidRelationships.HasRelationship(target.Owner.RelationshipWith(self.Owner)))
 					return false;
 
 				if (targetInfo.ValidTypes.Count == 0)
@@ -112,7 +114,7 @@ namespace OpenRA.Mods.Common.Traits
 			public override bool CanTargetFrozenActor(Actor self, FrozenActor target, TargetModifiers modifiers, ref string cursor)
 			{
 				var targetInfo = target.Info.TraitInfoOrDefault<AcceptsDeliveredCashInfo>();
-				if (targetInfo == null || !targetInfo.ValidRelationships.HasStance(target.Owner.RelationshipWith(self.Owner)))
+				if (targetInfo == null || !targetInfo.ValidRelationships.HasRelationship(target.Owner.RelationshipWith(self.Owner)))
 					return false;
 
 				if (targetInfo.ValidTypes.Count == 0)

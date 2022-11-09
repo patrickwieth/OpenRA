@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -10,14 +10,17 @@
 #endregion
 
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using OpenRA.Graphics;
+using OpenRA.Mods.Common.Terrain;
 using OpenRA.Primitives;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
 {
-	class LegacyBridgeLayerInfo : TraitInfo
+	[TraitLocation(SystemActors.World)]
+	public class LegacyBridgeLayerInfo : TraitInfo
 	{
 		[ActorReference]
 		public readonly string[] Bridges = { "bridge1", "bridge2" };
@@ -25,16 +28,20 @@ namespace OpenRA.Mods.Common.Traits
 		public override object Create(ActorInitializer init) { return new LegacyBridgeLayer(init.Self, this); }
 	}
 
-	class LegacyBridgeLayer : IWorldLoaded
+	public class LegacyBridgeLayer : IWorldLoaded
 	{
 		readonly LegacyBridgeLayerInfo info;
 		readonly Dictionary<ushort, (string Template, int Health)> bridgeTypes = new Dictionary<ushort, (string, int)>();
+		readonly ITemplatedTerrainInfo terrainInfo;
 
 		CellLayer<Bridge> bridges;
 
 		public LegacyBridgeLayer(Actor self, LegacyBridgeLayerInfo info)
 		{
 			this.info = info;
+			terrainInfo = self.World.Map.Rules.TerrainInfo as ITemplatedTerrainInfo;
+			if (terrainInfo == null)
+				throw new InvalidDataException("LegacyBridgeLayer requires a template-based tileset.");
 		}
 
 		public void WorldLoaded(World w, WorldRenderer wr)
@@ -55,7 +62,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			// Link adjacent (long)-bridges so that artwork is updated correctly
 			foreach (var p in w.ActorsWithTrait<Bridge>())
-				p.Trait.LinkNeighbouringBridges(w, this);
+				p.Trait.LinkNeighbouringBridges(this);
 		}
 
 		void ConvertBridgeToActor(World w, CPos cell)
@@ -68,7 +75,7 @@ namespace OpenRA.Mods.Common.Traits
 			var ti = w.Map.Tiles[cell];
 			var tile = ti.Type;
 			var index = ti.Index;
-			var template = w.Map.Rules.TileSet.Templates[tile];
+			var template = terrainInfo.Templates[tile];
 			var ni = cell.X - index % template.Size.X;
 			var nj = cell.Y - index / template.Size.X;
 

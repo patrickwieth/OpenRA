@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -41,7 +41,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 
 		public override object Create(ActorInitializer init) { return new WithSpriteTurret(init.Self, this); }
 
-		public IEnumerable<IActorPreview> RenderPreviewSprites(ActorPreviewInitializer init, RenderSpritesInfo rs, string image, int facings, PaletteReference p)
+		public IEnumerable<IActorPreview> RenderPreviewSprites(ActorPreviewInitializer init, string image, int facings, PaletteReference p)
 		{
 			if (!EnabledByDefault)
 				yield break;
@@ -68,7 +68,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 			else if (Palette != null)
 				p = init.WorldRenderer.Palette(Palette);
 
-			yield return new SpriteActorPreview(anim, offset, zOffset, p, rs.Scale);
+			yield return new SpriteActorPreview(anim, offset, zOffset, p);
 		}
 	}
 

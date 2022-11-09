@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -22,14 +22,14 @@ namespace OpenRA.Mods.Common.Traits.Render
 		[SequenceReference]
 		public readonly string Sequence = "build-door";
 
-		public IEnumerable<IActorPreview> RenderPreviewSprites(ActorPreviewInitializer init, RenderSpritesInfo rs, string image, int facings, PaletteReference p)
+		public IEnumerable<IActorPreview> RenderPreviewSprites(ActorPreviewInitializer init, string image, int facings, PaletteReference p)
 		{
 			var anim = new Animation(init.World, image);
 			anim.PlayFetchIndex(RenderSprites.NormalizeSequence(anim, init.GetDamageState(), Sequence), () => 0);
 
 			var bi = init.Actor.TraitInfo<BuildingInfo>();
 			var offset = bi.CenterOffset(init.World).Y + 512; // Additional 512 units move from center -> top of cell
-			yield return new SpriteActorPreview(anim, () => WVec.Zero, () => offset, p, rs.Scale);
+			yield return new SpriteActorPreview(anim, () => WVec.Zero, () => offset, p);
 		}
 
 		public override object Create(ActorInitializer init) { return new WithProductionDoorOverlay(init.Self, this); }

@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -14,6 +14,7 @@ using System.Collections.Generic;
 namespace OpenRA.Traits
 {
 	[Desc("Attach this to the `World` actor.")]
+	[TraitLocation(SystemActors.World | SystemActors.EditorWorld)]
 	public class FactionInfo : TraitInfo<Faction>
 	{
 		[Desc("This is the name exposed to the players.")]
@@ -28,7 +29,6 @@ namespace OpenRA.Traits
 		[Desc("The side that the faction belongs to. For example, England belongs to the 'Allies' side.")]
 		public readonly string Side = null;
 
-		[Translate]
 		public readonly string Description = null;
 
 		public readonly bool Selectable = true;

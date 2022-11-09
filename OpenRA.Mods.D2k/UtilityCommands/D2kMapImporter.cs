@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -13,6 +13,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using OpenRA.Mods.Common.Terrain;
 using OpenRA.Primitives;
 
 namespace OpenRA.Mods.D2k.UtilityCommands
@@ -20,6 +21,20 @@ namespace OpenRA.Mods.D2k.UtilityCommands
 	public class D2kMapImporter
 	{
 		const int MapCordonWidth = 2;
+
+		// PlayerReference colors in D2k missions only affect chat text and minimap colors because actors use specific palette colors.
+		// So using the colors from the original game's minimap.
+		public static Dictionary<string, (string Faction, Color Color)> PlayerReferenceDataByPlayerName = new Dictionary<string, (string, Color)>
+		{
+			{ "Neutral", ("Random", Color.White) },
+			{ "Atreides", ("atreides", Color.FromArgb(90, 115, 148)) },
+			{ "Harkonnen", ("harkonnen", Color.FromArgb(214, 74, 66)) },
+			{ "Ordos", ("ordos", Color.FromArgb(90, 148, 115)) },
+			{ "Corrino", ("corrino", Color.FromArgb(115, 0, 123)) },
+			{ "Fremen", ("fremen", Color.FromArgb(132, 132, 132)) },
+			{ "Smugglers", ("smuggler", Color.FromArgb(123, 41, 16)) },
+			{ "Mercenaries", ("mercenary", Color.FromArgb(156, 132, 8)) }
+		};
 
 		public static Dictionary<int, (string Actor, string Owner)> ActorDataByActorCode = new Dictionary<int, (string, string)>
 		{
@@ -260,7 +275,7 @@ namespace OpenRA.Mods.D2k.UtilityCommands
 
 		Map map;
 		Size mapSize;
-		TileSet tileSet;
+		DefaultTerrain terrainInfo;
 		List<TerrainTemplateInfo> tileSetsFromYaml;
 		int playerCount;
 
@@ -275,7 +290,7 @@ namespace OpenRA.Mods.D2k.UtilityCommands
 				stream = File.OpenRead(filename);
 
 				if (stream.Length == 0 || stream.Length % 4 != 0)
-					throw new ArgumentException("The map is in an unrecognized format!", "filename");
+					throw new ArgumentException("The map is in an unrecognized format!", nameof(filename));
 
 				Initialize(filename);
 				FillMap();
@@ -306,10 +321,12 @@ namespace OpenRA.Mods.D2k.UtilityCommands
 		void Initialize(string mapFile)
 		{
 			mapSize = new Size(stream.ReadUInt16(), stream.ReadUInt16());
+			terrainInfo = Game.ModData.DefaultTerrainInfo["ARRAKIS"] as DefaultTerrain;
 
-			tileSet = Game.ModData.DefaultTileSets["ARRAKIS"];
+			if (terrainInfo == null)
+				throw new InvalidDataException("The D2k map importer requires the DefaultTerrain parser.");
 
-			map = new Map(Game.ModData, tileSet, mapSize.Width + 2 * MapCordonWidth, mapSize.Height + 2 * MapCordonWidth)
+			map = new Map(Game.ModData, terrainInfo, mapSize.Width + 2 * MapCordonWidth, mapSize.Height + 2 * MapCordonWidth)
 			{
 				Title = Path.GetFileNameWithoutExtension(mapFile),
 				Author = "Westwood Studios"
@@ -321,8 +338,11 @@ namespace OpenRA.Mods.D2k.UtilityCommands
 
 			// Get all templates from the tileset YAML file that have at least one frame and an Image property corresponding to the requested tileset
 			// Each frame is a tile from the Dune 2000 tileset files, with the Frame ID being the index of the tile in the original file
-			tileSetsFromYaml = tileSet.Templates.Where(t => t.Value.Frames != null
-				&& t.Value.Images[0].ToLowerInvariant() == tilesetName.ToLowerInvariant()).Select(ts => ts.Value).ToList();
+			tileSetsFromYaml = terrainInfo.Templates.Where(t =>
+			{
+				var templateInfo = (DefaultTerrainTemplateInfo)t.Value;
+				return templateInfo.Frames != null && string.Equals(templateInfo.Images[0], tilesetName, StringComparison.InvariantCultureIgnoreCase);
+			}).Select(ts => ts.Value).ToList();
 
 			var players = new MapPlayers(map.Rules, playerCount);
 			map.PlayerDefinitions = players.ToMiniYaml();
@@ -351,18 +371,36 @@ namespace OpenRA.Mods.D2k.UtilityCommands
 				{
 					var kvp = ActorDataByActorCode[tileSpecialInfo];
 					if (!rules.Actors.ContainsKey(kvp.Actor.ToLowerInvariant()))
-						throw new InvalidOperationException("Actor with name {0} could not be found in the rules YAML file!".F(kvp.Actor));
-
-					var a = new ActorReference(kvp.Actor)
+						Console.WriteLine($"Ignoring unknown actor type: `{kvp.Actor.ToLowerInvariant()}`");
+					else
 					{
-						new LocationInit(locationOnMap),
-						new OwnerInit(kvp.Owner)
-					};
+						var a = new ActorReference(kvp.Actor)
+						{
+							new LocationInit(locationOnMap),
+							new OwnerInit(kvp.Owner)
+						};
 
-					map.ActorDefinitions.Add(new MiniYamlNode("Actor" + map.ActorDefinitions.Count, a.Save()));
+						map.ActorDefinitions.Add(new MiniYamlNode("Actor" + map.ActorDefinitions.Count, a.Save()));
 
-					if (kvp.Actor == "mpspawn")
-						playerCount++;
+						if (map.PlayerDefinitions.All(x => x.Value.Nodes.Single(y => y.Key == "Name").Value.Value != kvp.Owner))
+						{
+							var playerInfo = PlayerReferenceDataByPlayerName[kvp.Owner];
+							var playerReference = new PlayerReference
+							{
+								Name = kvp.Owner,
+								OwnsWorld = kvp.Owner == "Neutral",
+								NonCombatant = kvp.Owner == "Neutral",
+								Faction = playerInfo.Faction,
+								Color = playerInfo.Color
+							};
+
+							var node = new MiniYamlNode($"{nameof(PlayerReference)}@{kvp.Owner}", FieldSaver.SaveDifferences(playerReference, new PlayerReference()));
+							map.PlayerDefinitions.Add(node);
+						}
+
+						if (kvp.Actor == "mpspawn")
+							playerCount++;
+					}
 				}
 			}
 		}
@@ -380,7 +418,7 @@ namespace OpenRA.Mods.D2k.UtilityCommands
 		TerrainTile GetTile(int tileIndex)
 		{
 			// Some tiles are duplicates of other tiles, just on a different tileset
-			if (tilesetName.ToLowerInvariant() == "bloxbgbs.r8")
+			if (string.Equals(tilesetName, "bloxbgbs.r8", StringComparison.InvariantCultureIgnoreCase))
 			{
 				if (tileIndex == 355)
 					return new TerrainTile(441, 0);
@@ -389,7 +427,7 @@ namespace OpenRA.Mods.D2k.UtilityCommands
 					return new TerrainTile(442, 0);
 			}
 
-			if (tilesetName.ToLowerInvariant() == "bloxtree.r8")
+			if (string.Equals(tilesetName, "bloxtree.r8", StringComparison.InvariantCultureIgnoreCase))
 			{
 				var indices = new[] { 683, 684, 685, 706, 703, 704, 705, 726, 723, 724, 725, 746, 743, 744, 745, 747 };
 				for (var i = 0; i < 16; i++)
@@ -410,7 +448,7 @@ namespace OpenRA.Mods.D2k.UtilityCommands
 					return new TerrainTile(215, 0);
 			}
 
-			if (tilesetName.ToLowerInvariant() == "bloxwast.r8")
+			if (string.Equals(tilesetName, "bloxwast.r8", StringComparison.InvariantCultureIgnoreCase))
 			{
 				if (tileIndex == 342)
 					return new TerrainTile(250, 0);
@@ -462,14 +500,18 @@ namespace OpenRA.Mods.D2k.UtilityCommands
 			}
 
 			// Get the first tileset template that contains the Frame ID of the original map's tile with the requested index
-			var template = tileSetsFromYaml.FirstOrDefault(x => x.Frames.Contains(tileIndex));
+			var template = tileSetsFromYaml.FirstOrDefault(x => ((DefaultTerrainTemplateInfo)x).Frames.Contains(tileIndex));
 
 			// HACK: The arrakis.yaml tileset file seems to be missing some tiles, so just get a replacement for them
 			// Also used for duplicate tiles that are taken from only tileset
 			if (template == null)
 			{
 				// Just get a template that contains a tile with the same ID as requested
-				var templates = tileSet.Templates.Where(t => t.Value.Frames != null && t.Value.Frames.Contains(tileIndex));
+				var templates = terrainInfo.Templates.Where(t =>
+				{
+					var templateInfo = (DefaultTerrainTemplateInfo)t.Value;
+					return templateInfo.Frames != null && templateInfo.Frames.Contains(tileIndex);
+				});
 				if (templates.Any())
 					template = templates.First().Value;
 			}
@@ -477,13 +519,13 @@ namespace OpenRA.Mods.D2k.UtilityCommands
 			if (template == null)
 			{
 				var pos = GetCurrentTilePositionOnMap();
-				Console.WriteLine("Tile with index {0} could not be found in the tileset YAML file!".F(tileIndex));
-				Console.WriteLine("Defaulting to a \"clear\" tile for coordinates ({0}, {1})!".F(pos.X, pos.Y));
+				Console.WriteLine($"Tile with index {tileIndex} could not be found in the tileset YAML file!");
+				Console.WriteLine($"Defaulting to a \"clear\" tile for coordinates ({pos.X}, {pos.Y})!");
 				return clearTile;
 			}
 
 			var templateIndex = template.Id;
-			var frameIndex = Array.IndexOf(template.Frames, tileIndex);
+			var frameIndex = Array.IndexOf(((DefaultTerrainTemplateInfo)template).Frames, tileIndex);
 
 			return new TerrainTile(templateIndex, (byte)((frameIndex == -1) ? 0 : frameIndex));
 		}

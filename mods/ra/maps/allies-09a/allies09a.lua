@@ -1,5 +1,5 @@
 --[[
-   Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+   Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
    This file is part of OpenRA, which is free software. It is made
    available to you under the terms of the GNU General Public License
    as published by the Free Software Foundation, either version 3 of
@@ -24,14 +24,6 @@ HuntDogsGroup = { Dog701, Dog702, Dog703, Dog704, Dog705, Dog706 }
 
 KosyginType = "gnrl"
 KosyginContacted = false
-
-MissionAccomplished = function()
-	Media.PlaySpeechNotification(Greece, "MissionAccomplished")
-end
-
-MissionFailed = function()
-	Media.PlaySpeechNotification(Greece, "MissionFailed")
-end
 
 InitialAlliedReinforcements = function()
 	Trigger.AfterDelay(DateTime.Seconds(1), function()
@@ -138,7 +130,7 @@ TriggerRevealUSSRBase = function()
 			Trigger.AfterDelay(DateTime.Seconds(15), cam.Destroy)
 		end
 	end)
-end	
+end
 
 TriggerRevealUSSRFC = function()
 	Trigger.OnEnteredProximityTrigger(UpperBaseWP.CenterPosition, WDist.FromCells(10), function(a, id)
@@ -148,14 +140,14 @@ TriggerRevealUSSRFC = function()
 			Trigger.AfterDelay(DateTime.Seconds(15), cam.Destroy)
 		end
 	end)
-end	
+end
 
 TriggerExtractKosygin = function()
 	Trigger.OnEnteredProximityTrigger(KosyginExtractPoint.CenterPosition, WDist.FromCells(10), function(actor, triggerflee)
 		if actor.Type == KosyginType then
 			Reinforcements.ReinforceWithTransport(Greece, ExtractionHelicopterType, nil, ExtractionPath)
 			Trigger.RemoveProximityTrigger(triggerflee)
-			Trigger.AfterDelay(DateTime.Seconds(10), function() 
+			Trigger.AfterDelay(DateTime.Seconds(10), function()
 				Greece.MarkCompletedObjective(KosyginSurviveObjective)
 				Greece.MarkCompletedObjective(ExtractObjective)
 				Media.PlaySpeechNotification(Greece, "ObjectiveMet")
@@ -167,12 +159,11 @@ end
 WorldLoaded = function()
 	Greece = Player.GetPlayer("Greece")
 	USSR = Player.GetPlayer("USSR")
-	Camera.Position = DefaultCameraPosition.CenterPosition	
+	Camera.Position = DefaultCameraPosition.CenterPosition
+	InitObjectives(Greece)
 	UseSpyObjective = Greece.AddObjective("Infiltrate the Soviet command center and\ncontact Kosygin.")
 	KosyginSurviveObjective = Greece.AddObjective("Kosygin must survive.")
 	USSRObj = USSR.AddObjective("Eliminate all Allied forces.")
-	Trigger.OnPlayerLost(Greece, MissionFailed)
-	Trigger.OnPlayerWon(Greece, MissionAccomplished)
 	InitialAlliedReinforcements()
 	InfiltrateForwardCenter()
 	InitialSovietPatrols()

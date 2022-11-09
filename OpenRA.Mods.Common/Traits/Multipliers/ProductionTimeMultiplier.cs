@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -9,8 +9,8 @@
  */
 #endregion
 
+using System;
 using System.Collections.Generic;
-using System.Linq;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
@@ -22,14 +22,14 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly int Multiplier = 100;
 
 		[Desc("Only apply this time change if owner has these prerequisites.")]
-		public readonly string[] Prerequisites = { };
+		public readonly string[] Prerequisites = Array.Empty<string>();
 
 		[Desc("Queues that this time will apply.")]
 		public readonly HashSet<string> Queue = new HashSet<string>();
 
 		int IProductionTimeModifierInfo.GetProductionTimeModifier(TechTree techTree, string queue)
 		{
-			if ((!Queue.Any() || Queue.Contains(queue)) && (!Prerequisites.Any() || techTree.HasPrerequisites(Prerequisites)))
+			if ((Queue.Count == 0 || Queue.Contains(queue)) && (Prerequisites.Length == 0 || techTree.HasPrerequisites(Prerequisites)))
 				return Multiplier;
 
 			return 100;

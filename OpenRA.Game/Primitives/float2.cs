@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -16,9 +16,9 @@ using OpenRA.Primitives;
 
 namespace OpenRA
 {
-	[SuppressMessage("StyleCop.CSharp.NamingRules", "SA1300:ElementMustBeginWithUpperCaseLetter", Justification = "Mimic a built-in type alias.")]
+	[SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Mimic a built-in type alias.")]
 	[StructLayout(LayoutKind.Sequential)]
-	public struct float2 : IEquatable<float2>
+	public readonly struct float2 : IEquatable<float2>
 	{
 		public readonly float X, Y;
 
@@ -93,8 +93,8 @@ namespace OpenRA
 		public static float2 Max(float2 a, float2 b) { return new float2(Math.Max(a.X, b.X), Math.Max(a.Y, b.Y)); }
 		public static float2 Min(float2 a, float2 b) { return new float2(Math.Min(a.X, b.X), Math.Min(a.Y, b.Y)); }
 
-		public float LengthSquared { get { return X * X + Y * Y; } }
-		public float Length { get { return (float)Math.Sqrt(LengthSquared); } }
+		public float LengthSquared => X * X + Y * Y;
+		public float Length => (float)Math.Sqrt(LengthSquared);
 	}
 
 	public class EWMA

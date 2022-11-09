@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -13,7 +13,6 @@ using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Activities;
 using OpenRA.Mods.Common.Traits;
-using OpenRA.Primitives;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Activities
@@ -24,7 +23,7 @@ namespace OpenRA.Mods.Common.Activities
 		readonly HarvesterInfo harvInfo;
 		readonly IFacing facing;
 		readonly ResourceClaimLayer claimLayer;
-		readonly ResourceLayer resLayer;
+		readonly IResourceLayer resourceLayer;
 		readonly BodyOrientation body;
 		readonly IMove move;
 		readonly CPos targetCell;
@@ -38,7 +37,7 @@ namespace OpenRA.Mods.Common.Activities
 			body = self.Trait<BodyOrientation>();
 			move = self.Trait<IMove>();
 			claimLayer = self.World.WorldActor.Trait<ResourceClaimLayer>();
-			resLayer = self.World.WorldActor.Trait<ResourceLayer>();
+			resourceLayer = self.World.WorldActor.Trait<IResourceLayer>();
 			this.targetCell = targetCell;
 			notifyHarvesterActions = self.TraitsImplementing<INotifyHarvesterAction>().ToArray();
 		}
@@ -53,6 +52,9 @@ namespace OpenRA.Mods.Common.Activities
 
 		public override bool Tick(Actor self)
 		{
+			if (harv.IsTraitDisabled)
+				Cancel(self, true);
+
 			if (IsCanceling || harv.IsFull)
 				return true;
 
@@ -66,7 +68,7 @@ namespace OpenRA.Mods.Common.Activities
 				return false;
 			}
 
-			if (!harv.CanHarvestCell(self, self.Location))
+			if (!harv.CanHarvestCell(self.Location))
 				return true;
 
 			// Turn to one of the harvestable facings
@@ -81,14 +83,14 @@ namespace OpenRA.Mods.Common.Activities
 				}
 			}
 
-			var resource = resLayer.Harvest(self.Location);
-			if (resource == null)
+			var resource = resourceLayer.GetResource(self.Location);
+			if (resource.Type == null || resourceLayer.RemoveResource(resource.Type, self.Location) != 1)
 				return true;
 
-			harv.AcceptResource(self, resource);
+			harv.AcceptResource(self, resource.Type);
 
 			foreach (var t in notifyHarvesterActions)
-				t.Harvested(self, resource);
+				t.Harvested(self, resource.Type);
 
 			QueueChild(new Wait(harvInfo.BaleLoadDelay));
 			return false;

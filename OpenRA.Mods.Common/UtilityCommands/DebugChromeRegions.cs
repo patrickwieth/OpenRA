@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -19,7 +19,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 {
 	class DebugChromeRegions : IUtilityCommand
 	{
-		string IUtilityCommand.Name { get { return "--debug-chrome-regions"; } }
+		string IUtilityCommand.Name => "--debug-chrome-regions";
 
 		bool IUtilityCommand.ValidateArguments(string[] args)
 		{
@@ -63,14 +63,14 @@ namespace OpenRA.Mods.Common.UtilityCommands
 					{
 						var r = s.Bounds;
 						if (c.Value.PanelSides.HasSide(s.PanelSides))
-							regions.Add("[\"{0}.<{1}>\",{2},{3},{4},{5}]".F(c.Key, s.PanelSides, r.X, r.Y, r.Width, r.Height));
+							regions.Add($"[\"{c.Key}.<{s.PanelSides}>\",{r.X},{r.Y},{r.Width},{r.Height}]");
 					}
 				}
 
 				foreach (var kv in c.Value.Regions)
 				{
 					var r = kv.Value;
-					regions.Add("[\"{0}\",{1},{2},{3},{4}]".F(c.Key + "." + kv.Key, r.X, r.Y, r.Width, r.Height));
+					regions.Add($"[\"{c.Key}.{kv.Key}\",{r.X},{r.Y},{r.Width},{r.Height}]");
 				}
 			}
 
@@ -104,6 +104,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 			"		for (var j = 0; j < ctx.canvas.height / 4; j++)",
 			"			for (var i = j % 2; i < ctx.canvas.width / 4; i += 2)",
 			"				ctx.fillRect(4 * i, 4 * j, 4, 4);",
+			"		ctx.imageSmoothingEnabled = false;",
 			"		ctx.drawImage(image, 0, 0, c.width, c.height);",
 			"		ctx.strokeStyle = \"#ffff00\";",
 			"		ctx.lineWidth = 1;",

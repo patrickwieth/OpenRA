@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -15,6 +15,7 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
 {
+	[TraitLocation(SystemActors.World)]
 	public class ExitsDebugOverlayManagerInfo : TraitInfo
 	{
 		[Desc("The font used to draw cell vectors. Should match the value as-is in the Fonts section of the mod manifest (do not convert to lowercase).")]
@@ -26,7 +27,9 @@ namespace OpenRA.Mods.Common.Traits
 	public class ExitsDebugOverlayManager : IWorldLoaded, IChatCommand
 	{
 		const string CommandName = "exits-overlay";
-		const string CommandHelp = "Displays exits for factories.";
+
+		[TranslationReference]
+		const string CommandDescription = "exits-debug-overlay-description";
 
 		public readonly SpriteFont Font;
 		public readonly ExitsDebugOverlayManagerInfo Info;
@@ -41,7 +44,7 @@ namespace OpenRA.Mods.Common.Traits
 			Info = info;
 
 			if (!Game.Renderer.Fonts.TryGetValue(info.Font, out Font))
-				throw new YamlException("Could not find font '{0}'".F(info.Font));
+				throw new YamlException($"Could not find font '{info.Font}'");
 		}
 
 		void IWorldLoaded.WorldLoaded(World w, WorldRenderer wr)
@@ -53,7 +56,7 @@ namespace OpenRA.Mods.Common.Traits
 				return;
 
 			console.RegisterCommand(CommandName, this);
-			help.RegisterHelp(CommandName, CommandHelp);
+			help.RegisterHelp(CommandName, CommandDescription);
 		}
 
 		void IChatCommand.InvokeCommand(string command, string arg)

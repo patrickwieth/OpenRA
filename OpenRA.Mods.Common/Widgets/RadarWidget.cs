@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -22,6 +22,9 @@ namespace OpenRA.Mods.Common.Widgets
 {
 	public sealed class RadarWidget : Widget, IDisposable
 	{
+		public readonly int ColorFog = Color.FromArgb(128, Color.Black).ToArgb();
+		public readonly int ColorShroud = Color.Black.ToArgb();
+
 		public string WorldInteractionController = null;
 		public int AnimationLength = 5;
 		public string RadarOnlineSound = null;
@@ -34,10 +37,12 @@ namespace OpenRA.Mods.Common.Widgets
 		readonly World world;
 		readonly WorldRenderer worldRenderer;
 		readonly RadarPings radarPings;
+		readonly IRadarTerrainLayer[] radarTerrainLayers;
 		readonly bool isRectangularIsometric;
 		readonly int cellWidth;
 		readonly int previewWidth;
 		readonly int previewHeight;
+		readonly string worldDefaultCursor = ChromeMetrics.Get<string>("WorldDefaultCursor");
 
 		float radarMinimapHeight;
 		int frame;
@@ -68,7 +73,7 @@ namespace OpenRA.Mods.Common.Widgets
 			this.worldRenderer = worldRenderer;
 
 			radarPings = world.WorldActor.TraitOrDefault<RadarPings>();
-
+			radarTerrainLayers = world.WorldActor.TraitsImplementing<IRadarTerrainLayer>().ToArray();
 			isRectangularIsometric = world.Map.Grid.Type == MapGridType.RectangularIsometric;
 			cellWidth = isRectangularIsometric ? 2 : 1;
 			previewWidth = world.Map.MapSize.X;
@@ -151,7 +156,8 @@ namespace OpenRA.Mods.Common.Widgets
 				else
 				{
 					world.Map.Tiles.CellEntryChanged -= CellTerrainColorChanged;
-					world.Map.CustomTerrain.CellEntryChanged -= CellTerrainColorChanged;
+					foreach (var rtl in radarTerrainLayers)
+						rtl.CellEntryChanged -= CellTerrainColorChanged;
 				}
 
 				if (newPlayerRadarTerrain != null)
@@ -159,7 +165,8 @@ namespace OpenRA.Mods.Common.Widgets
 				else
 				{
 					world.Map.Tiles.CellEntryChanged += CellTerrainColorChanged;
-					world.Map.CustomTerrain.CellEntryChanged += CellTerrainColorChanged;
+					foreach (var rtl in radarTerrainLayers)
+						rtl.CellEntryChanged += CellTerrainColorChanged;
 				}
 
 				playerRadarTerrain = newPlayerRadarTerrain;
@@ -172,24 +179,35 @@ namespace OpenRA.Mods.Common.Widgets
 
 			// The minimap is drawn in cell space, so we need to
 			// unproject the bounds to find the extent of the map.
+			// TODO: This attempt to find the map bounds accounting for projected cell heights is bogus.
+			// When a map with height is involved, the bounds may not be optimal, this needs fixing.
 			var projectedLeft = map.Bounds.Left;
 			var projectedRight = map.Bounds.Right;
 			var projectedTop = map.Bounds.Top;
 			var projectedBottom = map.Bounds.Bottom;
 			var top = int.MaxValue;
 			var bottom = int.MinValue;
-			var left = map.Bounds.Left * cellWidth;
-			var right = map.Bounds.Right * cellWidth;
+			var left = projectedLeft * cellWidth;
+			var right = projectedRight * cellWidth;
 
 			for (var x = projectedLeft; x < projectedRight; x++)
 			{
+				// Unprojects check can fail and return an empty list.
+				// This happens when the map tile is outside the map projected space,
+				// e.g. if a tile on the bottom edge has a height > 0.
+				// Guard against this by using the map bounds as a fallback.
 				var allTop = map.Unproject(new PPos(x, projectedTop));
 				var allBottom = map.Unproject(new PPos(x, projectedBottom));
-				if (allTop.Any())
-					top = Math.Min(top, allTop.MinBy(uv => uv.V).V);
 
-				if (allBottom.Any())
-					bottom = Math.Max(bottom, allBottom.MinBy(uv => uv.V).V);
+				if (allTop.Count > 0)
+					top = Math.Min(top, allTop.MinBy(uv => uv.V).V);
+				else
+					top = map.Bounds.Top;
+
+				if (allBottom.Count > 0)
+					bottom = Math.Max(bottom, allBottom.MaxBy(uv => uv.V).V);
+				else
+					bottom = map.Bounds.Bottom;
 			}
 
 			var b = Rectangle.FromLTRB(left, top, right, bottom);
@@ -205,7 +223,8 @@ namespace OpenRA.Mods.Common.Widgets
 
 		void UpdateTerrainColor(MPos uv)
 		{
-			var colorPair = playerRadarTerrain != null && playerRadarTerrain.IsInitialized ? playerRadarTerrain[uv] : PlayerRadarTerrain.GetColor(world.Map, uv);
+			var colorPair = playerRadarTerrain != null && playerRadarTerrain.IsInitialized ?
+				playerRadarTerrain[uv] : PlayerRadarTerrain.GetColor(world.Map, radarTerrainLayers, uv);
 			var leftColor = colorPair.Left;
 			var rightColor = colorPair.Right;
 
@@ -235,10 +254,11 @@ namespace OpenRA.Mods.Common.Widgets
 		void UpdateShroudCell(PPos puv)
 		{
 			var color = 0;
-			if (!currentPlayer.Shroud.IsExplored(puv))
-				color = Color.Black.ToArgb();
-			else if (!currentPlayer.Shroud.IsVisible(puv))
-				color = Color.FromArgb(128, Color.Black).ToArgb();
+			var cv = currentPlayer.Shroud.GetVisibility(puv);
+			if (!cv.HasFlag(Shroud.CellVisibility.Explored))
+				color = ColorShroud;
+			else if (!cv.HasFlag(Shroud.CellVisibility.Visible))
+				color = ColorFog;
 
 			var stride = radarSheet.Size.Width;
 			unsafe
@@ -283,7 +303,7 @@ namespace OpenRA.Mods.Common.Widgets
 
 			var cursor = world.OrderGenerator.GetCursor(world, cell, worldPixel, mi);
 			if (cursor == null)
-				return "default";
+				return worldDefaultCursor;
 
 			return Game.ModData.CursorProvider.HasCursorSequence(cursor + "-minimap") ? cursor + "-minimap" : cursor;
 		}
@@ -338,12 +358,11 @@ namespace OpenRA.Mods.Common.Widgets
 			var o = new float2(mapRect.Location.X, mapRect.Location.Y + world.Map.Bounds.Height * previewScale * (1 - radarMinimapHeight) / 2);
 			var s = new float2(mapRect.Size.Width, mapRect.Size.Height * radarMinimapHeight);
 
-			var rsr = Game.Renderer.RgbaSpriteRenderer;
-			rsr.DrawSprite(terrainSprite, o, s);
-			rsr.DrawSprite(actorSprite, o, s);
+			WidgetUtils.DrawSprite(terrainSprite, o, s);
+			WidgetUtils.DrawSprite(actorSprite, o, s);
 
 			if (shroud != null)
-				rsr.DrawSprite(shroudSprite, o, s);
+				WidgetUtils.DrawSprite(shroudSprite, o, s);
 
 			// Draw viewport rect
 			if (hasRadar)

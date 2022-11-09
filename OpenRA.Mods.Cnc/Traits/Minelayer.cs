@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -12,7 +12,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using OpenRA;
 using OpenRA.Graphics;
 using OpenRA.Mods.Cnc.Activities;
 using OpenRA.Mods.Common.Orders;
@@ -50,11 +49,20 @@ namespace OpenRA.Mods.Cnc.Traits
 		[Desc("Only allow laying mines on listed terrain types. Leave empty to allow all terrain types.")]
 		public readonly HashSet<string> TerrainTypes = new HashSet<string>();
 
+		[CursorReference]
 		[Desc("Cursor to display when able to lay a mine.")]
 		public readonly string DeployCursor = "deploy";
 
+		[CursorReference]
 		[Desc("Cursor to display when unable to lay a mine.")]
 		public readonly string DeployBlockedCursor = "deploy-blocked";
+
+		[CursorReference]
+		[Desc("Cursor to display when able to lay a mine.")]
+		public readonly string AbilityCursor = "ability";
+
+		[Desc("Ammo the minelayer consumes per mine.")]
+		public readonly int AmmoUsage = 1;
 
 		public override object Create(ActorInitializer init) { return new Minelayer(init.Self, this); }
 	}
@@ -75,8 +83,8 @@ namespace OpenRA.Mods.Cnc.Traits
 			this.self = self;
 
 			var tileset = self.World.Map.Tileset.ToLowerInvariant();
-			if (self.World.Map.Rules.Sequences.HasSequence("overlay", "{0}-{1}".F(Info.TileValidName, tileset)))
-				Tile = self.World.Map.Rules.Sequences.GetSequence("overlay", "{0}-{1}".F(Info.TileValidName, tileset)).GetSprite(0);
+			if (self.World.Map.Rules.Sequences.HasSequence("overlay", $"{Info.TileValidName}-{tileset}"))
+				Tile = self.World.Map.Rules.Sequences.GetSequence("overlay", $"{Info.TileValidName}-{tileset}").GetSprite(0);
 			else
 				Tile = self.World.Map.Rules.Sequences.GetSequence("overlay", Info.TileValidName).GetSprite(0);
 		}
@@ -85,7 +93,7 @@ namespace OpenRA.Mods.Cnc.Traits
 		{
 			get
 			{
-				yield return new BeginMinefieldOrderTargeter();
+				yield return new BeginMinefieldOrderTargeter(Info.AbilityCursor);
 				yield return new DeployOrderTargeter("PlaceMine", 5, () => IsCellAcceptable(self, self.Location) ? Info.DeployCursor : Info.DeployBlockedCursor);
 			}
 		}
@@ -96,8 +104,8 @@ namespace OpenRA.Mods.Cnc.Traits
 			{
 				case "BeginMinefield":
 					var start = self.World.Map.CellContaining(target.CenterPosition);
-					if (self.World.OrderGenerator is MinefieldOrderGenerator)
-						((MinefieldOrderGenerator)self.World.OrderGenerator).AddMinelayer(self, start);
+					if (self.World.OrderGenerator is MinefieldOrderGenerator generator)
+						generator.AddMinelayer(self);
 					else
 						self.World.OrderGenerator = new MinefieldOrderGenerator(self, start, queued);
 
@@ -200,11 +208,11 @@ namespace OpenRA.Mods.Cnc.Traits
 		{
 			readonly List<Actor> minelayers;
 			readonly Minelayer minelayer;
-			readonly Sprite tileOk;
-			readonly Sprite tileUnknown;
-			readonly Sprite tileBlocked;
+			readonly Sprite validTile, unknownTile, blockedTile;
+			readonly float validAlpha, unknownAlpha, blockedAlpha;
 			readonly CPos minefieldStart;
 			readonly bool queued;
+			readonly string cursor;
 
 			public MinefieldOrderGenerator(Actor a, CPos xy, bool queued)
 			{
@@ -214,23 +222,49 @@ namespace OpenRA.Mods.Cnc.Traits
 
 				minelayer = a.Trait<Minelayer>();
 				var tileset = a.World.Map.Tileset.ToLowerInvariant();
-				if (a.World.Map.Rules.Sequences.HasSequence("overlay", "{0}-{1}".F(minelayer.Info.TileValidName, tileset)))
-					tileOk = a.World.Map.Rules.Sequences.GetSequence("overlay", "{0}-{1}".F(minelayer.Info.TileValidName, tileset)).GetSprite(0);
+				if (a.World.Map.Rules.Sequences.HasSequence("overlay", $"{minelayer.Info.TileValidName}-{tileset}"))
+				{
+					var validSequence = a.World.Map.Rules.Sequences.GetSequence("overlay", $"{minelayer.Info.TileValidName}-{tileset}");
+					validTile = validSequence.GetSprite(0);
+					validAlpha = validSequence.GetAlpha(0);
+				}
 				else
-					tileOk = a.World.Map.Rules.Sequences.GetSequence("overlay", minelayer.Info.TileValidName).GetSprite(0);
+				{
+					var validSequence = a.World.Map.Rules.Sequences.GetSequence("overlay", minelayer.Info.TileValidName);
+					validTile = validSequence.GetSprite(0);
+					validAlpha = validSequence.GetAlpha(0);
+				}
 
-				if (a.World.Map.Rules.Sequences.HasSequence("overlay", "{0}-{1}".F(minelayer.Info.TileUnknownName, tileset)))
-					tileUnknown = a.World.Map.Rules.Sequences.GetSequence("overlay", "{0}-{1}".F(minelayer.Info.TileUnknownName, tileset)).GetSprite(0);
+				if (a.World.Map.Rules.Sequences.HasSequence("overlay", $"{minelayer.Info.TileUnknownName}-{tileset}"))
+				{
+					var unknownSequence = a.World.Map.Rules.Sequences.GetSequence("overlay", $"{minelayer.Info.TileUnknownName}-{tileset}");
+					unknownTile = unknownSequence.GetSprite(0);
+					unknownAlpha = unknownSequence.GetAlpha(0);
+				}
 				else
-					tileUnknown = a.World.Map.Rules.Sequences.GetSequence("overlay", minelayer.Info.TileUnknownName).GetSprite(0);
+				{
+					var unknownSequence = a.World.Map.Rules.Sequences.GetSequence("overlay", minelayer.Info.TileUnknownName);
+					unknownTile = unknownSequence.GetSprite(0);
+					unknownAlpha = unknownSequence.GetAlpha(0);
+				}
 
-				if (a.World.Map.Rules.Sequences.HasSequence("overlay", "{0}-{1}".F(minelayer.Info.TileInvalidName, tileset)))
-					tileBlocked = a.World.Map.Rules.Sequences.GetSequence("overlay", "{0}-{1}".F(minelayer.Info.TileInvalidName, tileset)).GetSprite(0);
+				if (a.World.Map.Rules.Sequences.HasSequence("overlay", $"{minelayer.Info.TileInvalidName}-{tileset}"))
+				{
+					var blockedSequence = a.World.Map.Rules.Sequences.GetSequence("overlay", $"{minelayer.Info.TileInvalidName}-{tileset}");
+					blockedTile = blockedSequence.GetSprite(0);
+					blockedAlpha = blockedSequence.GetAlpha(0);
+				}
 				else
-					tileBlocked = a.World.Map.Rules.Sequences.GetSequence("overlay", minelayer.Info.TileInvalidName).GetSprite(0);
+				{
+					var blockedSequence = a.World.Map.Rules.Sequences.GetSequence("overlay", minelayer.Info.TileInvalidName);
+					blockedTile = blockedSequence.GetSprite(0);
+					blockedAlpha = blockedSequence.GetAlpha(0);
+				}
+
+				cursor = minelayer.Info.AbilityCursor;
 			}
 
-			public void AddMinelayer(Actor a, CPos xy)
+			public void AddMinelayer(Actor a)
 			{
 				minelayers.Add(a);
 			}
@@ -255,7 +289,7 @@ namespace OpenRA.Mods.Cnc.Traits
 			{
 				minelayers.Clear();
 				minelayers.AddRange(selected.Where(s => !s.IsDead && s.Info.HasTraitInfo<MinelayerInfo>()));
-				if (!minelayers.Any())
+				if (minelayers.Count == 0)
 					world.CancelInputMode();
 			}
 
@@ -276,18 +310,31 @@ namespace OpenRA.Mods.Cnc.Traits
 				var pal = wr.Palette(TileSet.TerrainPaletteInternalName);
 				foreach (var c in minefield)
 				{
-					var tile = tileOk;
+					var tile = validTile;
+					var alpha = validAlpha;
 					if (!world.Map.Contains(c))
-						tile = tileBlocked;
+					{
+						tile = blockedTile;
+						alpha = blockedAlpha;
+					}
 					else if (world.ShroudObscures(c))
-						tile = tileBlocked;
+					{
+						tile = blockedTile;
+						alpha = blockedAlpha;
+					}
 					else if (world.FogObscures(c))
-						tile = tileUnknown;
+					{
+						tile = unknownTile;
+						alpha = unknownAlpha;
+					}
 					else if (!this.minelayer.IsCellAcceptable(minelayer, c)
 						|| !movement.CanEnterCell(c, null, BlockedByActor.Immovable) || (mobile != null && !mobile.CanStayInCell(c)))
-						tile = tileBlocked;
+					{
+						tile = blockedTile;
+						alpha = blockedAlpha;
+					}
 
-					yield return new SpriteRenderable(tile, world.Map.CenterOfCell(c), WVec.Zero, -511, pal, 1f, true, true);
+					yield return new SpriteRenderable(tile, world.Map.CenterOfCell(c), WVec.Zero, -511, pal, 1f, alpha, float3.Ones, TintModifiers.IgnoreWorldTint, true);
 				}
 			}
 
@@ -295,17 +342,25 @@ namespace OpenRA.Mods.Cnc.Traits
 
 			protected override string GetCursor(World world, CPos cell, int2 worldPixel, MouseInput mi)
 			{
-				return "ability";
+				return cursor;
 			}
 		}
 
 		class BeginMinefieldOrderTargeter : IOrderTargeter
 		{
-			public string OrderID { get { return "BeginMinefield"; } }
-			public int OrderPriority { get { return 5; } }
+			public string OrderID => "BeginMinefield";
+			public int OrderPriority => 5;
+
+			readonly string cursor;
+
+			public BeginMinefieldOrderTargeter(string cursor)
+			{
+				this.cursor = cursor;
+			}
+
 			public bool TargetOverridesSelection(Actor self, in Target target, List<Actor> actorsAt, CPos xy, TargetModifiers modifiers) { return true; }
 
-			public bool CanTarget(Actor self, in Target target, List<Actor> othersAtTarget, ref TargetModifiers modifiers, ref string cursor)
+			public bool CanTarget(Actor self, in Target target, ref TargetModifiers modifiers, ref string cursor)
 			{
 				if (target.Type != TargetType.Terrain)
 					return false;
@@ -314,7 +369,8 @@ namespace OpenRA.Mods.Cnc.Traits
 				if (!self.World.Map.Contains(location))
 					return false;
 
-				cursor = "ability";
+				cursor = this.cursor;
+
 				IsQueued = modifiers.HasModifier(TargetModifiers.ForceQueue);
 
 				return modifiers.HasModifier(TargetModifiers.ForceAttack);

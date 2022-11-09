@@ -3,6 +3,7 @@ Metadata:
 	Version: 8acb0899e983b25453cfb5d4d436bf3cbc645d92
 	Website: https://www.openra.net
 	WebIcon32: https://www.openra.net/images/icons/cnc_32x32.png
+	WindowTitle: OpenRA - Tiberian Dawn
 
 PackageFormats: Mix
 
@@ -24,12 +25,14 @@ Packages:
 	~scores2.mix
 	~scores-covertops.mix
 	~transit.mix
+	~general.mix
 	cnc|bits/snow.mix
 	cnc|bits
 	cnc|bits/jungle
 	cnc|bits/desert
 	cnc|bits/ss
-	cnc|bits/scripts
+	cnc|scripts
+	common|scripts
 	cnc|uibits
 
 MapFolders:
@@ -113,6 +116,7 @@ ChromeLayout:
 	cnc|chrome/gamesave-loading.yaml
 	cnc|chrome/ingame.yaml
 	cnc|chrome/ingame-chat.yaml
+	common|chrome/ingame-transients.yaml
 	cnc|chrome/ingame-menu.yaml
 	cnc|chrome/ingame-debug.yaml
 	cnc|chrome/ingame-infochat.yaml
@@ -121,6 +125,7 @@ ChromeLayout:
 	cnc|chrome/ingame-infoscripterror.yaml
 	cnc|chrome/ingame-infoobjectives.yaml
 	cnc|chrome/ingame-infostats.yaml
+	cnc|chrome/ingame-info-lobby-options.yaml
 	cnc|chrome/ingame-debuginfo.yaml
 	cnc|chrome/music.yaml
 	cnc|chrome/settings.yaml
@@ -135,6 +140,10 @@ ChromeLayout:
 	cnc|chrome/assetbrowser.yaml
 	cnc|chrome/missionbrowser.yaml
 	cnc|chrome/editor.yaml
+	common|chrome/text-notifications.yaml
+
+Translations:
+	common|languages/en.ftl
 
 Voices:
 	cnc|audio/voices.yaml
@@ -145,9 +154,6 @@ Notifications:
 Music:
 	cnc|audio/music.yaml
 
-Translations:
-	cnc|languages/english.yaml
-
 Hotkeys:
 	common|hotkeys/game.yaml
 	common|hotkeys/observer.yaml
@@ -155,6 +161,9 @@ Hotkeys:
 	common|hotkeys/production-peractor.yaml
 	common|hotkeys/supportpowers.yaml
 	common|hotkeys/viewport.yaml
+	common|hotkeys/chat.yaml
+	common|hotkeys/editor.yaml
+	common|hotkeys/control-groups.yaml
 	cnc|hotkeys.yaml
 
 LoadScreen: CncLoadScreen
@@ -208,17 +217,23 @@ Fonts:
 		Ascender: 24
 
 Missions:
-	./mods/cnc/missions.yaml
+	cnc|missions.yaml
 
 MapGrid:
 	TileSize: 24,24
 	Type: Rectangular
+
+DefaultOrderGenerator: UnitOrderGenerator
 
 SupportsMapsFrom: cnc
 
 SoundFormats: Aud, Wav
 
 SpriteFormats: ShpTD, TmpTD, ShpTS, TmpRA
+
+VideoFormats: Vqa, Wsa
+
+TerrainFormat: DefaultTerrain
 
 SpriteSequenceFormat: ClassicTilesetSpecificSpriteSequence
 	TilesetExtensions:
@@ -231,36 +246,37 @@ SpriteSequenceFormat: ClassicTilesetSpecificSpriteSequence
 ModelSequenceFormat: PlaceholderModelSequence
 
 AssetBrowser:
-	SupportedExtensions: .shp, .tem, .des, .sno, .jun, .vqa
+	SpriteExtensions: .shp, .tem, .win, .sno, .des, .jun
+	AudioExtensions: .aud, .wav, .v00, .v01, .v02, .v03, .var
+	VideoExtensions: .vqa, .wsa
 
 GameSpeeds:
-	slowest:
-		Name: Slowest
-		Timestep: 80
-		OrderLatency: 2
-	slower:
-		Name: Slower
-		Timestep: 50
-		OrderLatency: 3
-	default:
-		Name: Normal
-		Timestep: 40
-		OrderLatency: 3
-	fast:
-		Name: Fast
-		Timestep: 35
-		OrderLatency: 4
-	faster:
-		Name: Faster
-		Timestep: 30
-		OrderLatency: 4
-	fastest:
-		Name: Fastest
-		Timestep: 20
-		OrderLatency: 6
-
-ColorValidator:
-	TeamColorPresets: f70606, ff7a22, f8d3b3, f8e947, 94b319, f335a0, a64d6c, ce08f9, f5b2db, 12b572, 502048, 1d06f7, 328dff, 78dbf8, cef6b1, 391d1d
+	DefaultSpeed: default
+	Speeds:
+		slowest:
+			Name: slowest
+			Timestep: 80
+			OrderLatency: 2
+		slower:
+			Name: slower
+			Timestep: 50
+			OrderLatency: 3
+		default:
+			Name: normal
+			Timestep: 40
+			OrderLatency: 3
+		fast:
+			Name: fast
+			Timestep: 35
+			OrderLatency: 4
+		faster:
+			Name: faster
+			Timestep: 30
+			OrderLatency: 4
+		fastest:
+			Name: fastest
+			Timestep: 20
+			OrderLatency: 6
 
 ModContent:
 	InstallPromptMessage: Tiberian Dawn requires artwork and audio from the original game.\n\nQuick Install will automatically download this content (without music\nor videos) from a mirror of the 2007 C&C Gold freeware release.\n\nAdvanced Install includes options for copying the music, videos, and\nother content from an original game disc or digital installation.

@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -49,20 +49,19 @@ namespace OpenRA.Mods.D2k.Traits
 
 		public override object Create(ActorInitializer init) { return new SpiceBloom(init.Self, this); }
 
-		public IEnumerable<IActorPreview> RenderPreviewSprites(ActorPreviewInitializer init, RenderSpritesInfo rs, string image, int facings, PaletteReference p)
+		public IEnumerable<IActorPreview> RenderPreviewSprites(ActorPreviewInitializer init, string image, int facings, PaletteReference p)
 		{
 			var anim = new Animation(init.World, image);
 			anim.PlayRepeating(RenderSprites.NormalizeSequence(anim, init.GetDamageState(), GrowthSequences[0]));
 
-			yield return new SpriteActorPreview(anim, () => WVec.Zero, () => 0, p, rs.Scale);
+			yield return new SpriteActorPreview(anim, () => WVec.Zero, () => 0, p);
 		}
 	}
 
 	public class SpiceBloom : ITick, INotifyKilled
 	{
 		readonly SpiceBloomInfo info;
-		readonly ResourceType resType;
-		readonly ResourceLayer resLayer;
+		readonly IResourceLayer resourceLayer;
 		readonly Animation body;
 		readonly Animation spurt;
 		readonly int growTicks;
@@ -75,8 +74,7 @@ namespace OpenRA.Mods.D2k.Traits
 		{
 			this.info = info;
 
-			resLayer = self.World.WorldActor.Trait<ResourceLayer>();
-			resType = self.World.WorldActor.TraitsImplementing<ResourceType>().First(t => t.Info.Type == info.ResourceType);
+			resourceLayer = self.World.WorldActor.Trait<IResourceLayer>();
 
 			var rs = self.Trait<RenderSprites>();
 			body = new Animation(self.World, rs.GetImage(self));
@@ -126,7 +124,11 @@ namespace OpenRA.Mods.D2k.Traits
 
 			for (var i = 0; i < pieces; i++)
 			{
-				var cell = cells.SkipWhile(p => resLayer.GetResourceType(p) == resType && resLayer.IsFull(p)).Cast<CPos?>().RandomOrDefault(self.World.SharedRandom);
+				var cell = cells
+					.SkipWhile(p => resourceLayer.GetResource(p).Type == info.ResourceType && !resourceLayer.CanAddResource(info.ResourceType, p))
+					.Cast<CPos?>()
+					.RandomOrDefault(self.World.SharedRandom);
+
 				if (cell == null)
 					cell = cells.Random(self.World.SharedRandom);
 
@@ -159,7 +161,7 @@ namespace OpenRA.Mods.D2k.Traits
 						if (projectile != null)
 							self.World.Add(projectile);
 
-						if (args.Weapon.Report != null && args.Weapon.Report.Any())
+						if (args.Weapon.Report != null && args.Weapon.Report.Length > 0)
 							Game.Sound.Play(SoundType.World, args.Weapon.Report, self.World, self.CenterPosition);
 					}
 				});

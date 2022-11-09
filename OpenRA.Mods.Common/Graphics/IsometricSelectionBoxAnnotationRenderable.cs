@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -15,7 +15,7 @@ using OpenRA.Primitives;
 
 namespace OpenRA.Mods.Common.Graphics
 {
-	public struct IsometricSelectionBoxAnnotationRenderable : IRenderable, IFinalizedRenderable
+	public class IsometricSelectionBoxAnnotationRenderable : IRenderable, IFinalizedRenderable
 	{
 		static readonly float2 TLOffset = new float2(-12, -6);
 		static readonly float2 TROffset = new float2(12, -6);
@@ -34,29 +34,27 @@ namespace OpenRA.Mods.Common.Graphics
 		readonly Polygon bounds;
 		readonly Color color;
 
-		public IsometricSelectionBoxAnnotationRenderable(Actor actor, Polygon bounds, Color color)
+		public IsometricSelectionBoxAnnotationRenderable(Actor actor, in Polygon bounds, Color color)
 		{
 			pos = actor.CenterPosition;
 			this.bounds = bounds;
 			this.color = color;
 		}
 
-		public IsometricSelectionBoxAnnotationRenderable(WPos pos, Polygon bounds, Color color)
+		public IsometricSelectionBoxAnnotationRenderable(WPos pos, in Polygon bounds, Color color)
 		{
 			this.pos = pos;
 			this.bounds = bounds;
 			this.color = color;
 		}
 
-		public WPos Pos { get { return pos; } }
+		public WPos Pos => pos;
 
-		public PaletteReference Palette { get { return null; } }
-		public int ZOffset { get { return 0; } }
-		public bool IsDecoration { get { return true; } }
+		public int ZOffset => 0;
+		public bool IsDecoration => true;
 
-		public IRenderable WithPalette(PaletteReference newPalette) { return this; }
 		public IRenderable WithZOffset(int newOffset) { return this; }
-		public IRenderable OffsetBy(WVec vec) { return new IsometricSelectionBoxAnnotationRenderable(pos + vec, bounds, color); }
+		public IRenderable OffsetBy(in WVec vec) { return new IsometricSelectionBoxAnnotationRenderable(pos + vec, bounds, color); }
 		public IRenderable AsDecoration() { return this; }
 
 		public IFinalizedRenderable PrepareRender(WorldRenderer wr) { return this; }

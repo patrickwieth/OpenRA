@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -57,7 +57,7 @@ namespace OpenRA.Mods.Cnc.SpriteLoaders
 			return b == 0x20 || b == 0x40 || b == 0x80;
 		}
 
-		public bool TryParseSprite(Stream s, out ISpriteFrame[] frames, out TypeDictionary metadata)
+		public bool TryParseSprite(Stream s, string filename, out ISpriteFrame[] frames, out TypeDictionary metadata)
 		{
 			metadata = null;
 			if (!IsShpTD(s))
@@ -77,21 +77,21 @@ namespace OpenRA.Mods.Cnc.SpriteLoaders
 
 		class ImageHeader : ISpriteFrame
 		{
-			public SpriteFrameType Type { get { return SpriteFrameType.Indexed; } }
-			public Size Size { get { return reader.Size; } }
-			public Size FrameSize { get { return reader.Size; } }
-			public float2 Offset { get { return float2.Zero; } }
+			public SpriteFrameType Type => SpriteFrameType.Indexed8;
+			public Size Size => reader.Size;
+			public Size FrameSize => reader.Size;
+			public float2 Offset => float2.Zero;
 			public byte[] Data { get; set; }
-			public bool DisableExportPadding { get { return false; } }
+			public bool DisableExportPadding => false;
 
 			public uint FileOffset;
 			public Format Format;
 
-			public uint RefOffset;
-			public Format RefFormat;
+			public readonly uint RefOffset;
+			public readonly Format RefFormat;
 			public ImageHeader RefImage;
 
-			ShpTDSprite reader;
+			readonly ShpTDSprite reader;
 
 			// Used by ShpWriter
 			public ImageHeader() { }
@@ -115,7 +115,7 @@ namespace OpenRA.Mods.Cnc.SpriteLoaders
 			}
 		}
 
-		public IReadOnlyList<ISpriteFrame> Frames { get; private set; }
+		public IReadOnlyList<ISpriteFrame> Frames { get; }
 		public readonly Size Size;
 
 		int recurseDepth = 0;
@@ -134,7 +134,6 @@ namespace OpenRA.Mods.Cnc.SpriteLoaders
 
 			stream.Position += 4;
 			var headers = new ImageHeader[imageCount];
-			Frames = headers.AsReadOnly();
 			for (var i = 0; i < headers.Length; i++)
 				headers[i] = new ImageHeader(stream, this);
 
@@ -148,7 +147,7 @@ namespace OpenRA.Mods.Cnc.SpriteLoaders
 				if (h.Format == Format.XORPrev)
 					h.RefImage = headers[i - 1];
 				else if (h.Format == Format.XORLCW && !offsets.TryGetValue(h.RefOffset, out h.RefImage))
-					throw new InvalidDataException("Reference doesn't point to image data {0}->{1}".F(h.FileOffset, h.RefOffset));
+					throw new InvalidDataException($"Reference doesn't point to image data {h.FileOffset}->{h.RefOffset}");
 			}
 
 			shpBytesFileOffset = stream.Position;
@@ -156,6 +155,8 @@ namespace OpenRA.Mods.Cnc.SpriteLoaders
 
 			foreach (var h in headers)
 				Decompress(h);
+
+			Frames = headers;
 		}
 
 		void Decompress(ImageHeader h)

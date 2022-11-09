@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -12,7 +12,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using OpenRA.Primitives;
 
 namespace OpenRA.Graphics
 {
@@ -20,9 +19,9 @@ namespace OpenRA.Graphics
 	{
 		static readonly int[] CornerVertexMap = { 0, 1, 2, 2, 3, 0 };
 
-		public readonly Sheet Sheet;
 		public readonly BlendMode BlendMode;
 
+		readonly Sheet[] sheets;
 		readonly Sprite emptySprite;
 
 		readonly IVertexBuffer<Vertex> vertexBuffer;
@@ -35,22 +34,22 @@ namespace OpenRA.Graphics
 		readonly WorldRenderer worldRenderer;
 		readonly Map map;
 
-		readonly PaletteReference palette;
+		readonly PaletteReference[] palettes;
 
-		public TerrainSpriteLayer(World world, WorldRenderer wr, Sheet sheet, BlendMode blendMode, PaletteReference palette, bool restrictToBounds)
+		public TerrainSpriteLayer(World world, WorldRenderer wr, Sprite emptySprite, BlendMode blendMode, bool restrictToBounds)
 		{
 			worldRenderer = wr;
 			this.restrictToBounds = restrictToBounds;
-			Sheet = sheet;
+			this.emptySprite = emptySprite;
+			sheets = new Sheet[SpriteRenderer.SheetCount];
 			BlendMode = blendMode;
-			this.palette = palette;
 
 			map = world.Map;
 			rowStride = 6 * map.MapSize.X;
 
 			vertices = new Vertex[rowStride * map.MapSize.Y];
+			palettes = new PaletteReference[map.MapSize.X * map.MapSize.Y];
 			vertexBuffer = Game.Renderer.Context.CreateVertexBuffer(vertices.Length);
-			emptySprite = new Sprite(sheet, Rectangle.Empty, TextureChannel.Alpha);
 
 			wr.PaletteInvalidated += UpdatePaletteIndices;
 
@@ -63,12 +62,11 @@ namespace OpenRA.Graphics
 
 		void UpdatePaletteIndices()
 		{
-			// Everything in the layer uses the same palette,
-			// so we can fix the indices in one pass
 			for (var i = 0; i < vertices.Length; i++)
 			{
 				var v = vertices[i];
-				vertices[i] = new Vertex(v.X, v.Y, v.Z, v.S, v.T, v.U, v.V, palette.TextureIndex, v.C, v.R, v.G, v.B);
+				var p = palettes[i / 6]?.TextureIndex ?? 0;
+				vertices[i] = new Vertex(v.X, v.Y, v.Z, v.S, v.T, v.U, v.V, p, v.C, v.R, v.G, v.B, v.A);
 			}
 
 			for (var row = 0; row < map.MapSize.Y; row++)
@@ -77,24 +75,24 @@ namespace OpenRA.Graphics
 
 		public void Clear(CPos cell)
 		{
-			Update(cell, null, true);
+			Update(cell, null, null, 1f, 1f, true);
 		}
 
-		public void Update(CPos cell, ISpriteSequence sequence, int frame)
+		public void Update(CPos cell, ISpriteSequence sequence, PaletteReference palette, int frame)
 		{
-			Update(cell, sequence.GetSprite(frame), sequence.IgnoreWorldTint);
+			Update(cell, sequence.GetSprite(frame), palette, sequence.Scale, sequence.GetAlpha(frame), sequence.IgnoreWorldTint);
 		}
 
-		public void Update(CPos cell, Sprite sprite, bool ignoreTint)
+		public void Update(CPos cell, Sprite sprite, PaletteReference palette, float scale = 1f, float alpha = 1f, bool ignoreTint = false)
 		{
 			var xyz = float3.Zero;
 			if (sprite != null)
 			{
 				var cellOrigin = map.CenterOfCell(cell) - new WVec(0, 0, map.Grid.Ramps[map.Ramp[cell]].CenterHeightOffset);
-				xyz = worldRenderer.Screen3DPosition(cellOrigin) + sprite.Offset - 0.5f * sprite.Size;
+				xyz = worldRenderer.Screen3DPosition(cellOrigin) + scale * (sprite.Offset - 0.5f * sprite.Size);
 			}
 
-			Update(cell.ToMPos(map.Grid.Type), sprite, xyz, ignoreTint);
+			Update(cell.ToMPos(map.Grid.Type), sprite, palette, xyz, scale, alpha, ignoreTint);
 		}
 
 		void UpdateTint(MPos uv)
@@ -102,11 +100,10 @@ namespace OpenRA.Graphics
 			var offset = rowStride * uv.V + 6 * uv.U;
 			if (ignoreTint[offset])
 			{
-				var noTint = float3.Ones;
 				for (var i = 0; i < 6; i++)
 				{
 					var v = vertices[offset + i];
-					vertices[offset + i] = new Vertex(v.X, v.Y, v.Z, v.S, v.T, v.U, v.V, palette.TextureIndex, v.C, noTint);
+					vertices[offset + i] = new Vertex(v.X, v.Y, v.Z, v.S, v.T, v.U, v.V, v.P, v.C, v.A * float3.Ones, v.A);
 				}
 
 				return;
@@ -131,31 +128,61 @@ namespace OpenRA.Graphics
 			for (var i = 0; i < 6; i++)
 			{
 				var v = vertices[offset + i];
-				vertices[offset + i] = new Vertex(v.X, v.Y, v.Z, v.S, v.T, v.U, v.V, palette.TextureIndex, v.C, weights[CornerVertexMap[i]]);
+				vertices[offset + i] = new Vertex(v.X, v.Y, v.Z, v.S, v.T, v.U, v.V, v.P, v.C, v.A * weights[CornerVertexMap[i]], v.A);
 			}
 
 			dirtyRows.Add(uv.V);
 		}
 
-		public void Update(MPos uv, Sprite sprite, in float3 pos, bool ignoreTint)
+		int GetOrAddSheetIndex(Sheet sheet)
 		{
+			if (sheet == null)
+				return 0;
+
+			for (var i = 0; i < sheets.Length; i++)
+			{
+				if (sheets[i] == sheet)
+					return i;
+
+				if (sheets[i] == null)
+				{
+					sheets[i] = sheet;
+					return i;
+				}
+			}
+
+			throw new InvalidDataException("Sheet overflow");
+		}
+
+		public void Update(MPos uv, Sprite sprite, PaletteReference palette, in float3 pos, float scale, float alpha, bool ignoreTint)
+		{
+			int2 samplers;
 			if (sprite != null)
 			{
-				if (sprite.Sheet != Sheet)
-					throw new InvalidDataException("Attempted to add sprite from a different sheet");
-
 				if (sprite.BlendMode != BlendMode)
 					throw new InvalidDataException("Attempted to add sprite with a different blend mode");
+
+				samplers = new int2(GetOrAddSheetIndex(sprite.Sheet), GetOrAddSheetIndex((sprite as SpriteWithSecondaryData)?.SecondarySheet));
+
+				// PERF: Remove useless palette assignments for RGBA sprites
+				// HACK: This is working around the limitation that palettes are defined on traits rather than on sequences,
+				// and can be removed once this has been fixed
+				if (sprite.Channel == TextureChannel.RGBA && !(palette?.HasColorShift ?? false))
+					palette = null;
 			}
 			else
+			{
 				sprite = emptySprite;
+				samplers = int2.Zero;
+			}
 
 			// The vertex buffer does not have geometry for cells outside the map
 			if (!map.Tiles.Contains(uv))
 				return;
 
 			var offset = rowStride * uv.V + 6 * uv.U;
-			Util.FastCreateQuad(vertices, pos, sprite, int2.Zero, palette.TextureIndex, offset, sprite.Size, float3.Ones);
+			Util.FastCreateQuad(vertices, pos, sprite, samplers, palette?.TextureIndex ?? 0, offset, scale * sprite.Size, alpha * float3.Ones, alpha);
+			palettes[uv.V * map.MapSize.X + uv.U] = palette;
 
 			if (worldRenderer.TerrainLighting != null)
 			{
@@ -188,7 +215,7 @@ namespace OpenRA.Graphics
 
 			Game.Renderer.WorldSpriteRenderer.DrawVertexBuffer(
 				vertexBuffer, rowStride * firstRow, rowStride * (lastRow - firstRow),
-				PrimitiveType.TriangleList, Sheet, BlendMode);
+				PrimitiveType.TriangleList, sheets, BlendMode);
 
 			Game.Renderer.Flush();
 		}

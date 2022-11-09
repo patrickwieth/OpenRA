@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -53,7 +53,7 @@ namespace OpenRA.Mods.Common.Traits
 		int minCaptureDelayTicks;
 
 		// Units that the bot already knows about and has given a capture order. Any unit not on this list needs to be given a new order.
-		List<Actor> activeCapturers = new List<Actor>();
+		readonly List<Actor> activeCapturers = new List<Actor>();
 
 		public CaptureManagerBotModule(Actor self, CaptureManagerBotModuleInfo info)
 			: base(info)
@@ -115,7 +115,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		void QueueCaptureOrders(IBot bot)
 		{
-			if (!Info.CapturingActorTypes.Any() || player.WinState != WinState.Undefined)
+			if (Info.CapturingActorTypes.Count == 0 || player.WinState != WinState.Undefined)
 				return;
 
 			activeCapturers.RemoveAll(unitCannotBeOrderedOrIsIdle);
@@ -133,7 +133,7 @@ namespace OpenRA.Mods.Common.Traits
 				return;
 
 			var randPlayer = world.Players.Where(p => !p.Spectating
-				&& Info.CapturableRelationships.HasStance(player.RelationshipWith(p))).Random(world.LocalRandom);
+				&& Info.CapturableRelationships.HasRelationship(player.RelationshipWith(p))).Random(world.LocalRandom);
 
 			var targetOptions = Info.CheckCaptureTargetsForVisibility
 				? GetVisibleActorsBelongingToPlayer(randPlayer)
@@ -151,7 +151,7 @@ namespace OpenRA.Mods.Common.Traits
 				.OrderByDescending(target => target.GetSellValue())
 				.Take(maximumCaptureTargetOptions);
 
-			if (Info.CapturableActorTypes.Any())
+			if (Info.CapturableActorTypes.Count > 0)
 				capturableTargetOptions = capturableTargetOptions.Where(target => Info.CapturableActorTypes.Contains(target.Info.Name.ToLowerInvariant()));
 
 			if (!capturableTargetOptions.Any())

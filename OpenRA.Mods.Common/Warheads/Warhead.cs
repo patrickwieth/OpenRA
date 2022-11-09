@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -10,6 +10,7 @@
 #endregion
 
 using OpenRA.GameRules;
+using OpenRA.Mods.Common.Traits;
 using OpenRA.Primitives;
 using OpenRA.Traits;
 
@@ -43,9 +44,9 @@ namespace OpenRA.Mods.Common.Warheads
 		[Desc("Delay in ticks before applying the warhead effect.", "0 = instant (old model).")]
 		public readonly int Delay = 0;
 
-		int IWarhead.Delay { get { return Delay; } }
+		int IWarhead.Delay => Delay;
 
-		[Desc("The color used for this warhead's visualization in the world's `WarheadDebugOverlay` trait.")]
+		[Desc("The color used for this warhead's visualization in the world's `" + nameof(WarheadDebugOverlay) + "` trait.")]
 		public readonly Color DebugOverlayColor = Color.Red;
 
 		protected bool IsValidTarget(BitSet<TargetableType> targetTypes)
@@ -62,8 +63,8 @@ namespace OpenRA.Mods.Common.Warheads
 			if (!AffectsParent && victim == firedBy)
 				return false;
 
-			var stance = firedBy.Owner.RelationshipWith(victim.Owner);
-			if (!ValidRelationships.HasStance(stance))
+			var relationship = firedBy.Owner.RelationshipWith(victim.Owner);
+			if (!ValidRelationships.HasRelationship(relationship))
 				return false;
 
 			// A target type is valid if it is in the valid targets list, and not in the invalid targets list.
@@ -79,9 +80,9 @@ namespace OpenRA.Mods.Common.Warheads
 			if (!victim.IsValid)
 				return false;
 
-			// AffectsParent checks do not make sense for FrozenActors, so skip to stance checks
-			var stance = firedBy.Owner.RelationshipWith(victim.Owner);
-			if (!ValidRelationships.HasStance(stance))
+			// AffectsParent checks do not make sense for FrozenActors, so skip to relationship checks
+			var relationship = firedBy.Owner.RelationshipWith(victim.Owner);
+			if (!ValidRelationships.HasRelationship(relationship))
 				return false;
 
 			// A target type is valid if it is in the valid targets list, and not in the invalid targets list.

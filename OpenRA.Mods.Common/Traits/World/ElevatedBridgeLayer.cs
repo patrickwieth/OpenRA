@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -11,11 +11,13 @@
 
 using System.Collections.Generic;
 using OpenRA.Graphics;
+using OpenRA.Mods.Common.Pathfinder;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
 {
-	public class ElevatedBridgeLayerInfo : TraitInfo, Requires<DomainIndexInfo>, ILobbyCustomRulesIgnore
+	[TraitLocation(SystemActors.World)]
+	public class ElevatedBridgeLayerInfo : TraitInfo, ILobbyCustomRulesIgnore, ICustomMovementLayerInfo
 	{
 		[Desc("Terrain type used by cells outside any elevated bridge footprint.")]
 		public readonly string ImpassableTerrainType = "Impassable";
@@ -37,18 +39,17 @@ namespace OpenRA.Mods.Common.Traits
 			map = self.World.Map;
 			cellCenters = new CellLayer<WPos>(map);
 			terrainIndices = new CellLayer<byte>(map);
-			terrainIndices.Clear(map.Rules.TileSet.GetTerrainIndex(info.ImpassableTerrainType));
+			terrainIndices.Clear(map.Rules.TerrainInfo.GetTerrainIndex(info.ImpassableTerrainType));
 		}
 
 		public void WorldLoaded(World world, WorldRenderer wr)
 		{
-			var domainIndex = world.WorldActor.Trait<DomainIndex>();
 			var cellHeight = world.Map.CellHeightStep.Length;
 			foreach (var tti in world.WorldActor.Info.TraitInfos<ElevatedBridgePlaceholderInfo>())
 			{
 				enabled = true;
 
-				var terrain = map.Rules.TileSet.GetTerrainIndex(tti.TerrainType);
+				var terrain = map.Rules.TerrainInfo.GetTerrainIndex(tti.TerrainType);
 				foreach (var c in tti.BridgeCells())
 				{
 					var uv = c.ToMPos(map);
@@ -59,7 +60,6 @@ namespace OpenRA.Mods.Common.Traits
 				}
 
 				var end = tti.EndCells();
-				domainIndex.AddFixedConnection(end);
 				foreach (var c in end)
 				{
 					// Need to explicitly set both default and tunnel layers, otherwise the .Contains check will fail
@@ -69,24 +69,24 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
-		bool ICustomMovementLayer.EnabledForActor(ActorInfo a, LocomotorInfo li) { return enabled; }
-		byte ICustomMovementLayer.Index { get { return CustomMovementLayerType.ElevatedBridge; } }
-		bool ICustomMovementLayer.InteractsWithDefaultLayer { get { return true; } }
-		bool ICustomMovementLayer.ReturnToGroundLayerOnIdle { get { return false; } }
+		bool ICustomMovementLayer.EnabledForLocomotor(LocomotorInfo li) { return enabled; }
+		byte ICustomMovementLayer.Index => CustomMovementLayerType.ElevatedBridge;
+		bool ICustomMovementLayer.InteractsWithDefaultLayer => true;
+		bool ICustomMovementLayer.ReturnToGroundLayerOnIdle => false;
 
 		WPos ICustomMovementLayer.CenterOfCell(CPos cell)
 		{
 			return cellCenters[cell];
 		}
 
-		int ICustomMovementLayer.EntryMovementCost(ActorInfo a, LocomotorInfo li, CPos cell)
+		short ICustomMovementLayer.EntryMovementCost(LocomotorInfo li, CPos cell)
 		{
-			return ends.Contains(cell) ? 0 : int.MaxValue;
+			return ends.Contains(cell) ? (short)0 : PathGraph.MovementCostForUnreachableCell;
 		}
 
-		int ICustomMovementLayer.ExitMovementCost(ActorInfo a, LocomotorInfo li, CPos cell)
+		short ICustomMovementLayer.ExitMovementCost(LocomotorInfo li, CPos cell)
 		{
-			return ends.Contains(cell) ? 0 : int.MaxValue;
+			return ends.Contains(cell) ? (short)0 : PathGraph.MovementCostForUnreachableCell;
 		}
 
 		byte ICustomMovementLayer.GetTerrainIndex(CPos cell)

@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -20,9 +20,9 @@ namespace OpenRA.Mods.Common.Traits
 {
 	public class CrateInfo : TraitInfo, IPositionableInfo, Requires<RenderSpritesInfo>
 	{
-		[Desc("Length of time (in seconds) until the crate gets removed automatically. " +
+		[Desc("Length of time (in ticks) until the crate gets removed automatically. " +
 			"A value of zero disables auto-removal.")]
-		public readonly int Lifetime = 0;
+		public readonly int Duration = 0;
 
 		[Desc("Allowed to land on.")]
 		public readonly HashSet<string> TerrainTypes = new HashSet<string>();
@@ -34,11 +34,10 @@ namespace OpenRA.Mods.Common.Traits
 
 		public IReadOnlyDictionary<CPos, SubCell> OccupiedCells(ActorInfo info, CPos location, SubCell subCell = SubCell.Any)
 		{
-			var occupied = new Dictionary<CPos, SubCell>() { { location, SubCell.FullCell } };
-			return new ReadOnlyDictionary<CPos, SubCell>(occupied);
+			return new Dictionary<CPos, SubCell>() { { location, SubCell.FullCell } };
 		}
 
-		bool IOccupySpaceInfo.SharesCell { get { return false; } }
+		bool IOccupySpaceInfo.SharesCell => false;
 
 		public bool CanEnterCell(World world, Actor self, CPos cell, SubCell subCell = SubCell.FullCell, Actor ignoreActor = null, BlockedByActor check = BlockedByActor.All)
 		{
@@ -77,7 +76,7 @@ namespace OpenRA.Mods.Common.Traits
 		readonly Actor self;
 		readonly CrateInfo info;
 		bool collected;
-		INotifyVisualPositionChanged[] notifyVisualPositionChanged;
+		INotifyCenterPositionChanged[] notifyCenterPositionChanged;
 
 		[Sync]
 		int ticks;
@@ -97,15 +96,14 @@ namespace OpenRA.Mods.Common.Traits
 
 		void INotifyCreated.Created(Actor self)
 		{
-			notifyVisualPositionChanged = self.TraitsImplementing<INotifyVisualPositionChanged>().ToArray();
+			notifyCenterPositionChanged = self.TraitsImplementing<INotifyCenterPositionChanged>().ToArray();
 		}
 
 		void INotifyCrushed.WarnCrush(Actor self, Actor crusher, BitSet<CrushClass> crushClasses) { }
 
 		void INotifyCrushed.OnCrush(Actor self, Actor crusher, BitSet<CrushClass> crushClasses)
 		{
-			// Crate can only be crushed if it is not in the air.
-			if (!self.IsAtGroundLevel() || !crushClasses.Contains(info.CrushClass))
+			if (!crushClasses.Contains(info.CrushClass))
 				return;
 
 			OnCrushInner(crusher);
@@ -172,51 +170,51 @@ namespace OpenRA.Mods.Common.Traits
 
 		void ITick.Tick(Actor self)
 		{
-			if (info.Lifetime != 0 && self.IsInWorld && ++ticks >= info.Lifetime * 25)
+			if (info.Duration != 0 && self.IsInWorld && ++ticks >= info.Duration)
 				self.Dispose();
 		}
 
-		public CPos TopLeft { get { return Location; } }
+		public CPos TopLeft => Location;
 		public (CPos, SubCell)[] OccupiedCells() { return new[] { (Location, SubCell.FullCell) }; }
 
 		public WPos CenterPosition { get; private set; }
 
-		// Sets the location (Location) and visual position (CenterPosition)
+		// Sets the location (Location) and position (CenterPosition)
 		public void SetPosition(Actor self, WPos pos)
 		{
 			var cell = self.World.Map.CellContaining(pos);
 			SetLocation(self, cell);
-			SetVisualPosition(self, self.World.Map.CenterOfCell(cell) + new WVec(WDist.Zero, WDist.Zero, self.World.Map.DistanceAboveTerrain(pos)));
+			SetCenterPosition(self, self.World.Map.CenterOfCell(cell) + new WVec(WDist.Zero, WDist.Zero, self.World.Map.DistanceAboveTerrain(pos)));
 		}
 
-		// Sets the location (Location) and visual position (CenterPosition)
+		// Sets the location (Location) and position (CenterPosition)
 		public void SetPosition(Actor self, CPos cell, SubCell subCell = SubCell.Any)
 		{
-			SetLocation(self, cell, subCell);
-			SetVisualPosition(self, self.World.Map.CenterOfCell(cell));
+			SetLocation(self, cell);
+			SetCenterPosition(self, self.World.Map.CenterOfCell(cell));
 		}
 
-		// Sets only the visual position (CenterPosition)
-		public void SetVisualPosition(Actor self, WPos pos)
+		// Sets only the CenterPosition
+		public void SetCenterPosition(Actor self, WPos pos)
 		{
 			CenterPosition = pos;
 			self.World.UpdateMaps(self, this);
 
-			// This can be called from the constructor before notifyVisualPositionChanged is assigned.
-			if (notifyVisualPositionChanged != null)
-				foreach (var n in notifyVisualPositionChanged)
-					n.VisualPositionChanged(self, 0, 0);
+			// This can be called from the constructor before notifyCenterPositionChanged is assigned.
+			if (notifyCenterPositionChanged != null)
+				foreach (var n in notifyCenterPositionChanged)
+					n.CenterPositionChanged(self, 0, 0);
 		}
 
 		// Sets only the location (Location)
-		void SetLocation(Actor self, CPos cell, SubCell subCell = SubCell.Any)
+		void SetLocation(Actor self, CPos cell)
 		{
 			self.World.ActorMap.RemoveInfluence(self, this);
 			Location = cell;
 			self.World.ActorMap.AddInfluence(self, this);
 		}
 
-		public bool IsLeavingCell(CPos location, SubCell subCell = SubCell.Any) { return self.Location == location && ticks + 1 == info.Lifetime * 25; }
+		public bool IsLeavingCell(CPos location, SubCell subCell = SubCell.Any) { return self.Location == location && ticks + 1 == info.Duration; }
 		public SubCell GetValidSubCell(SubCell preferred = SubCell.Any) { return SubCell.FullCell; }
 		public SubCell GetAvailableSubCell(CPos cell, SubCell preferredSubCell = SubCell.Any, Actor ignoreActor = null, BlockedByActor check = BlockedByActor.All)
 		{
@@ -232,13 +230,12 @@ namespace OpenRA.Mods.Common.Traits
 
 		bool ICrushable.CrushableBy(Actor self, Actor crusher, BitSet<CrushClass> crushClasses)
 		{
-			// Crate can only be crushed if it is not in the air.
-			return self.IsAtGroundLevel() && crushClasses.Contains(info.CrushClass);
+			return crushClasses.Contains(info.CrushClass);
 		}
 
 		LongBitSet<PlayerBitMask> ICrushable.CrushableBy(Actor self, BitSet<CrushClass> crushClasses)
 		{
-			return self.IsAtGroundLevel() && crushClasses.Contains(info.CrushClass) ? self.World.AllPlayersMask : self.World.NoPlayersMask;
+			return crushClasses.Contains(info.CrushClass) ? self.World.AllPlayersMask : self.World.NoPlayersMask;
 		}
 
 		void INotifyAddedToWorld.AddedToWorld(Actor self)

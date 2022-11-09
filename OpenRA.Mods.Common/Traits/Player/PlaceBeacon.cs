@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -14,10 +14,11 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
 {
+	[TraitLocation(SystemActors.Player)]
 	[Desc("A beacon that is constructed from a circle sprite that is animated once and a moving arrow sprite.")]
 	public class PlaceBeaconInfo : TraitInfo
 	{
-		public readonly int Duration = 30 * 25;
+		public readonly int Duration = 750;
 
 		public readonly string NotificationType = "Sounds";
 

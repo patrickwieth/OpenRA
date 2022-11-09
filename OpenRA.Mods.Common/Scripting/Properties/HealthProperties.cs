@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -19,7 +19,7 @@ namespace OpenRA.Mods.Common.Scripting
 	[ScriptPropertyGroup("General")]
 	public class HealthProperties : ScriptActorProperties, Requires<IHealthInfo>
 	{
-		IHealth health;
+		readonly IHealth health;
 		public HealthProperties(ScriptContext context, Actor self)
 			: base(context, self)
 		{
@@ -29,12 +29,12 @@ namespace OpenRA.Mods.Common.Scripting
 		[Desc("Current health of the actor.")]
 		public int Health
 		{
-			get { return health.HP; }
-			set { health.InflictDamage(Self, Self, new Damage(health.HP - value), true); }
+			get => health.HP;
+			set => health.InflictDamage(Self, Self, new Damage(health.HP - value), true);
 		}
 
 		[Desc("Maximum health of the actor.")]
-		public int MaxHealth { get { return health.MaxHP; } }
+		public int MaxHealth => health.MaxHP;
 
 		[Desc("Kill the actor. damageTypes may be omitted, specified as a string, or as table of strings.")]
 		public void Kill(object damageTypes = null)

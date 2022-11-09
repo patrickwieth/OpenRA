@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -29,7 +29,7 @@ namespace OpenRA.Mods.Cnc.Traits
 		public readonly bool SkipMakeAnims = true;
 
 		[Desc("The `TargetTypes` from `Targetable` that are allowed to enter.")]
-		public readonly BitSet<TargetableType> Types = default(BitSet<TargetableType>);
+		public readonly BitSet<TargetableType> Types = default;
 
 		public override object Create(ActorInitializer init) { return new InfiltrateForTransform(init, this); }
 	}
@@ -50,7 +50,7 @@ namespace OpenRA.Mods.Cnc.Traits
 			if (!info.Types.Overlaps(types))
 				return;
 
-			var transform = new Transform(self, info.IntoActor)
+			var transform = new Transform(info.IntoActor)
 			{
 				ForceHealthPercentage = info.ForceHealthPercentage,
 				Faction = faction,

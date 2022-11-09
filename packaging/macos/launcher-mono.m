@@ -1,5 +1,5 @@
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation. For more information,
@@ -66,20 +66,6 @@ static int check_mono_version(const char *version, const char *req_version)
 	if (libmono == NULL)
 	{
 		fprintf (stderr, "Failed to load libmonosgen-2.0.dylib: %s\n", dlerror());
-		return FALSE;
-	}
-
-	mono_main _mono_main = (mono_main)dlsym(libmono, "mono_main");
-	if (!_mono_main)
-	{
-		fprintf(stderr, "Could not load mono_main(): %s\n", dlerror());
-		return FALSE;
-	}
-
-	mono_free _mono_free = (mono_free)dlsym(libmono, "mono_free");
-	if (!_mono_free)
-	{
-		fprintf(stderr, "Could not load mono_free(): %s\n", dlerror());
 		return FALSE;
 	}
 
@@ -238,7 +224,7 @@ static int check_mono_version(const char *version, const char *req_version)
 		[self exitWithMonoPrompt];
 
 	// Default values - can be overriden by setting certain keys Info.plist
-	NSString *gameName = @"OpenRA.exe";
+	NSString *gameName = @"OpenRA.dll";
 	NSString *modId = nil;
 
 	NSDictionary *plist = [[NSBundle mainBundle] infoDictionary];
@@ -255,15 +241,14 @@ static int check_mono_version(const char *version, const char *req_version)
 
 	NSString *exePath = [[[NSBundle mainBundle] bundlePath] stringByAppendingPathComponent: @"Contents/MacOS/"];
 	NSString *gamePath = [[[NSBundle mainBundle] bundlePath] stringByAppendingPathComponent: @"Contents/Resources/"];
-
-	NSString *launchPath = [SYSTEM_MONO_PATH stringByAppendingPathComponent: @"Commands/mono"];
-	NSString *appPath = [exePath stringByAppendingPathComponent: @"OpenRA"];
+	NSString *appPath = [exePath stringByAppendingPathComponent: @"Launcher"];
 	NSString *engineLaunchPath = [self resolveTranslocatedPath: appPath];
 
 	NSMutableArray *launchArgs = [NSMutableArray arrayWithCapacity: [gameArgs count] + 2];
 	[launchArgs addObject: @"--debug"];
-	[launchArgs addObject: [gamePath stringByAppendingPathComponent: gameName]];
+	[launchArgs addObject: [exePath stringByAppendingPathComponent: gameName]];
 	[launchArgs addObject: [NSString stringWithFormat:@"Engine.LaunchPath=\"%@\"", engineLaunchPath]];
+	[launchArgs addObject: [NSString stringWithFormat:@"Engine.EngineDir=../Resources"]];
 
 	if (modId)
 		[launchArgs addObject: [NSString stringWithFormat:@"Game.Mod=%@", modId]];
@@ -276,7 +261,7 @@ static int check_mono_version(const char *version, const char *req_version)
 
 	gameTask = [[NSTask alloc] init];
 	[gameTask setCurrentDirectoryPath: gamePath];
-	[gameTask setLaunchPath: launchPath];
+	[gameTask setLaunchPath: appPath];
 	[gameTask setArguments: launchArgs];
 
 	[[NSNotificationCenter defaultCenter]
@@ -358,6 +343,35 @@ static int check_mono_version(const char *version, const char *req_version)
 int main(int argc, char **argv)
 {
 	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+
+	if (argc > 1)
+	{
+		struct rlimit limit;
+		if (getrlimit (RLIMIT_NOFILE, &limit) == 0 && limit.rlim_cur < 1024)
+		{
+			limit.rlim_cur = MIN(limit.rlim_max, 1024);
+			setrlimit(RLIMIT_NOFILE, &limit);
+		}
+
+		void *libmono = dlopen([[SYSTEM_MONO_PATH stringByAppendingPathComponent: @"/lib/libmonosgen-2.0.dylib"] UTF8String], RTLD_LAZY);
+		if (libmono == NULL)
+		{
+			fprintf (stderr, "Failed to load libmonosgen-2.0.dylib: %s\n", dlerror());
+			return EXIT_FAILURE;
+		}
+
+		mono_main _mono_main = (mono_main)dlsym(libmono, "mono_main");
+		if (!_mono_main)
+		{
+			fprintf(stderr, "Could not load mono_main(): %s\n", dlerror());
+			return EXIT_FAILURE;
+		}
+
+		[pool drain];
+
+		return _mono_main(argc, argv);
+	}
+
 	NSApplication *application = [NSApplication sharedApplication];
 	OpenRALauncher *launcher = [[OpenRALauncher alloc] init];
 	[NSApp setActivationPolicy: NSApplicationActivationPolicyProhibited];

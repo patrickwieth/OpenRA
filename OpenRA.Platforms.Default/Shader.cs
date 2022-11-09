@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -60,7 +60,7 @@ namespace OpenRA.Platforms.Default
 				OpenGL.glGetShaderInfoLog(shader, len, out _, log);
 
 				Log.Write("graphics", "GL Info Log:\n{0}", log.ToString());
-				throw new InvalidProgramException("Compile error in shader object '{0}'".F(filename));
+				throw new InvalidProgramException($"Compile error in shader object '{filename}'");
 			}
 
 			return shader;
@@ -106,7 +106,7 @@ namespace OpenRA.Platforms.Default
 				var log = new StringBuilder(len);
 				OpenGL.glGetProgramInfoLog(program, len, out _, log);
 				Log.Write("graphics", "GL Info Log:\n{0}", log.ToString());
-				throw new InvalidProgramException("Link error in shader program '{0}'".F(name));
+				throw new InvalidProgramException($"Link error in shader program '{name}'");
 			}
 
 			OpenGL.glUseProgram(program);

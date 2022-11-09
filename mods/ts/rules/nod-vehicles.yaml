@@ -29,10 +29,10 @@ BGGY:
 		Weapon: RaiderCannon
 		LocalOffset: 0,-61,543, 0,61,543
 		MuzzleSequence: muzzle
-		MuzzlePalette: effect-ignore-lighting
 	AttackFrontal:
 		Voice: Attack
 		PauseOnCondition: empdisable
+		FacingTolerance: 0
 	WithMuzzleOverlay:
 	-DamagedByTerrain@VEINS:
 	-LeavesTrails@VEINS:
@@ -75,6 +75,7 @@ BIKE:
 	AttackFrontal:
 		Voice: Attack
 		PauseOnCondition: empdisable
+		FacingTolerance: 0
 	DamagedByTerrain@VEINS:
 		RequiresCondition: !inside-tunnel && !rank-elite
 	LeavesTrails@VEINS:
@@ -115,13 +116,11 @@ TTNK:
 		LocalOffset: 407,0,362
 		RequiresCondition: !rank-elite
 		MuzzleSequence: muzzle
-		MuzzlePalette: effect-ignore-lighting
 	Armament@ELITE:
 		Weapon: 120mmx
 		LocalOffset: 407,0,362
 		RequiresCondition: rank-elite
 		MuzzleSequence: muzzle
-		MuzzlePalette: effect-ignore-lighting
 	WithMuzzleOverlay:
 	RevealsShroud:
 		RequiresCondition: !inside-tunnel
@@ -157,6 +156,7 @@ TTNK:
 		Voice: Attack
 		RequiresCondition: undeployed
 		PauseOnCondition: empdisable
+		FacingTolerance: 0
 	Turreted:
 		TurnSpeed: 24
 		Turret: deployed
@@ -184,7 +184,6 @@ TTNK:
 		LocalOffset: 543,0,362
 		RequiresCondition: !rank-elite
 		MuzzleSequence: muzzle
-		MuzzlePalette: effect-ignore-lighting
 	Armament@deployedElite:
 		Name: deployed
 		Turret: deployed
@@ -192,7 +191,6 @@ TTNK:
 		LocalOffset: 543,0,362
 		RequiresCondition: rank-elite
 		MuzzleSequence: muzzle
-		MuzzlePalette: effect-ignore-lighting
 	Armor@deployed:
 		Type: Concrete
 		RequiresCondition: deployed
@@ -296,7 +294,6 @@ ART2:
 		LocalOffset: 820,0,1386
 		RequiresCondition: deployed
 		MuzzleSequence: muzzle
-		MuzzlePalette: effect-ignore-lighting
 	WithMuzzleOverlay:
 	RevealOnFire:
 		ArmamentNames: deployed
@@ -333,6 +330,7 @@ REPAIR:
 	AttackFrontal:
 		Voice: Attack
 		PauseOnCondition: empdisable
+		FacingTolerance: 0
 	AutoTarget:
 		ScanRadius: 8
 		InitialStance: AttackAnything
@@ -474,6 +472,7 @@ SUBTANK:
 	AttackFrontal:
 		Voice: Attack
 		PauseOnCondition: empdisable
+		FacingTolerance: 0
 	WithVoxelBody:
 		RequiresCondition: !submerged
 	Targetable:
@@ -526,6 +525,7 @@ STNK:
 		IsPlayerPalette: true
 		UncloakOn: Attack, Unload, Infiltrate, Demolish, Damage, Heal
 		PauseOnCondition: cloak-force-disabled || empdisable
+		CloakType: nod-stealth
 	GrantConditionOnDamageState@UNCLOAK:
 		Condition: cloak-force-disabled
 		ValidDamageStates: Critical
@@ -535,6 +535,7 @@ STNK:
 	AttackFrontal:
 		Voice: Attack
 		PauseOnCondition: empdisable
+		FacingTolerance: 0
 	AutoTarget:
 		InitialStance: HoldFire
 		InitialStanceAI: ReturnFire

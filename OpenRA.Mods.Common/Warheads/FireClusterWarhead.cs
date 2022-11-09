@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -9,6 +9,7 @@
  */
 #endregion
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using OpenRA.GameRules;
@@ -16,6 +17,7 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Warheads
 {
+	[Desc("Fires weapons from the point of impact.")]
 	public class FireClusterWarhead : Warhead, IRulesetLoaded<WeaponInfo>
 	{
 		[WeaponReference]
@@ -40,7 +42,7 @@ namespace OpenRA.Mods.Common.Warheads
 		public void RulesetLoaded(Ruleset rules, WeaponInfo info)
 		{
 			if (!rules.Weapons.TryGetValue(Weapon.ToLowerInvariant(), out weapon))
-				throw new YamlException("Weapons Ruleset does not contain an entry '{0}'".F(Weapon.ToLowerInvariant()));
+				throw new YamlException($"Weapons Ruleset does not contain an entry '{Weapon.ToLowerInvariant()}'");
 		}
 
 		public override void DoImpact(in Target target, WarheadArgs args)
@@ -80,8 +82,8 @@ namespace OpenRA.Mods.Common.Warheads
 				CurrentMuzzleFacing = () => (map.CenterOfCell(targetCell) - target.CenterPosition).Yaw,
 
 				DamageModifiers = args.DamageModifiers,
-				InaccuracyModifiers = new int[0],
-				RangeModifiers = new int[0],
+				InaccuracyModifiers = Array.Empty<int>(),
+				RangeModifiers = Array.Empty<int>(),
 
 				Source = target.CenterPosition,
 				CurrentSource = () => target.CenterPosition,
@@ -96,7 +98,7 @@ namespace OpenRA.Mods.Common.Warheads
 				if (projectile != null)
 					firedBy.World.AddFrameEndTask(w => w.Add(projectile));
 
-				if (projectileArgs.Weapon.Report != null && projectileArgs.Weapon.Report.Any())
+				if (projectileArgs.Weapon.Report != null && projectileArgs.Weapon.Report.Length > 0)
 					Game.Sound.Play(SoundType.World, projectileArgs.Weapon.Report, firedBy.World, target.CenterPosition);
 			}
 		}

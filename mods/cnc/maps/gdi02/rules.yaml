@@ -1,6 +1,6 @@
 World:
 	LuaScript:
-		Scripts: campaign-global.lua, gdi02.lua
+		Scripts: campaign.lua, utils.lua, gdi02.lua
 	MusicPlaylist:
 		StartingMusic: befeared
 	MissionData:
@@ -26,7 +26,7 @@ HARV:
 
 PROC:
 	Buildable:
-		Prerequisites: ~disabled
+		Queue: Building.Nod
 
 SILO:
 	Buildable:
@@ -90,7 +90,7 @@ E5:
 
 E6:
 	Buildable:
-		Prerequisites: ~disabled
+		Queue: Infantry.Nod
 
 RMBO:
 	Buildable:
@@ -111,12 +111,3 @@ OBLI:
 SAM:
 	Buildable:
 		Prerequisites: ~disabled
-
-OLDLST:
-	Inherits: LST
-	-WithRoof:
-	-Selectable:
-	RejectsOrders:
-	Cargo:
-		Types: disabled
-	Interactable:

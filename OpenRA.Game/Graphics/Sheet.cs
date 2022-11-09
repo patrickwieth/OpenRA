@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -32,7 +32,7 @@ namespace OpenRA.Graphics
 			return data;
 		}
 
-		public bool Buffered { get { return data != null || texture == null; } }
+		public bool Buffered => data != null || texture == null;
 
 		public Sheet(SheetType type, Size size)
 		{
@@ -79,21 +79,17 @@ namespace OpenRA.Graphics
 
 		public Png AsPng()
 		{
-			var data = GetData();
+			if (Type == SheetType.Indexed)
+				throw new InvalidOperationException("AsPng() cannot be called on Indexed sheets.");
 
-			// Convert BGRA to RGBA
-			for (var i = 0; i < Size.Width * Size.Height; i++)
-			{
-				var temp = data[i * 4];
-				data[i * 4] = data[i * 4 + 2];
-				data[i * 4 + 2] = temp;
-			}
-
-			return new Png(data, Size.Width, Size.Height);
+			return new Png(GetData(), SpriteFrameType.Bgra32, Size.Width, Size.Height);
 		}
 
 		public Png AsPng(TextureChannel channel, IPalette pal)
 		{
+			if (Type != SheetType.Indexed)
+				throw new InvalidOperationException("AsPng(TextureChannel, IPalette) can only be called on Indexed sheets.");
+
 			var d = GetData();
 			var plane = new byte[Size.Width * Size.Height];
 			var dataStride = 4 * Size.Width;
@@ -107,7 +103,7 @@ namespace OpenRA.Graphics
 			for (var i = 0; i < Palette.Size; i++)
 				palColors[i] = pal.GetColor(i);
 
-			return new Png(plane, Size.Width, Size.Height, palColors);
+			return new Png(plane, SpriteFrameType.Indexed8, Size.Width, Size.Height, palColors);
 		}
 
 		public void CreateBuffer()

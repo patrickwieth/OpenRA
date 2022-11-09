@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -20,6 +20,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 	public abstract class CommonSelectorLogic : ChromeLogic
 	{
 		protected readonly Widget Widget;
+		protected readonly ModData ModData;
 		protected readonly TextFieldWidget SearchTextField;
 		protected readonly World World;
 		protected readonly WorldRenderer WorldRenderer;
@@ -33,9 +34,22 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		protected string[] allCategories;
 		protected string searchFilter;
 
-		public CommonSelectorLogic(Widget widget, World world, WorldRenderer worldRenderer, string templateListId, string previewTemplateId)
+		[TranslationReference]
+		static readonly string None = "none";
+
+		[TranslationReference]
+		static readonly string SearchResults = "search-results";
+
+		[TranslationReference]
+		static readonly string All = "all";
+
+		[TranslationReference]
+		static readonly string Multiple = "multiple";
+
+		public CommonSelectorLogic(Widget widget, ModData modData, World world, WorldRenderer worldRenderer, string templateListId, string previewTemplateId)
 		{
 			Widget = widget;
+			ModData = modData;
 			World = world;
 			WorldRenderer = worldRenderer;
 			Editor = widget.Parent.Get<EditorViewportControllerWidget>("MAP_EDITOR");
@@ -44,29 +58,40 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			Panel.Layout = new GridLayout(Panel);
 
 			SearchTextField = widget.Get<TextFieldWidget>("SEARCH_TEXTFIELD");
-			SearchTextField.OnEscKey = () =>
+			SearchTextField.OnEscKey = _ =>
 			{
-				SearchTextField.Text = "";
-				SearchTextField.YieldKeyboardFocus();
+				if (string.IsNullOrEmpty(SearchTextField.Text))
+					SearchTextField.YieldKeyboardFocus();
+				else
+				{
+					SearchTextField.Text = "";
+					SearchTextField.OnTextEdited();
+				}
+
 				return true;
 			};
+
+			var none = ModData.Translation.GetString(None);
+			var searchResults = ModData.Translation.GetString(SearchResults);
+			var all = ModData.Translation.GetString(All);
+			var multiple = ModData.Translation.GetString(Multiple);
 
 			var categorySelector = widget.Get<DropDownButtonWidget>("CATEGORIES_DROPDOWN");
 			categorySelector.GetText = () =>
 			{
 				if (SelectedCategories.Count == 0)
-					return "None";
+					return none;
 
 				if (!string.IsNullOrEmpty(searchFilter))
-					return "Search Results";
+					return searchResults;
 
 				if (SelectedCategories.Count == 1)
 					return SelectedCategories.First();
 
 				if (SelectedCategories.Count == allCategories.Length)
-					return "All";
+					return all;
 
-				return "Multiple";
+				return multiple;
 			};
 
 			categorySelector.OnMouseDown = _ =>

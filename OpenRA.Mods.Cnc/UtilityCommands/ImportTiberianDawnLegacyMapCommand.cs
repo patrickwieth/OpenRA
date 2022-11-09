@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -24,7 +24,7 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 		public ImportTiberianDawnLegacyMapCommand()
 			: base(64) { }
 
-		string IUtilityCommand.Name { get { return "--import-td-map"; } }
+		string IUtilityCommand.Name => "--import-td-map";
 		bool IUtilityCommand.ValidateArguments(string[] args) { return ValidateArguments(args); }
 
 		[Desc("FILENAME", "Convert a legacy Tiberian Dawn INI/MPR map to the OpenRA format.")]
@@ -34,12 +34,12 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 		{
 			if (format > 1)
 			{
-				Console.WriteLine("ERROR: Detected NewINIFormat {0}. Are you trying to import a Red Alert map?".F(format));
+				Console.WriteLine($"ERROR: Detected NewINIFormat {format}. Are you trying to import a Red Alert map?");
 				return;
 			}
 		}
 
-		static Dictionary<string, (byte Type, byte Index)> overlayResourceMapping = new Dictionary<string, (byte, byte)>()
+		static readonly Dictionary<string, (byte Type, byte Index)> OverlayResourceMapping = new Dictionary<string, (byte, byte)>()
 		{
 			// Tiberium
 			{ "ti1", (1, 0) },
@@ -69,7 +69,7 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 			}
 		}
 
-		static string[] overlayActors = new string[]
+		static readonly string[] OverlayActors = new string[]
 		{
 			// Fences
 			"sbag", "cycl", "brik", "fenc", "wood",
@@ -94,11 +94,11 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 
 				var res = (Type: (byte)0, Index: (byte)0);
 				var type = kv.Value.ToLowerInvariant();
-				if (overlayResourceMapping.ContainsKey(type))
-					res = overlayResourceMapping[type];
+				if (OverlayResourceMapping.ContainsKey(type))
+					res = OverlayResourceMapping[type];
 
 				Map.Resources[cell] = new ResourceTile(res.Type, res.Index);
-				if (overlayActors.Contains(type))
+				if (OverlayActors.Contains(type))
 				{
 					var ar = new ActorReference(type)
 					{

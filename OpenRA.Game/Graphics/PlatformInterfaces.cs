@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -59,6 +59,7 @@ namespace OpenRA
 		int DisplayCount { get; }
 		int CurrentDisplay { get; }
 		bool HasInputFocus { get; }
+		bool IsSuspended { get; }
 
 		event Action<float, float, float, float> OnWindowScaleChanged;
 
@@ -71,6 +72,7 @@ namespace OpenRA
 
 		IHardwareCursor CreateHardwareCursor(string name, Size size, byte[] data, int2 hotspot, bool pixelDouble);
 		void SetHardwareCursor(IHardwareCursor cursor);
+		void SetWindowTitle(string title);
 		void SetRelativeMouseMode(bool mode);
 		void SetScaleModifier(float scale);
 
@@ -122,8 +124,8 @@ namespace OpenRA
 
 	public interface ITexture : IDisposable
 	{
-		void SetData(uint[,] colors);
 		void SetData(byte[] colors, int width, int height);
+		void SetFloatData(float[] data, int width, int height);
 		byte[] GetData();
 		Size Size { get; }
 		TextureScaleFilter ScaleFilter { get; set; }
@@ -145,7 +147,7 @@ namespace OpenRA
 		TriangleList,
 	}
 
-	public struct Range<T>
+	public readonly struct Range<T>
 	{
 		public readonly T Start, End;
 		public Range(T start, T end) { Start = start; End = end; }

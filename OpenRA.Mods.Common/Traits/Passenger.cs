@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -34,11 +34,11 @@ namespace OpenRA.Mods.Common.Traits
 
 		[ActorReference(dictionaryReference: LintDictionaryReference.Keys)]
 		[Desc("Conditions to grant when this actor is loaded inside specified transport.",
-			"A dictionary of [actor id]: [condition].")]
+			"A dictionary of [actor name]: [condition].")]
 		public readonly Dictionary<string, string> CargoConditions = new Dictionary<string, string>();
 
 		[GrantedConditionReference]
-		public IEnumerable<string> LinterCargoConditions { get { return CargoConditions.Values; } }
+		public IEnumerable<string> LinterCargoConditions => CargoConditions.Values;
 
 		[VoiceReference]
 		public readonly string Voice = "Action";
@@ -50,9 +50,11 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Boolean expression defining the condition under which the regular (non-force) enter cursor is disabled.")]
 		public readonly BooleanExpression RequireForceMoveCondition = null;
 
+		[CursorReference]
 		[Desc("Cursor to display when able to enter target actor.")]
 		public readonly string EnterCursor = "enter";
 
+		[CursorReference]
 		[Desc("Cursor to display when unable to enter target actor.")]
 		public readonly string EnterBlockedCursor = "enter-blocked";
 

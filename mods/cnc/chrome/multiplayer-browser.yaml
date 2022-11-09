@@ -1,9 +1,9 @@
 Container@MULTIPLAYER_PANEL:
 	Logic: MultiplayerLogic
 	X: (WINDOW_RIGHT - WIDTH) / 2
-	Y: (WINDOW_BOTTOM - 560) / 2
+	Y: (WINDOW_BOTTOM - HEIGHT) / 2
 	Width: 900
-	Height: 575
+	Height: 540
 	Children:
 		Label@TITLE:
 			Text: Multiplayer
@@ -14,7 +14,7 @@ Container@MULTIPLAYER_PANEL:
 			Align: Center
 		Background@bg:
 			Width: PARENT_RIGHT
-			Height: PARENT_BOTTOM - 35
+			Height: PARENT_BOTTOM
 			Background: panel-black
 			Children:
 				Container@LABEL_CONTAINER:
@@ -89,6 +89,7 @@ Container@MULTIPLAYER_PANEL:
 					TopBottomSpacing: 2
 					Children:
 						ScrollItem@HEADER_TEMPLATE:
+							Background: scrollheader
 							Width: PARENT_RIGHT - 27
 							Height: 20
 							X: 2
@@ -168,12 +169,14 @@ Container@MULTIPLAYER_PANEL:
 									Width: PARENT_RIGHT - 2
 									Height: PARENT_BOTTOM - 2
 									TooltipContainer: TOOLTIP_CONTAINER
-						Label@SELECTED_MAP:
+						LabelWithTooltip@SELECTED_MAP:
 							Y: 173
 							Width: PARENT_RIGHT
 							Height: 25
 							Font: Bold
 							Align: Center
+							TooltipContainer: TOOLTIP_CONTAINER
+							TooltipTemplate: SIMPLE_TOOLTIP
 						Label@SELECTED_IP:
 							Y: 188
 							Width: PARENT_RIGHT
@@ -252,7 +255,7 @@ Container@MULTIPLAYER_PANEL:
 		Button@BACK_BUTTON:
 			Key: escape
 			X: 0
-			Y: PARENT_BOTTOM - 36
+			Y: PARENT_BOTTOM - 1
 			Width: 140
 			Height: 35
 			Text: Back

@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -28,22 +28,23 @@ namespace OpenRA.Primitives
 		protected ReadOnlyAdapterStream(Stream stream)
 		{
 			if (stream == null)
-				throw new ArgumentNullException("stream");
+				throw new ArgumentNullException(nameof(stream));
 			if (!stream.CanRead)
-				throw new ArgumentException("stream must be readable.", "stream");
+				throw new ArgumentException("stream must be readable.", nameof(stream));
 
 			baseStream = stream;
 		}
 
-		public sealed override bool CanSeek { get { return false; } }
-		public sealed override bool CanRead { get { return true; } }
-		public sealed override bool CanWrite { get { return false; } }
+		public sealed override bool CanSeek => false;
+		public sealed override bool CanRead => true;
+		public sealed override bool CanWrite => false;
 
-		public override long Length { get { throw new NotSupportedException(); } }
+		public override long Length => throw new NotSupportedException();
+
 		public sealed override long Position
 		{
-			get { throw new NotSupportedException(); }
-			set { throw new NotSupportedException(); }
+			get => throw new NotSupportedException();
+			set => throw new NotSupportedException();
 		}
 
 		public sealed override long Seek(long offset, SeekOrigin origin) { throw new NotSupportedException(); }

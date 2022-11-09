@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -17,7 +17,7 @@ using OpenRA.Primitives;
 
 namespace OpenRA.Mods.Common.Graphics
 {
-	public struct ModelRenderable : IRenderable, ITintableRenderable
+	public class ModelRenderable : IPalettedRenderable, IModifyableRenderable
 	{
 		readonly IEnumerable<ModelAnimation> models;
 		readonly WPos pos;
@@ -30,7 +30,9 @@ namespace OpenRA.Mods.Common.Graphics
 		readonly PaletteReference normalsPalette;
 		readonly PaletteReference shadowPalette;
 		readonly float scale;
+		readonly float alpha;
 		readonly float3 tint;
+		readonly TintModifiers tintModifiers;
 
 		public ModelRenderable(
 			IEnumerable<ModelAnimation> models, WPos pos, int zOffset, in WRot camera, float scale,
@@ -38,14 +40,14 @@ namespace OpenRA.Mods.Common.Graphics
 			PaletteReference color, PaletteReference normals, PaletteReference shadow)
 			: this(models, pos, zOffset, camera, scale,
 				lightSource, lightAmbientColor, lightDiffuseColor,
-				color, normals, shadow,
-				float3.Ones) { }
+				color, normals, shadow, 1f,
+				float3.Ones, TintModifiers.None) { }
 
 		public ModelRenderable(
 			IEnumerable<ModelAnimation> models, WPos pos, int zOffset, in WRot camera, float scale,
 			in WRot lightSource, float[] lightAmbientColor, float[] lightDiffuseColor,
 			PaletteReference color, PaletteReference normals, PaletteReference shadow,
-			in float3 tint)
+			float alpha, in float3 tint, TintModifiers tintModifiers)
 		{
 			this.models = models;
 			this.pos = pos;
@@ -58,20 +60,26 @@ namespace OpenRA.Mods.Common.Graphics
 			palette = color;
 			normalsPalette = normals;
 			shadowPalette = shadow;
+			this.alpha = alpha;
 			this.tint = tint;
+			this.tintModifiers = tintModifiers;
 		}
 
-		public WPos Pos { get { return pos; } }
-		public PaletteReference Palette { get { return palette; } }
-		public int ZOffset { get { return zOffset; } }
-		public bool IsDecoration { get { return false; } }
+		public WPos Pos => pos;
+		public PaletteReference Palette => palette;
+		public int ZOffset => zOffset;
+		public bool IsDecoration => false;
 
-		public IRenderable WithPalette(PaletteReference newPalette)
+		public float Alpha => alpha;
+		public float3 Tint => tint;
+		public TintModifiers TintModifiers => tintModifiers;
+
+		public IPalettedRenderable WithPalette(PaletteReference newPalette)
 		{
 			return new ModelRenderable(
 				models, pos, zOffset, camera, scale,
 				lightSource, lightAmbientColor, lightDiffuseColor,
-				newPalette, normalsPalette, shadowPalette, tint);
+				newPalette, normalsPalette, shadowPalette, alpha, tint, tintModifiers);
 		}
 
 		public IRenderable WithZOffset(int newOffset)
@@ -79,35 +87,41 @@ namespace OpenRA.Mods.Common.Graphics
 			return new ModelRenderable(
 				models, pos, newOffset, camera, scale,
 				lightSource, lightAmbientColor, lightDiffuseColor,
-				palette, normalsPalette, shadowPalette, tint);
+				palette, normalsPalette, shadowPalette, alpha, tint, tintModifiers);
 		}
 
-		public IRenderable OffsetBy(WVec vec)
+		public IRenderable OffsetBy(in WVec vec)
 		{
 			return new ModelRenderable(
 				models, pos + vec, zOffset, camera, scale,
 				lightSource, lightAmbientColor, lightDiffuseColor,
-				palette, normalsPalette, shadowPalette, tint);
+				palette, normalsPalette, shadowPalette, alpha, tint, tintModifiers);
 		}
 
 		public IRenderable AsDecoration() { return this; }
 
-		public IRenderable WithTint(in float3 newTint)
+		public IModifyableRenderable WithAlpha(float newAlpha)
 		{
 			return new ModelRenderable(
 				models, pos, zOffset, camera, scale,
 				lightSource, lightAmbientColor, lightDiffuseColor,
-				palette, normalsPalette, shadowPalette, newTint);
+				palette, normalsPalette, shadowPalette, newAlpha, tint, tintModifiers);
 		}
 
-		// This will need generalizing once we support TS/RA2 terrain
-		static readonly float[] GroundNormal = new float[] { 0, 0, 1, 1 };
+		public IModifyableRenderable WithTint(in float3 newTint, TintModifiers newTintModifiers)
+		{
+			return new ModelRenderable(
+				models, pos, zOffset, camera, scale,
+				lightSource, lightAmbientColor, lightDiffuseColor,
+				palette, normalsPalette, shadowPalette, alpha, newTint, newTintModifiers);
+		}
+
 		public IFinalizedRenderable PrepareRender(WorldRenderer wr)
 		{
 			return new FinalizedModelRenderable(wr, this);
 		}
 
-		struct FinalizedModelRenderable : IFinalizedRenderable
+		class FinalizedModelRenderable : IFinalizedRenderable
 		{
 			readonly ModelRenderable model;
 			readonly ModelRenderProxy renderProxy;
@@ -117,23 +131,32 @@ namespace OpenRA.Mods.Common.Graphics
 				this.model = model;
 				var draw = model.models.Where(v => v.IsVisible);
 
+				var map = wr.World.Map;
+				var groundOrientation = map.TerrainOrientation(map.CellContaining(model.pos));
 				renderProxy = Game.Renderer.WorldModelRenderer.RenderAsync(
-					wr, draw, model.camera, model.scale, GroundNormal, model.lightSource,
+					wr, draw, model.camera, model.scale, groundOrientation, model.lightSource,
 					model.lightAmbientColor, model.lightDiffuseColor,
 					model.palette, model.normalsPalette, model.shadowPalette);
 			}
 
 			public void Render(WorldRenderer wr)
 			{
-				var groundPos = model.pos - new WVec(0, 0, wr.World.Map.DistanceAboveTerrain(model.pos).Length);
-				var tileScale = wr.World.Map.Grid.Type == MapGridType.RectangularIsometric ? 1448f : 1024f;
+				var map = wr.World.Map;
+				var groundPos = model.pos - new WVec(0, 0, map.DistanceAboveTerrain(model.pos).Length);
+				var tileScale = map.Grid.Type == MapGridType.RectangularIsometric ? 1448f : 1024f;
 
-				var groundZ = wr.World.Map.Grid.TileSize.Height * (groundPos.Z - model.pos.Z) / tileScale;
+				var groundZ = map.Grid.TileSize.Height * (groundPos.Z - model.pos.Z) / tileScale;
 				var pxOrigin = wr.Screen3DPosition(model.pos);
 
 				// HACK: We don't have enough texture channels to pass the depth data to the shader
 				// so for now just offset everything forward so that the back corner is rendered at pos.
 				pxOrigin -= new float3(0, 0, Screen3DBounds(wr).Z.X);
+
+				// HACK: The previous hack isn't sufficient for the ramp type that is half flat and half
+				// sloped towards the camera. Offset it by another half cell to avoid clipping.
+				var cell = map.CellContaining(model.pos);
+				if (map.Ramp.Contains(cell) && map.Ramp[cell] == 7)
+					pxOrigin += new float3(0, 0, 0.5f * map.Grid.TileSize.Height);
 
 				var shadowOrigin = pxOrigin - groundZ * (new float2(renderProxy.ShadowDirection, 1));
 
@@ -145,11 +168,16 @@ namespace OpenRA.Mods.Common.Graphics
 
 				var wrsr = Game.Renderer.WorldRgbaSpriteRenderer;
 				var t = model.tint;
-				if (wr.TerrainLighting != null)
+				if (wr.TerrainLighting != null && (model.tintModifiers & TintModifiers.IgnoreWorldTint) == 0)
 					t *= wr.TerrainLighting.TintAt(model.pos);
 
-				wrsr.DrawSpriteWithTint(renderProxy.ShadowSprite, sa, sb, sc, sd, t);
-				wrsr.DrawSpriteWithTint(renderProxy.Sprite, pxOrigin - 0.5f * renderProxy.Sprite.Size, renderProxy.Sprite.Size, t);
+				// Shader interprets negative alpha as a flag to use the tint colour directly instead of multiplying the sprite colour
+				var a = model.alpha;
+				if ((model.tintModifiers & TintModifiers.ReplaceColor) != 0)
+					a *= -1;
+
+				wrsr.DrawSprite(renderProxy.ShadowSprite, sa, sb, sc, sd, t, a);
+				wrsr.DrawSprite(renderProxy.Sprite, pxOrigin - 0.5f * renderProxy.Sprite.Size, 1f, t, a);
 			}
 
 			public void RenderDebugGeometry(WorldRenderer wr)
@@ -161,7 +189,9 @@ namespace OpenRA.Mods.Common.Graphics
 
 				// Draw sprite rect
 				var offset = pxOrigin + renderProxy.Sprite.Offset - 0.5f * renderProxy.Sprite.Size;
-				Game.Renderer.WorldRgbaColorRenderer.DrawRect(offset.XY, (offset + renderProxy.Sprite.Size).XY, 1, Color.Red);
+				var tl = wr.Viewport.WorldToViewPx(offset.XY);
+				var br = wr.Viewport.WorldToViewPx((offset + renderProxy.Sprite.Size).XY);
+				Game.Renderer.RgbaColorRenderer.DrawRect(tl, br, 1, Color.Red);
 
 				// Draw transformed shadow sprite rect
 				var c = Color.Purple;

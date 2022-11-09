@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -11,15 +11,25 @@
 
 using System;
 using System.Linq;
-using OpenRA.GameRules;
 using OpenRA.Mods.Common.Traits;
+using OpenRA.Server;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Lint
 {
-	class CheckNotifications : ILintRulesPass
+	class CheckNotifications : ILintRulesPass, ILintServerMapPass
 	{
-		public void Run(Action<string> emitError, Action<string> emitWarning, ModData modData, Ruleset rules)
+		void ILintRulesPass.Run(Action<string> emitError, Action<string> emitWarning, ModData modData, Ruleset rules)
+		{
+			Run(emitError, rules);
+		}
+
+		void ILintServerMapPass.Run(Action<string> emitError, Action<string> emitWarning, ModData modData, MapPreview map, Ruleset mapRules)
+		{
+			Run(emitError, mapRules);
+		}
+
+		void Run(Action<string> emitError, Ruleset rules)
 		{
 			foreach (var actorInfo in rules.Actors)
 			{
@@ -38,7 +48,7 @@ namespace OpenRA.Mods.Common.Lint
 						else
 							type = notificationReference.NotificationType;
 
-						var notifications = LintExts.GetFieldValues(traitInfo, field, emitError);
+						var notifications = LintExts.GetFieldValues(traitInfo, field);
 						foreach (var notification in notifications)
 						{
 							if (string.IsNullOrEmpty(notification))
@@ -46,8 +56,7 @@ namespace OpenRA.Mods.Common.Lint
 
 							if (string.IsNullOrEmpty(type) || !rules.Notifications.TryGetValue(type.ToLowerInvariant(), out var soundInfo) ||
 								!soundInfo.Notifications.ContainsKey(notification))
-								emitError("Undefined notification reference {0}.{1} detected at {2} for {3}".F(
-									type ?? "(null)", notification, traitInfo.GetType().Name, actorInfo.Key));
+								emitError($"Undefined notification reference {type ?? "(null)"}.{notification} detected at {traitInfo.GetType().Name} for {actorInfo.Key}");
 						}
 					}
 				}

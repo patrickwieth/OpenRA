@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -9,14 +9,15 @@
  */
 #endregion
 
+using System;
 using System.Collections.Generic;
 using OpenRA.Primitives;
 
 namespace OpenRA.Graphics
 {
-	public struct SpriteRenderable : IRenderable, ITintableRenderable, IFinalizedRenderable
+	public class SpriteRenderable : IPalettedRenderable, IModifyableRenderable, IFinalizedRenderable
 	{
-		public static readonly IEnumerable<IRenderable> None = new IRenderable[0];
+		public static readonly IEnumerable<IRenderable> None = Array.Empty<IRenderable>();
 
 		readonly Sprite sprite;
 		readonly WPos pos;
@@ -24,17 +25,14 @@ namespace OpenRA.Graphics
 		readonly int zOffset;
 		readonly PaletteReference palette;
 		readonly float scale;
+		readonly WAngle rotation = WAngle.Zero;
 		readonly float3 tint;
+		readonly TintModifiers tintModifiers;
+		readonly float alpha;
 		readonly bool isDecoration;
-		readonly bool ignoreWorldTint;
 
-		public SpriteRenderable(Sprite sprite, WPos pos, WVec offset, int zOffset, PaletteReference palette, float scale, bool isDecoration)
-			: this(sprite, pos, offset, zOffset, palette, scale, float3.Ones, isDecoration, false) { }
-
-		public SpriteRenderable(Sprite sprite, WPos pos, WVec offset, int zOffset, PaletteReference palette, float scale, bool isDecoration, bool ignoreWorldTint)
-			: this(sprite, pos, offset, zOffset, palette, scale, float3.Ones, isDecoration, ignoreWorldTint) { }
-
-		public SpriteRenderable(Sprite sprite, WPos pos, WVec offset, int zOffset, PaletteReference palette, float scale, float3 tint, bool isDecoration, bool ignoreWorldTint)
+		public SpriteRenderable(Sprite sprite, WPos pos, WVec offset, int zOffset, PaletteReference palette, float scale, float alpha,
+			float3 tint, TintModifiers tintModifiers, bool isDecoration, WAngle rotation)
 		{
 			this.sprite = sprite;
 			this.pos = pos;
@@ -42,46 +40,83 @@ namespace OpenRA.Graphics
 			this.zOffset = zOffset;
 			this.palette = palette;
 			this.scale = scale;
+			this.rotation = rotation;
 			this.tint = tint;
 			this.isDecoration = isDecoration;
-			this.ignoreWorldTint = ignoreWorldTint;
+			this.tintModifiers = tintModifiers;
+			this.alpha = alpha;
+
+			// PERF: Remove useless palette assignments for RGBA sprites
+			// HACK: This is working around the fact that palettes are defined on traits rather than sequences
+			// and can be removed once this has been fixed
+			if (sprite.Channel == TextureChannel.RGBA && !(palette?.HasColorShift ?? false))
+				this.palette = null;
 		}
 
-		public WPos Pos { get { return pos + offset; } }
-		public WVec Offset { get { return offset; } }
-		public PaletteReference Palette { get { return palette; } }
-		public int ZOffset { get { return zOffset; } }
-		public bool IsDecoration { get { return isDecoration; } }
+		public SpriteRenderable(Sprite sprite, WPos pos, WVec offset, int zOffset, PaletteReference palette, float scale, float alpha,
+			float3 tint, TintModifiers tintModifiers, bool isDecoration)
+			: this(sprite, pos, offset, zOffset, palette, scale, alpha, tint, tintModifiers, isDecoration, WAngle.Zero) { }
 
-		public IRenderable WithPalette(PaletteReference newPalette) { return new SpriteRenderable(sprite, pos, offset, zOffset, newPalette, scale, tint, isDecoration, ignoreWorldTint); }
-		public IRenderable WithZOffset(int newOffset) { return new SpriteRenderable(sprite, pos, offset, newOffset, palette, scale, tint, isDecoration, ignoreWorldTint); }
-		public IRenderable OffsetBy(WVec vec) { return new SpriteRenderable(sprite, pos + vec, offset, zOffset, palette, scale, tint, isDecoration, ignoreWorldTint); }
-		public IRenderable AsDecoration() { return new SpriteRenderable(sprite, pos, offset, zOffset, palette, scale, tint, true, ignoreWorldTint); }
+		public WPos Pos => pos + offset;
+		public WVec Offset => offset;
+		public PaletteReference Palette => palette;
+		public int ZOffset => zOffset;
+		public bool IsDecoration => isDecoration;
 
-		public IRenderable WithTint(in float3 newTint) { return new SpriteRenderable(sprite, pos, offset, zOffset, palette, scale, newTint, isDecoration, ignoreWorldTint); }
+		public float Alpha => alpha;
+		public float3 Tint => tint;
+		public TintModifiers TintModifiers => tintModifiers;
+
+		public IPalettedRenderable WithPalette(PaletteReference newPalette)
+		{
+			return new SpriteRenderable(sprite, pos, offset, zOffset, newPalette, scale, alpha, tint, tintModifiers, isDecoration, rotation);
+		}
+
+		public IRenderable WithZOffset(int newOffset)
+		{
+			return new SpriteRenderable(sprite, pos, offset, newOffset, palette, scale, alpha, tint, tintModifiers, isDecoration, rotation);
+		}
+
+		public IRenderable OffsetBy(in WVec vec)
+		{
+			return new SpriteRenderable(sprite, pos + vec, offset, zOffset, palette, scale, alpha, tint, tintModifiers, isDecoration, rotation);
+		}
+
+		public IRenderable AsDecoration()
+		{
+			return new SpriteRenderable(sprite, pos, offset, zOffset, palette, scale, alpha, tint, tintModifiers, true, rotation);
+		}
+
+		public IModifyableRenderable WithAlpha(float newAlpha)
+		{
+			return new SpriteRenderable(sprite, pos, offset, zOffset, palette, scale, newAlpha, tint, tintModifiers, isDecoration, rotation);
+		}
+
+		public IModifyableRenderable WithTint(in float3 newTint, TintModifiers newTintModifiers)
+		{
+			return new SpriteRenderable(sprite, pos, offset, zOffset, palette, scale, alpha, newTint, newTintModifiers, isDecoration, rotation);
+		}
 
 		float3 ScreenPosition(WorldRenderer wr)
 		{
-			var xy = wr.ScreenPxPosition(pos) + wr.ScreenPxOffset(offset) - (0.5f * scale * sprite.Size.XY).ToInt2();
-
-			// HACK: The z offset needs to be applied somewhere, but this probably is the wrong place.
-			return new float3(xy, sprite.Offset.Z + wr.ScreenZPosition(pos, 0) - 0.5f * scale * sprite.Size.Z);
+			var s = 0.5f * scale * sprite.Size;
+			return wr.Screen3DPxPosition(pos) + wr.ScreenPxOffset(offset) - new float3((int)s.X, (int)s.Y, s.Z);
 		}
 
 		public IFinalizedRenderable PrepareRender(WorldRenderer wr) { return this; }
 		public void Render(WorldRenderer wr)
 		{
 			var wsr = Game.Renderer.WorldSpriteRenderer;
-			if (ignoreWorldTint)
-				wsr.DrawSprite(sprite, ScreenPosition(wr), palette, scale * sprite.Size);
-			else
-			{
-				var t = tint;
-				if (wr.TerrainLighting != null)
-					t *= wr.TerrainLighting.TintAt(pos);
+			var t = alpha * tint;
+			if (wr.TerrainLighting != null && (tintModifiers & TintModifiers.IgnoreWorldTint) == 0)
+				t *= wr.TerrainLighting.TintAt(pos);
 
-				wsr.DrawSpriteWithTint(sprite, ScreenPosition(wr), palette, scale * sprite.Size, t);
-			}
+			// Shader interprets negative alpha as a flag to use the tint colour directly instead of multiplying the sprite colour
+			var a = alpha;
+			if ((tintModifiers & TintModifiers.ReplaceColor) != 0)
+				a *= -1;
+
+			wsr.DrawSprite(sprite, palette, ScreenPosition(wr), scale, t, a, rotation.RendererRadians());
 		}
 
 		public void RenderDebugGeometry(WorldRenderer wr)
@@ -89,13 +124,16 @@ namespace OpenRA.Graphics
 			var pos = ScreenPosition(wr) + sprite.Offset;
 			var tl = wr.Viewport.WorldToViewPx(pos);
 			var br = wr.Viewport.WorldToViewPx(pos + sprite.Size);
-			Game.Renderer.RgbaColorRenderer.DrawRect(tl, br, 1, Color.Red);
+			if (rotation == WAngle.Zero)
+				Game.Renderer.RgbaColorRenderer.DrawRect(tl, br, 1, Color.Red);
+			else
+				Game.Renderer.RgbaColorRenderer.DrawPolygon(Util.RotateQuad(tl, br - tl, rotation.RendererRadians()), 1, Color.Red);
 		}
 
 		public Rectangle ScreenBounds(WorldRenderer wr)
 		{
 			var screenOffset = ScreenPosition(wr) + sprite.Offset;
-			return new Rectangle((int)screenOffset.X, (int)screenOffset.Y, (int)sprite.Size.X, (int)sprite.Size.Y);
+			return Util.BoundingRectangle(screenOffset, sprite.Size, rotation.RendererRadians());
 		}
 	}
 }

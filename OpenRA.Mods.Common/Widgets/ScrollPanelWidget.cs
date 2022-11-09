@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -45,12 +45,15 @@ namespace OpenRA.Mods.Common.Widgets
 		public int ItemSpacing = 0;
 		public int ButtonDepth = ChromeMetrics.Get<int>("ButtonDepth");
 		public string ClickSound = ChromeMetrics.Get<string>("ClickSound");
+		public string ClickDisabledSound = ChromeMetrics.Get<string>("ClickDisabledSound");
 		public string Background = "scrollpanel-bg";
 		public string ScrollBarBackground = "scrollpanel-bg";
 		public string Button = "scrollpanel-button";
-		public readonly string Decorations = "scrollpanel-decorations";
+		public string Decorations = "scrollpanel-decorations";
 		public readonly string DecorationScrollUp = "up";
 		public readonly string DecorationScrollDown = "down";
+		readonly CachedTransform<(bool Disabled, bool Pressed, bool Hover, bool Focused, bool Highlighted), Sprite> getUpArrowImage;
+		readonly CachedTransform<(bool Disabled, bool Pressed, bool Hover, bool Focused, bool Highlighted), Sprite> getDownArrowImage;
 		public int ContentHeight;
 		public ILayout Layout;
 		public int MinimumThumbSize = 10;
@@ -110,12 +113,16 @@ namespace OpenRA.Mods.Common.Widgets
 			modRules = modData.DefaultRules;
 
 			Layout = new ListLayout(this);
+
+			getUpArrowImage = WidgetUtils.GetCachedStatefulImage(Decorations, DecorationScrollUp);
+			getDownArrowImage = WidgetUtils.GetCachedStatefulImage(Decorations, DecorationScrollDown);
 		}
 
 		public override void RemoveChildren()
 		{
 			ContentHeight = 0;
 			base.RemoveChildren();
+			Scroll(0);
 		}
 
 		public override void AddChild(Widget child)
@@ -204,14 +211,12 @@ namespace OpenRA.Mods.Common.Widgets
 				var upOffset = !upPressed || upDisabled ? 4 : 4 + ButtonDepth;
 				var downOffset = !downPressed || downDisabled ? 4 : 4 + ButtonDepth;
 
-				var upArrowImageName = WidgetUtils.GetStatefulImageName(DecorationScrollUp, upDisabled, upPressed, upHover);
-				var upArrowImage = ChromeProvider.GetImage(Decorations, upArrowImageName) ?? ChromeProvider.GetImage(Decorations, DecorationScrollUp);
-				WidgetUtils.DrawRGBA(upArrowImage,
+				var upArrowImage = getUpArrowImage.Update((upDisabled, upPressed, upHover, false, false));
+				WidgetUtils.DrawSprite(upArrowImage,
 					new float2(upButtonRect.Left + upOffset, upButtonRect.Top + upOffset));
 
-				var downArrowImageName = WidgetUtils.GetStatefulImageName(DecorationScrollDown, downDisabled, downPressed, downHover);
-				var downArrowImage = ChromeProvider.GetImage(Decorations, downArrowImageName) ?? ChromeProvider.GetImage(Decorations, DecorationScrollDown);
-				WidgetUtils.DrawRGBA(downArrowImage,
+				var downArrowImage = getDownArrowImage.Update((downDisabled, downPressed, downHover, false, false));
+				WidgetUtils.DrawSprite(downArrowImage,
 					new float2(downButtonRect.Left + downOffset, downButtonRect.Top + downOffset));
 			}
 
@@ -230,13 +235,7 @@ namespace OpenRA.Mods.Common.Widgets
 			Game.Renderer.DisableScissor();
 		}
 
-		public override int2 ChildOrigin
-		{
-			get
-			{
-				return RenderOrigin + new int2(ScrollBar == ScrollBar.Left ? ScrollbarWidth : 0, (int)currentListOffset);
-			}
-		}
+		public override int2 ChildOrigin => RenderOrigin + new int2(ScrollBar == ScrollBar.Left ? ScrollbarWidth : 0, (int)currentListOffset);
 
 		public override bool EventBoundsContains(int2 location)
 		{
@@ -268,10 +267,7 @@ namespace OpenRA.Mods.Common.Widgets
 			SetListOffset(value, smooth);
 		}
 
-		public bool ScrolledToBottom
-		{
-			get { return targetListOffset == Math.Min(0, Bounds.Height - ContentHeight) || ContentHeight <= Bounds.Height; }
-		}
+		public bool ScrolledToBottom => targetListOffset == Math.Min(0, Bounds.Height - ContentHeight) || ContentHeight <= Bounds.Height;
 
 		void ScrollToItem(Widget item, bool smooth = false)
 		{
@@ -291,8 +287,7 @@ namespace OpenRA.Mods.Common.Widgets
 		{
 			var item = Children.FirstOrDefault(c =>
 			{
-				var si = c as ScrollItemWidget;
-				return si != null && si.ItemKey == itemKey;
+				return c is ScrollItemWidget si && si.ItemKey == itemKey;
 			});
 
 			if (item != null)
@@ -303,8 +298,7 @@ namespace OpenRA.Mods.Common.Widgets
 		{
 			var item = Children.FirstOrDefault(c =>
 			{
-				var si = c as ScrollItemWidget;
-				return si != null && si.IsSelected();
+				return c is ScrollItemWidget si && si.IsSelected();
 			});
 
 			if (item != null)
@@ -393,8 +387,13 @@ namespace OpenRA.Mods.Common.Widgets
 				if (thumbPressed)
 					lastMouseLocation = mi.Location;
 
-				if (mi.Event == MouseInputEvent.Down && ((upPressed && !upDisabled) || (downPressed && !downDisabled) || thumbPressed))
-					Game.Sound.PlayNotification(modRules, null, "Sounds", ClickSound, null);
+				if (mi.Event == MouseInputEvent.Down)
+				{
+					if (thumbPressed || (upPressed && !upDisabled) || (downPressed && !downDisabled))
+						Game.Sound.PlayNotification(modRules, null, "Sounds", ClickSound, null);
+					else if ((upPressed && upDisabled) || (downPressed && downDisabled))
+						Game.Sound.PlayNotification(modRules, null, "Sounds", ClickDisabledSound, null);
+				}
 			}
 
 			return upPressed || downPressed || thumbPressed;

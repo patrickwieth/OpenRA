@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -15,7 +15,7 @@ namespace OpenRA.Platforms.Default
 {
 	sealed class DummySoundEngine : ISoundEngine
 	{
-		public bool Dummy { get { return true; } }
+		public bool Dummy => true;
 
 		public SoundDevice[] AvailableDevices()
 		{
@@ -27,7 +27,7 @@ namespace OpenRA.Platforms.Default
 			return defaultDevices;
 		}
 
-		public DummySoundEngine(string deviceName) { }
+		public DummySoundEngine() { }
 
 		public ISoundSource AddSoundSourceFromMemory(byte[] data, int channels, int sampleBits, int sampleRate)
 		{
@@ -46,7 +46,7 @@ namespace OpenRA.Platforms.Default
 
 		public float Volume
 		{
-			get { return 0; }
+			get => 0;
 			set { }
 		}
 
@@ -56,6 +56,7 @@ namespace OpenRA.Platforms.Default
 		public void StopSound(ISound sound) { }
 		public void StopAllSounds() { }
 		public void SetListenerPosition(WPos position) { }
+		public void SetSoundLooping(bool looping, ISound sound) { }
 		public void Dispose() { }
 	}
 
@@ -67,8 +68,8 @@ namespace OpenRA.Platforms.Default
 	class NullSound : ISound
 	{
 		public float Volume { get; set; }
-		public float SeekPosition { get { return 0; } }
-		public bool Complete { get { return false; } }
+		public float SeekPosition => 0;
+		public bool Complete => false;
 
 		public void SetPosition(WPos position) { }
 	}

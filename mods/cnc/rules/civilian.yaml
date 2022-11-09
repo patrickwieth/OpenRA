@@ -244,36 +244,20 @@ V11.Husk:
 		Name: Ludwig's House (Destroyed)
 
 V12:
-	Inherits: ^CivField
+	Inherits: ^CivHaystackOrIgloo
 	SpawnActorOnDeath:
 		Actor: V12.Husk
-	MapEditorData:
-		ExcludeTilesets: DESERT
-	Tooltip:
-		Name: Haystacks
 
 V12.Husk:
-	Inherits: ^CivBuildingHusk
-	MapEditorData:
-		ExcludeTilesets: DESERT
-	Tooltip:
-		Name: Haystacks (Destroyed)
+	Inherits: ^CivHaystackOrIglooHusk
 
 V13:
-	Inherits: ^CivField
+	Inherits: ^CivHaystackOrIgloo
 	SpawnActorOnDeath:
 		Actor: V13.Husk
-	MapEditorData:
-		ExcludeTilesets: DESERT
-	Tooltip:
-		Name: Haystacks
 
 V13.Husk:
-	Inherits: ^CivBuildingHusk
-	MapEditorData:
-		ExcludeTilesets: DESERT
-	Tooltip:
-		Name: Haystacks (Destroyed)
+	Inherits: ^CivHaystackOrIglooHusk
 
 V14:
 	Inherits: ^CivField
@@ -416,7 +400,7 @@ BRIDGE1:
 		Actor: bridgehut
 		SpawnOffset: 0,2
 	Interactable:
-		Bounds: 96,96
+		Bounds: 4096, 4096
 
 BRIDGE2:
 	Inherits: ^Bridge
@@ -433,7 +417,7 @@ BRIDGE2:
 		Actor: bridgehut
 		SpawnOffset: 2,2
 	Interactable:
-		Bounds: 120,120
+		Bounds: 5120, 5120
 
 BRIDGE3:
 	Inherits: ^Bridge
@@ -450,7 +434,7 @@ BRIDGE3:
 		Actor: bridgehut
 		SpawnOffset: 1,2
 	Interactable:
-		Bounds: 144,120
+		Bounds: 6144, 5120
 
 BRIDGE4:
 	Inherits: ^Bridge
@@ -467,7 +451,7 @@ BRIDGE4:
 		Actor: bridgehut
 		SpawnOffset: 3,2
 	Interactable:
-		Bounds: 144,96
+		Bounds: 6144, 4096
 
 BRIDGEHUT:
 	AlwaysVisible:
@@ -478,7 +462,7 @@ BRIDGEHUT:
 	Targetable:
 		TargetTypes: BridgeHut, C4
 	Interactable:
-		Bounds: 48,48
+		Bounds: 2048, 2048
 
 C1:
 	Inherits: ^CivInfantry

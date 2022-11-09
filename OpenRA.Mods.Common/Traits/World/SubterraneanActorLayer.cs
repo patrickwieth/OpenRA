@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -9,12 +9,13 @@
  */
 #endregion
 
-using System.Linq;
+using OpenRA.Mods.Common.Pathfinder;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
 {
-	public class SubterraneanActorLayerInfo : TraitInfo
+	[TraitLocation(SystemActors.World)]
+	public class SubterraneanActorLayerInfo : TraitInfo, ICustomMovementLayerInfo
 	{
 		[Desc("Terrain type of the underground layer.")]
 		public readonly string TerrainType = "Subterranean";
@@ -38,7 +39,7 @@ namespace OpenRA.Mods.Common.Traits
 		public SubterraneanActorLayer(Actor self, SubterraneanActorLayerInfo info)
 		{
 			map = self.World.Map;
-			terrainIndex = self.World.Map.Rules.TileSet.GetTerrainIndex(info.TerrainType);
+			terrainIndex = self.World.Map.Rules.TerrainInfo.GetTerrainIndex(info.TerrainType);
 			height = new CellLayer<int>(map);
 			foreach (var c in map.AllCells)
 			{
@@ -61,10 +62,10 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
-		bool ICustomMovementLayer.EnabledForActor(ActorInfo a, LocomotorInfo li) { return li is SubterraneanLocomotorInfo; }
-		byte ICustomMovementLayer.Index { get { return CustomMovementLayerType.Subterranean; } }
-		bool ICustomMovementLayer.InteractsWithDefaultLayer { get { return false; } }
-		bool ICustomMovementLayer.ReturnToGroundLayerOnIdle { get { return true; } }
+		bool ICustomMovementLayer.EnabledForLocomotor(LocomotorInfo li) { return li is SubterraneanLocomotorInfo; }
+		byte ICustomMovementLayer.Index => CustomMovementLayerType.Subterranean;
+		bool ICustomMovementLayer.InteractsWithDefaultLayer => false;
+		bool ICustomMovementLayer.ReturnToGroundLayerOnIdle => true;
 
 		WPos ICustomMovementLayer.CenterOfCell(CPos cell)
 		{
@@ -72,11 +73,10 @@ namespace OpenRA.Mods.Common.Traits
 			return pos + new WVec(0, 0, height[cell] - pos.Z);
 		}
 
-		bool ValidTransitionCell(CPos cell, LocomotorInfo li)
+		bool ValidTransitionCell(CPos cell, SubterraneanLocomotorInfo sli)
 		{
 			var terrainType = map.GetTerrainInfo(cell).Type;
-			var sli = (SubterraneanLocomotorInfo)li;
-			if (!sli.SubterraneanTransitionTerrainTypes.Contains(terrainType) && sli.SubterraneanTransitionTerrainTypes.Any())
+			if (!sli.SubterraneanTransitionTerrainTypes.Contains(terrainType) && sli.SubterraneanTransitionTerrainTypes.Count > 0)
 				return false;
 
 			if (sli.SubterraneanTransitionOnRamps)
@@ -85,16 +85,16 @@ namespace OpenRA.Mods.Common.Traits
 			return map.Ramp[cell] == 0;
 		}
 
-		int ICustomMovementLayer.EntryMovementCost(ActorInfo a, LocomotorInfo li, CPos cell)
+		short ICustomMovementLayer.EntryMovementCost(LocomotorInfo li, CPos cell)
 		{
 			var sli = (SubterraneanLocomotorInfo)li;
-			return ValidTransitionCell(cell, sli) ? sli.SubterraneanTransitionCost : int.MaxValue;
+			return ValidTransitionCell(cell, sli) ? sli.SubterraneanTransitionCost : PathGraph.MovementCostForUnreachableCell;
 		}
 
-		int ICustomMovementLayer.ExitMovementCost(ActorInfo a, LocomotorInfo li, CPos cell)
+		short ICustomMovementLayer.ExitMovementCost(LocomotorInfo li, CPos cell)
 		{
 			var sli = (SubterraneanLocomotorInfo)li;
-			return ValidTransitionCell(cell, sli) ? sli.SubterraneanTransitionCost : int.MaxValue;
+			return ValidTransitionCell(cell, sli) ? sli.SubterraneanTransitionCost : PathGraph.MovementCostForUnreachableCell;
 		}
 
 		byte ICustomMovementLayer.GetTerrainIndex(CPos cell)

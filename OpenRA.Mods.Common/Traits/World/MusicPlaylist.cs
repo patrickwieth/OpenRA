@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -17,6 +17,7 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
 {
+	[TraitLocation(SystemActors.World | SystemActors.EditorWorld)]
 	[Desc("Trait for music handling. Attach this to the world actor.")]
 	public class MusicPlaylistInfo : TraitInfo
 	{
@@ -54,10 +55,7 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly bool IsMusicAvailable;
 		public readonly bool AllowMuteBackgroundMusic;
 
-		public bool IsBackgroundMusicMuted
-		{
-			get { return AllowMuteBackgroundMusic && Game.Settings.Sound.MuteBackgroundMusic; }
-		}
+		public bool IsBackgroundMusicMuted => AllowMuteBackgroundMusic && Game.Settings.Sound.MuteBackgroundMusic;
 
 		public bool CurrentSongIsBackground { get; private set; }
 
@@ -79,7 +77,7 @@ namespace OpenRA.Mods.Common.Traits
 				.ToArray();
 
 			random = playlist.Shuffle(Game.CosmeticRandom).ToArray();
-			IsMusicAvailable = playlist.Any();
+			IsMusicAvailable = playlist.Length > 0;
 			AllowMuteBackgroundMusic = info.AllowMuteBackgroundMusic;
 
 			if (SongExists(info.BackgroundMusic))
@@ -164,13 +162,15 @@ namespace OpenRA.Mods.Common.Traits
 			if (!SongExists(currentSong) || (CurrentSongIsBackground && IsBackgroundMusicMuted))
 				return;
 
-			Game.Sound.PlayMusicThen(currentSong, () =>
-			{
-				if (!CurrentSongIsBackground && !Game.Settings.Sound.Repeat)
-					currentSong = GetNextSong();
+			Game.Sound.PlayMusicThen(currentSong, PlayNextSong);
+		}
 
-				Play();
-			});
+		void PlayNextSong()
+		{
+			if (!CurrentSongIsBackground)
+				currentSong = GetNextSong();
+
+			Play();
 		}
 
 		public void Play(MusicInfo music)

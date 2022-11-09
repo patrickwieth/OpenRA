@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -15,14 +15,9 @@ namespace OpenRA.Mods.Common.UpdateRules.Rules
 {
 	class RenameRallyPointPath : UpdateRule
 	{
-		public override string Name { get { return "Renamed RallyPoint Offset to Path"; } }
-		public override string Description
-		{
-			get
-			{
-				return "The RallyPoint Offset property has been renamed to Path and now accepts multiple (or no) values.";
-			}
-		}
+		public override string Name => "Renamed RallyPoint Offset to Path";
+
+		public override string Description => "The RallyPoint Offset property has been renamed to Path and now accepts multiple (or no) values.";
 
 		public override IEnumerable<string> UpdateActorNode(ModData modData, MiniYamlNode actorNode)
 		{

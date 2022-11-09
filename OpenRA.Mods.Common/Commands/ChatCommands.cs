@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -16,12 +16,16 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Commands
 {
+	[TraitLocation(SystemActors.World)]
 	[Desc("Enables commands triggered by typing them into the chatbox. Attach this to the world actor.")]
 	public class ChatCommandsInfo : TraitInfo<ChatCommands> { }
 
 	public class ChatCommands : INotifyChat
 	{
-		public Dictionary<string, IChatCommand> Commands { get; private set; }
+		public Dictionary<string, IChatCommand> Commands { get; }
+
+		[TranslationReference("name")]
+		static readonly string InvalidCommand = "invalid-command";
 
 		public ChatCommands()
 		{
@@ -38,7 +42,7 @@ namespace OpenRA.Mods.Common.Commands
 				if (command.Value != null)
 					command.Value.InvokeCommand(name.ToLowerInvariant(), message.Substring(1 + name.Length).Trim());
 				else
-					Game.Debug("{0} is not a valid command.", name);
+					TextNotificationsManager.Debug(Game.ModData.Translation.GetString(InvalidCommand, Translation.Arguments("name", name)));
 
 				return false;
 			}

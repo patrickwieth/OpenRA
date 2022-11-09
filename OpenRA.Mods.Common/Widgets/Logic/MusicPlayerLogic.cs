@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -18,6 +18,12 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 {
 	public class MusicPlayerLogic : ChromeLogic
 	{
+		[TranslationReference]
+		static readonly string SoundMuted = "sound-muted";
+
+		[TranslationReference]
+		static readonly string NoSongPlaying = "no-song-playing";
+
 		readonly ScrollPanelWidget musicList;
 		readonly ScrollItemWidget itemTemplate;
 
@@ -25,7 +31,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		MusicInfo currentSong = null;
 
 		[ObjectCreator.UseCtor]
-		public MusicPlayerLogic(Widget widget, ModData modData, World world, Action onExit)
+		public MusicPlayerLogic(Widget widget, World world, ModData modData, Action onExit)
 		{
 			var panel = widget;
 
@@ -43,7 +49,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				panel.Get<LabelWidget>("MUTE_LABEL").GetText = () =>
 				{
 					if (Game.Settings.Sound.Mute)
-						return "Audio has been muted in settings.";
+						return modData.Translation.GetString(SoundMuted);
 
 					return "";
 				};
@@ -78,7 +84,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 			var repeatCheckbox = panel.Get<CheckboxWidget>("REPEAT");
 			repeatCheckbox.IsChecked = () => Game.Settings.Sound.Repeat;
-			repeatCheckbox.OnClick = () => Game.Settings.Sound.Repeat ^= true;
+			repeatCheckbox.OnClick = () => Game.Sound.SetMusicLooped(!Game.Settings.Sound.Repeat);
 			repeatCheckbox.IsDisabled = () => musicPlaylist.CurrentSongIsBackground;
 
 			panel.Get<LabelWidget>("TIME_LABEL").GetText = () =>
@@ -92,12 +98,13 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				var totalMinutes = currentSong.Length / 60;
 				var totalSeconds = currentSong.Length % 60;
 
-				return "{0:D2}:{1:D2} / {2:D2}:{3:D2}".F(minutes, seconds, totalMinutes, totalSeconds);
+				return $"{minutes:D2}:{seconds:D2} / {totalMinutes:D2}:{totalSeconds:D2}";
 			};
 
+			var noSongPlaying = modData.Translation.GetString(NoSongPlaying);
 			var musicTitle = panel.GetOrNull<LabelWidget>("TITLE_LABEL");
 			if (musicTitle != null)
-				musicTitle.GetText = () => currentSong != null ? currentSong.Title : "No song playing";
+				musicTitle.GetText = () => currentSong != null ? currentSong.Title : noSongPlaying;
 
 			var musicSlider = panel.Get<SliderWidget>("MUSIC_SLIDER");
 			musicSlider.OnChange += x => Game.Sound.MusicVolume = x;
@@ -157,7 +164,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 		static string SongLengthLabel(MusicInfo song)
 		{
-			return "{0:D1}:{1:D2}".F(song.Length / 60, song.Length % 60);
+			return $"{song.Length / 60:D1}:{song.Length % 60:D2}";
 		}
 	}
 }

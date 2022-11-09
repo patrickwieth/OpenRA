@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -21,6 +21,7 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
 {
+	[TraitLocation(SystemActors.EditorWorld)]
 	[Desc("Required for the map editor to work. Attach this to the world actor.")]
 	public class EditorActorLayerInfo : TraitInfo, ICreatePlayersInfo
 	{
@@ -32,7 +33,7 @@ namespace OpenRA.Mods.Common.Traits
 			throw new NotImplementedException("EditorActorLayer must not be defined on the world actor");
 		}
 
-		public override object Create(ActorInitializer init) { return new EditorActorLayer(init.Self, this); }
+		public override object Create(ActorInitializer init) { return new EditorActorLayer(this); }
 	}
 
 	public class EditorActorLayer : IWorldLoaded, ITickRender, IRender, IRadarSignature, ICreatePlayers, IRenderAnnotations
@@ -46,7 +47,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		public MapPlayers Players { get; private set; }
 
-		public EditorActorLayer(Actor self, EditorActorLayerInfo info)
+		public EditorActorLayer(EditorActorLayerInfo info)
 		{
 			this.info = info;
 		}
@@ -119,7 +120,7 @@ namespace OpenRA.Mods.Common.Traits
 				.SelectMany(p => p.RenderAnnotations());
 		}
 
-		bool IRenderAnnotations.SpatiallyPartitionable { get { return false; } }
+		bool IRenderAnnotations.SpatiallyPartitionable => false;
 
 		public EditorActorPreview Add(ActorReference reference) { return Add(NextActorName(), reference); }
 
@@ -141,7 +142,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			// Fallback to the actor's CenterPosition for the ActorMap if it has no Footprint
 			var footprint = preview.Footprint.Select(kv => kv.Key).ToArray();
-			if (!footprint.Any())
+			if (footprint.Length == 0)
 				footprint = new[] { worldRenderer.World.Map.CellContaining(preview.CenterPosition) };
 
 			foreach (var cell in footprint)
@@ -165,7 +166,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			// Fallback to the actor's CenterPosition for the ActorMap if it has no Footprint
 			var footprint = preview.Footprint.Select(kv => kv.Key).ToArray();
-			if (!footprint.Any())
+			if (footprint.Length == 0)
 				footprint = new[] { worldRenderer.World.Map.CellContaining(preview.CenterPosition) };
 
 			foreach (var cell in footprint)
@@ -175,7 +176,7 @@ namespace OpenRA.Mods.Common.Traits
 
 				list.Remove(preview);
 
-				if (!list.Any())
+				if (list.Count == 0)
 					cellMap.Remove(cell);
 			}
 
@@ -204,12 +205,12 @@ namespace OpenRA.Mods.Common.Traits
 
 			for (var index = 0; index < newCount; index++)
 			{
-				if (Players.Players.ContainsKey("Multi{0}".F(index)))
+				if (Players.Players.ContainsKey($"Multi{index}"))
 					continue;
 
 				var pr = new PlayerReference
 				{
-					Name = "Multi{0}".F(index),
+					Name = $"Multi{index}",
 					Faction = "Random",
 					Playable = true,
 					Enemies = new[] { "Creeps" }
@@ -271,7 +272,7 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			var map = worldRenderer.World.Map;
 			var previews = PreviewsAt(cell).ToList();
-			if (!previews.Any())
+			if (previews.Count == 0)
 				return map.Grid.DefaultSubCell;
 
 			for (var i = (byte)SubCell.First; i < map.Grid.SubCellOffsets.Length; i++)
@@ -327,7 +328,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		public EditorActorPreview this[string id]
 		{
-			get { return previews.FirstOrDefault(p => p.ID.ToLowerInvariant() == id); }
+			get { return previews.FirstOrDefault(p => p.ID.Equals(id, StringComparison.OrdinalIgnoreCase)); }
 		}
 	}
 }

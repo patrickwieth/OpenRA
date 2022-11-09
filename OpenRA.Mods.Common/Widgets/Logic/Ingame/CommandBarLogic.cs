@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -14,7 +14,6 @@ using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Mods.Common.Orders;
 using OpenRA.Mods.Common.Traits;
-using OpenRA.Orders;
 using OpenRA.Traits;
 using OpenRA.Widgets;
 
@@ -26,7 +25,7 @@ namespace OpenRA.Mods.Common.Widgets
 		readonly World world;
 
 		int selectionHash;
-		Actor[] selectedActors = { };
+		Actor[] selectedActors = Array.Empty<Actor>();
 		bool attackMoveDisabled = true;
 		bool forceMoveDisabled = true;
 		bool forceAttackDisabled = true;
@@ -39,7 +38,7 @@ namespace OpenRA.Mods.Common.Widgets
 		int scatterHighlighted;
 		int stopHighlighted;
 
-		TraitPair<IIssueDeployOrder>[] selectedDeploys = { };
+		TraitPair<IIssueDeployOrder>[] selectedDeploys = Array.Empty<TraitPair<IIssueDeployOrder>>();
 
 		[ObjectCreator.UseCtor]
 		public CommandBarLogic(Widget widget, World world, Dictionary<string, MiniYaml> logicArgs)
@@ -273,15 +272,10 @@ namespace OpenRA.Mods.Common.Widgets
 
 		bool IsForceModifiersActive(Modifiers modifiers)
 		{
-			var fmog = world.OrderGenerator as ForceModifiersOrderGenerator;
-			if (fmog != null && fmog.Modifiers.HasFlag(modifiers))
+			if (world.OrderGenerator is ForceModifiersOrderGenerator fmog && fmog.Modifiers.HasFlag(modifiers))
 				return true;
 
-			var uog = world.OrderGenerator as UnitOrderGenerator;
-			if (uog != null && Game.GetModifierKeys().HasFlag(modifiers))
-				return true;
-
-			return false;
+			return world.OrderGenerator is UnitOrderGenerator && Game.GetModifierKeys().HasFlag(modifiers);
 		}
 
 		void UpdateStateIfNecessary()
@@ -322,7 +316,7 @@ namespace OpenRA.Mods.Common.Widgets
 			foreach (var o in orders)
 				world.IssueOrder(o);
 
-			world.PlayVoiceForOrders(orders);
+			orders.PlayVoiceForOrders();
 		}
 
 		void PerformDeployOrderOnSelection(bool queued)
@@ -338,7 +332,7 @@ namespace OpenRA.Mods.Common.Widgets
 			foreach (var o in orders)
 				world.IssueOrder(o);
 
-			world.PlayVoiceForOrders(orders);
+			orders.PlayVoiceForOrders();
 		}
 	}
 }

@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -31,15 +31,14 @@ namespace OpenRA.Graphics
 
 			// Overwrite previous definitions if there are duplicates
 			var pals = new Dictionary<string, IProvidesCursorPaletteInfo>();
-			foreach (var p in modData.DefaultRules.Actors["world"].TraitInfos<IProvidesCursorPaletteInfo>())
+			foreach (var p in modData.DefaultRules.Actors[SystemActors.World].TraitInfos<IProvidesCursorPaletteInfo>())
 				if (p.Palette != null)
 					pals[p.Palette] = p;
 
 			Palettes = nodesDict["Cursors"].Nodes.Select(n => n.Value.Value)
 				.Where(p => p != null)
 				.Distinct()
-				.ToDictionary(p => p, p => pals[p].ReadPalette(modData.DefaultFileSystem))
-				.AsReadOnly();
+				.ToDictionary(p => p, p => pals[p].ReadPalette(modData.DefaultFileSystem));
 
 			var frameCache = new FrameCache(fileSystem, modData.SpriteLoaders);
 			var cursors = new Dictionary<string, CursorSequence>();
@@ -47,7 +46,7 @@ namespace OpenRA.Graphics
 				foreach (var sequence in s.Value.Nodes)
 					cursors.Add(sequence.Key, new CursorSequence(frameCache, sequence.Key, s.Key, s.Value.Value, sequence.Value));
 
-			Cursors = cursors.AsReadOnly();
+			Cursors = cursors;
 		}
 
 		public bool HasCursorSequence(string cursor)
@@ -60,7 +59,7 @@ namespace OpenRA.Graphics
 			try { return Cursors[cursor]; }
 			catch (KeyNotFoundException)
 			{
-				throw new InvalidOperationException("Cursor does not have a sequence `{0}`".F(cursor));
+				throw new InvalidOperationException($"Cursor does not have a sequence `{cursor}`");
 			}
 		}
 	}

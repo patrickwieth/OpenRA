@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -16,6 +16,7 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Cnc.Traits
 {
+	[TraitLocation(SystemActors.Player)]
 	[Desc("Required for `GpsPower`. Attach this to the player actor.")]
 	class GpsWatcherInfo : TraitInfo
 	{
@@ -84,8 +85,7 @@ namespace OpenRA.Mods.Cnc.Traits
 			Granted = actors.Count > 0 && Launched;
 			GrantedAllies = allyWatchers.Any(w => w.Trait.Granted);
 
-			var allyLaunched = allyWatchers.Any(w => w.Trait.Launched);
-			if ((Launched || allyLaunched) && !explored)
+			if (!explored && (Launched || allyWatchers.Any(w => w.Trait.Launched)))
 			{
 				explored = true;
 				owner.Shroud.ExploreAll();

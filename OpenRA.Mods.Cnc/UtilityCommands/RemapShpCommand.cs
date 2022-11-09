@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -15,14 +15,14 @@ using System.IO;
 using System.Linq;
 using OpenRA.Graphics;
 using OpenRA.Mods.Cnc.SpriteLoaders;
+using OpenRA.Mods.Common.Traits;
 using OpenRA.Primitives;
-using OpenRA.Traits;
 
 namespace OpenRA.Mods.Cnc.UtilityCommands
 {
 	class RemapShpCommand : IUtilityCommand
 	{
-		string IUtilityCommand.Name { get { return "--remap"; } }
+		string IUtilityCommand.Name => "--remap";
 
 		bool IUtilityCommand.ValidateArguments(string[] args)
 		{
@@ -42,24 +42,23 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 			var srcModData = new ModData(utility.Mods[srcMod], utility.Mods);
 			Game.ModData = srcModData;
 
-			var srcPaletteInfo = srcModData.DefaultRules.Actors["player"].TraitInfo<PlayerColorPaletteInfo>();
+			var srcPaletteInfo = srcModData.DefaultRules.Actors[SystemActors.Player].TraitInfo<PlayerColorPaletteInfo>();
 			var srcRemapIndex = srcPaletteInfo.RemapIndex;
 
 			var destMod = args[2].Split(':')[0];
 			var destModData = new ModData(utility.Mods[destMod], utility.Mods);
 			Game.ModData = destModData;
-			var destPaletteInfo = destModData.DefaultRules.Actors["player"].TraitInfo<PlayerColorPaletteInfo>();
+			var destPaletteInfo = destModData.DefaultRules.Actors[SystemActors.Player].TraitInfo<PlayerColorPaletteInfo>();
 			var destRemapIndex = destPaletteInfo.RemapIndex;
-			var shadowIndex = new int[] { };
+			var shadowIndex = Array.Empty<int>();
 
 			// the remap range is always 16 entries, but their location and order changes
 			for (var i = 0; i < 16; i++)
-				remap[PlayerColorRemap.GetRemapIndex(srcRemapIndex, i)]
-					= PlayerColorRemap.GetRemapIndex(destRemapIndex, i);
+				remap[srcRemapIndex[i]] = destRemapIndex[i];
 
 			// map everything else to the best match based on channel-wise distance
-			var srcPalette = new ImmutablePalette(args[1].Split(':')[1], shadowIndex);
-			var destPalette = new ImmutablePalette(args[2].Split(':')[1], shadowIndex);
+			var srcPalette = new ImmutablePalette(args[1].Split(':')[1], new[] { 0 }, shadowIndex);
+			var destPalette = new ImmutablePalette(args[2].Split(':')[1], new[] { 0 }, shadowIndex);
 
 			for (var i = 0; i < Palette.Size; i++)
 				if (!remap.ContainsKey(i))

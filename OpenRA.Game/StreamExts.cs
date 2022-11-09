@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -10,6 +10,7 @@
 #endregion
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -22,7 +23,7 @@ namespace OpenRA
 		public static byte[] ReadBytes(this Stream s, int count)
 		{
 			if (count < 0)
-				throw new ArgumentOutOfRangeException("count", "Non-negative number required.");
+				throw new ArgumentOutOfRangeException(nameof(count), "Non-negative number required.");
 			var buffer = new byte[count];
 			s.ReadBytes(buffer, 0, count);
 			return buffer;
@@ -31,7 +32,7 @@ namespace OpenRA
 		public static void ReadBytes(this Stream s, byte[] buffer, int offset, int count)
 		{
 			if (count < 0)
-				throw new ArgumentOutOfRangeException("count", "Non-negative number required.");
+				throw new ArgumentOutOfRangeException(nameof(count), "Non-negative number required.");
 			while (count > 0)
 			{
 				int bytesRead;
@@ -80,6 +81,11 @@ namespace OpenRA
 		}
 
 		public static void Write(this Stream s, int value)
+		{
+			s.WriteArray(BitConverter.GetBytes(value));
+		}
+
+		public static void Write(this Stream s, float value)
 		{
 			s.WriteArray(BitConverter.GetBytes(value));
 		}
@@ -146,12 +152,70 @@ namespace OpenRA
 					yield return line;
 		}
 
+		/// <summary>
+		/// Streams each line of characters from a stream, exposing the line as <see cref="ReadOnlyMemory{T}"/>.
+		/// The memory lifetime is only valid during that iteration. Advancing the iteration invalidates the memory.
+		/// Consumers should call <see cref="ReadOnlyMemory{T}.Span"/> on each line and otherwise avoid operating on
+		/// the memory to ensure they meet the lifetime restrictions.
+		/// </summary>
+		public static IEnumerable<ReadOnlyMemory<char>> ReadAllLinesAsMemory(this Stream s)
+		{
+			var buffer = ArrayPool<char>.Shared.Rent(128);
+			try
+			{
+				using (var sr = new StreamReader(s))
+				{
+					var offset = 0;
+					int read;
+					while ((read = sr.ReadBlock(buffer, offset, buffer.Length - offset)) != 0)
+					{
+						offset += read;
+
+						var consumedIndex = 0;
+						int newlineIndex;
+						while ((newlineIndex = Array.IndexOf(buffer, '\n', offset - read, read)) != -1)
+						{
+							if (newlineIndex > 0 && buffer[newlineIndex - 1] == '\r')
+								yield return buffer.AsMemory(consumedIndex, newlineIndex - consumedIndex - 1);
+							else
+								yield return buffer.AsMemory(consumedIndex, newlineIndex - consumedIndex);
+
+							var afterNewlineIndex = newlineIndex + 1;
+							read = offset - afterNewlineIndex;
+							consumedIndex = afterNewlineIndex;
+						}
+
+						if (consumedIndex > 0)
+						{
+							Array.Copy(buffer, consumedIndex, buffer, 0, offset - consumedIndex);
+							offset = read;
+						}
+
+						if (offset == buffer.Length)
+						{
+							var newBuffer = ArrayPool<char>.Shared.Rent(buffer.Length * 2);
+							Array.Copy(buffer, newBuffer, buffer.Length);
+							ArrayPool<char>.Shared.Return(buffer);
+							buffer = newBuffer;
+						}
+					}
+
+					if (offset > 0)
+						yield return buffer.AsMemory(0, offset);
+				}
+			}
+			finally
+			{
+				ArrayPool<char>.Shared.Return(buffer);
+			}
+		}
+
 		// The string is assumed to be length-prefixed, as written by WriteString()
 		public static string ReadString(this Stream s, Encoding encoding, int maxLength)
 		{
 			var length = s.ReadInt32();
 			if (length > maxLength)
-				throw new InvalidOperationException("The length of the string ({0}) is longer than the maximum allowed ({1}).".F(length, maxLength));
+				throw new InvalidOperationException($"The length of the string ({length}) is longer than the maximum allowed ({maxLength}).");
 
 			return encoding.GetString(s.ReadBytes(length));
 		}
@@ -165,7 +229,7 @@ namespace OpenRA
 			if (!string.IsNullOrEmpty(text))
 				bytes = encoding.GetBytes(text);
 			else
-				bytes = new byte[0];
+				bytes = Array.Empty<byte>();
 
 			s.Write(bytes.Length);
 			s.WriteArray(bytes);

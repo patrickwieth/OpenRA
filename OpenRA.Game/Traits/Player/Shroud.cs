@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -14,14 +14,13 @@ using System.Collections.Generic;
 
 namespace OpenRA.Traits
 {
+	[TraitLocation(SystemActors.Player | SystemActors.EditorPlayer)]
 	[Desc("Required for shroud and fog visibility checks. Add this to the player actor.")]
 	public class ShroudInfo : TraitInfo, ILobbyOptions
 	{
-		[Translate]
 		[Desc("Descriptive label for the fog checkbox in the lobby.")]
 		public readonly string FogCheckboxLabel = "Fog of War";
 
-		[Translate]
 		[Desc("Tooltip description for the fog checkbox in the lobby.")]
 		public readonly string FogCheckboxDescription = "Line of sight is required to view enemy forces";
 
@@ -37,11 +36,9 @@ namespace OpenRA.Traits
 		[Desc("Display order for the fog checkbox in the lobby.")]
 		public readonly int FogCheckboxDisplayOrder = 0;
 
-		[Translate]
 		[Desc("Descriptive label for the explored map checkbox in the lobby.")]
 		public readonly string ExploredMapCheckboxLabel = "Explored Map";
 
-		[Translate]
 		[Desc("Tooltip description for the explored map checkbox in the lobby.")]
 		public readonly string ExploredMapCheckboxDescription = "Initial map shroud is revealed";
 
@@ -57,7 +54,7 @@ namespace OpenRA.Traits
 		[Desc("Display order for the explore map checkbox in the lobby.")]
 		public readonly int ExploredMapCheckboxDisplayOrder = 0;
 
-		IEnumerable<LobbyOption> ILobbyOptions.LobbyOptions(Ruleset rules)
+		IEnumerable<LobbyOption> ILobbyOptions.LobbyOptions(MapPreview map)
 		{
 			yield return new LobbyBooleanOption("explored", ExploredMapCheckboxLabel, ExploredMapCheckboxDescription,
 				ExploredMapCheckboxVisible, ExploredMapCheckboxDisplayOrder, ExploredMapCheckboxEnabled, ExploredMapCheckboxLocked);
@@ -72,6 +69,7 @@ namespace OpenRA.Traits
 	{
 		public enum SourceType : byte { PassiveVisibility, Shroud, Visibility }
 		public event Action<PPos> OnShroudChanged;
+		public int RevealedCells { get; private set; }
 
 		enum ShroudCellType : byte { Shroud, Fog, Visible }
 		class ShroudSource
@@ -86,7 +84,10 @@ namespace OpenRA.Traits
 			}
 		}
 
-		readonly Actor self;
+		// Visible is not a super set of Explored. IsExplored may return false even if IsVisible returns true.
+		[Flags]
+		public enum CellVisibility : byte { Hidden = 0x0, Explored = 0x1, Visible = 0x2 }
+
 		readonly ShroudInfo info;
 		readonly Map map;
 
@@ -104,14 +105,12 @@ namespace OpenRA.Traits
 		// Per-cell cache of the resolved cell type (shroud/fog/visible)
 		readonly ProjectedCellLayer<ShroudCellType> resolvedType;
 
+		bool disabledChanged;
 		[Sync]
 		bool disabled;
 		public bool Disabled
 		{
-			get
-			{
-				return disabled;
-			}
+			get => disabled;
 
 			set
 			{
@@ -119,11 +118,12 @@ namespace OpenRA.Traits
 					return;
 
 				disabled = value;
+				disabledChanged = true;
 			}
 		}
 
 		bool fogEnabled;
-		public bool FogEnabled { get { return !Disabled && fogEnabled; } }
+		public bool FogEnabled => !Disabled && fogEnabled;
 		public bool ExploreMapEnabled { get; private set; }
 
 		public int Hash { get; private set; }
@@ -134,7 +134,6 @@ namespace OpenRA.Traits
 
 		public Shroud(Actor self, ShroudInfo info)
 		{
-			this.self = self;
 			this.info = info;
 			map = self.World.Map;
 
@@ -157,17 +156,23 @@ namespace OpenRA.Traits
 			ExploreMapEnabled = gs.OptionOrDefault("explored", info.ExploredMapCheckboxEnabled);
 			if (ExploreMapEnabled)
 				self.World.AddFrameEndTask(w => ExploreAll());
+
+			if (!fogEnabled && ExploreMapEnabled)
+				RevealedCells = map.ProjectedCells.Length;
 		}
 
 		void ITick.Tick(Actor self)
 		{
-			if (!anyCellTouched)
+			if (!anyCellTouched && !disabledChanged)
 				return;
 
 			anyCellTouched = false;
 
 			if (OnShroudChanged == null)
+			{
+				disabledChanged = false;
 				return;
+			}
 
 			// PERF: Parts of this loop are very hot.
 			// We loop over the direct index that represents the PPos in
@@ -177,7 +182,7 @@ namespace OpenRA.Traits
 			for (var index = 0; index < maxIndex; index++)
 			{
 				// PERF: Most cells are not touched
-				if (!touched[index])
+				if (!touched[index] && !disabledChanged)
 					continue;
 
 				touched[index] = false;
@@ -198,16 +203,28 @@ namespace OpenRA.Traits
 
 				// PERF: Most cells are unchanged
 				var oldResolvedType = resolvedType[index];
-				if (type != oldResolvedType)
+				if (type != oldResolvedType || disabledChanged)
 				{
 					resolvedType[index] = type;
-					var uv = touched.PPosFromIndex(index);
-					if (map.Contains(uv))
-						OnShroudChanged(uv);
+					var puv = touched.PPosFromIndex(index);
+					if (map.Contains(puv))
+						OnShroudChanged(puv);
+
+					if (!disabledChanged && (fogEnabled || !ExploreMapEnabled))
+					{
+						if (type == ShroudCellType.Visible)
+							RevealedCells++;
+						else if (fogEnabled && oldResolvedType == ShroudCellType.Visible)
+							RevealedCells--;
+					}
+
+					if (self.Owner.WinState == WinState.Lost)
+						RevealedCells = 0;
 				}
 			}
 
 			Hash = Sync.HashPlayer(self.Owner) + self.World.WorldTick;
+			disabledChanged = false;
 		}
 
 		public static IEnumerable<PPos> ProjectedCellsInRange(Map map, WPos pos, WDist minRange, WDist maxRange, int maxHeightDelta = -1)
@@ -305,7 +322,7 @@ namespace OpenRA.Traits
 			sources.Remove(key);
 		}
 
-		public void ExploreProjectedCells(World world, IEnumerable<PPos> cells)
+		public void ExploreProjectedCells(IEnumerable<PPos> cells)
 		{
 			foreach (var puv in cells)
 			{
@@ -325,7 +342,7 @@ namespace OpenRA.Traits
 		public void Explore(Shroud s)
 		{
 			if (map.Bounds != s.map.Bounds)
-				throw new ArgumentException("The map bounds of these shrouds do not match.", "s");
+				throw new ArgumentException("The map bounds of these shrouds do not match.", nameof(s));
 
 			foreach (var puv in map.ProjectedCells)
 			{
@@ -428,6 +445,59 @@ namespace OpenRA.Traits
 			// Check that uv is inside the map area. There is nothing special
 			// about explored here: any of the CellLayers would have been suitable.
 			return explored.Contains(uv);
+		}
+
+		public CellVisibility GetVisibility(WPos pos)
+		{
+			return GetVisibility(map.ProjectedCellCovering(pos));
+		}
+
+		// PERF: Combine IsExplored and IsVisible.
+		public CellVisibility GetVisibility(PPos puv)
+		{
+			var state = CellVisibility.Hidden;
+
+			if (Disabled)
+			{
+				if (fogEnabled)
+				{
+					// Shroud disabled, Fog enabled
+					if (resolvedType.Contains(puv))
+					{
+						state |= CellVisibility.Explored;
+
+						if (resolvedType[puv] == ShroudCellType.Visible)
+							state |= CellVisibility.Visible;
+					}
+				}
+				else if (map.Contains(puv))
+					state |= CellVisibility.Explored | CellVisibility.Visible;
+			}
+			else
+			{
+				if (fogEnabled)
+				{
+					// Shroud and Fog enabled
+					if (resolvedType.Contains(puv))
+					{
+						var rt = resolvedType[puv];
+						if (rt == ShroudCellType.Visible)
+							state |= CellVisibility.Explored | CellVisibility.Visible;
+						else if (rt > ShroudCellType.Shroud)
+							state |= CellVisibility.Explored;
+					}
+				}
+				else if (resolvedType.Contains(puv))
+				{
+					// We do not set Explored since IsExplored may return false.
+					state |= CellVisibility.Visible;
+
+					if (resolvedType[puv] > ShroudCellType.Shroud)
+						state |= CellVisibility.Explored;
+				}
+			}
+
+			return state;
 		}
 	}
 }

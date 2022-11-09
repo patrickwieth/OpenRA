@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -20,12 +20,12 @@ namespace OpenRA.Mods.Common.SpriteLoaders
 	{
 		class ShpTSFrame : ISpriteFrame
 		{
-			public SpriteFrameType Type { get { return SpriteFrameType.Indexed; } }
-			public Size Size { get; private set; }
-			public Size FrameSize { get; private set; }
-			public float2 Offset { get; private set; }
+			public SpriteFrameType Type => SpriteFrameType.Indexed8;
+			public Size Size { get; }
+			public Size FrameSize { get; }
+			public float2 Offset { get; }
 			public byte[] Data { get; set; }
-			public bool DisableExportPadding { get { return false; } }
+			public bool DisableExportPadding => false;
 
 			public readonly uint FileOffset;
 			public readonly byte Format;
@@ -146,7 +146,7 @@ namespace OpenRA.Mods.Common.SpriteLoaders
 			return frames;
 		}
 
-		public bool TryParseSprite(Stream s, out ISpriteFrame[] frames, out TypeDictionary metadata)
+		public bool TryParseSprite(Stream s, string filename, out ISpriteFrame[] frames, out TypeDictionary metadata)
 		{
 			metadata = null;
 			if (!IsShpTS(s))

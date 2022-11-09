@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -24,7 +24,7 @@ namespace OpenRA.Mods.Common.Effects
 		readonly Animation flag;
 		readonly Animation circles;
 
-		List<WPos> targetLineNodes = new List<WPos> { };
+		readonly List<WPos> targetLineNodes = new List<WPos> { };
 		List<CPos> cachedLocations;
 
 		public RallyPointIndicator(Actor building, RallyPoint rp)
@@ -113,17 +113,17 @@ namespace OpenRA.Mods.Common.Effects
 			if (targetLineNodes.Count == 0)
 				return SpriteRenderable.None;
 
-			return RenderInner(wr);
+			return RenderInner();
 		}
 
-		IEnumerable<IRenderable> RenderInner(WorldRenderer wr)
+		IEnumerable<IRenderable> RenderInner()
 		{
 			var prev = targetLineNodes[0];
 			foreach (var pos in targetLineNodes.Skip(1))
 			{
 				var targetLine = new[] { prev, pos };
 				prev = pos;
-				yield return new TargetLineRenderable(targetLine, building.Owner.Color, rp.Info.LineWidth);
+				yield return new TargetLineRenderable(targetLine, building.Owner.Color, rp.Info.LineWidth, 1);
 			}
 		}
 	}

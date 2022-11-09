@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -9,6 +9,7 @@
  */
 #endregion
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Graphics;
@@ -17,20 +18,22 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits.Render
 {
+	[Desc("This actor visually connects to walls and changes appearance when actors walk through it.")]
 	class WithGateSpriteBodyInfo : WithSpriteBodyInfo, IWallConnectorInfo, Requires<GateInfo>
 	{
 		[Desc("Cells (outside the gate footprint) that contain wall cells that can connect to the gate")]
-		public readonly CVec[] WallConnections = { };
+		public readonly CVec[] WallConnections = Array.Empty<CVec>();
 
 		[Desc("Wall type for connections")]
 		public readonly string Type = "wall";
 
+		[SequenceReference]
 		[Desc("Override sequence to use when fully open.")]
 		public readonly string OpenSequence = null;
 
 		public override object Create(ActorInitializer init) { return new WithGateSpriteBody(init, this); }
 
-		public override IEnumerable<IActorPreview> RenderPreviewSprites(ActorPreviewInitializer init, RenderSpritesInfo rs, string image, int facings, PaletteReference p)
+		public override IEnumerable<IActorPreview> RenderPreviewSprites(ActorPreviewInitializer init, string image, int facings, PaletteReference p)
 		{
 			if (!EnabledByDefault)
 				yield break;
@@ -38,7 +41,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 			var anim = new Animation(init.World, image);
 			anim.PlayFetchIndex(RenderSprites.NormalizeSequence(anim, init.GetDamageState(), Sequence), () => 0);
 
-			yield return new SpriteActorPreview(anim, () => WVec.Zero, () => 0, p, rs.Scale);
+			yield return new SpriteActorPreview(anim, () => WVec.Zero, () => 0, p);
 		}
 
 		string IWallConnectorInfo.GetWallConnectionType()

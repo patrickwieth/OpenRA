@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -32,29 +32,7 @@ namespace OpenRA.Mods.Cnc.FileFormats
 
 	public static class AudReader
 	{
-		public static byte[] LoadSound(byte[] raw, ref int index)
-		{
-			return ImaAdpcmReader.LoadImaAdpcmSound(raw, ref index);
-		}
-
-		public static float SoundLength(Stream s)
-		{
-			var sampleRate = s.ReadUInt16();
-			/*var dataSize = */ s.ReadInt32();
-			var outputSize = s.ReadInt32();
-			var flags = (SoundFlags)s.ReadByte();
-
-			var samples = outputSize;
-			if ((flags & SoundFlags.Stereo) != 0)
-				samples /= 2;
-
-			if ((flags & SoundFlags._16Bit) != 0)
-				samples /= 2;
-
-			return (float)samples / sampleRate;
-		}
-
-		public static bool LoadSound(Stream s, out Func<Stream> result, out int sampleRate)
+		public static bool LoadSound(Stream s, out Func<Stream> result, out int sampleRate, out int sampleBits, out int channels, out float lengthInSeconds)
 		{
 			result = null;
 			var startPosition = s.Position;
@@ -63,20 +41,25 @@ namespace OpenRA.Mods.Cnc.FileFormats
 				sampleRate = s.ReadUInt16();
 				var dataSize = s.ReadInt32();
 				var outputSize = s.ReadInt32();
-
-				var readFlag = s.ReadByte();
-				if (!Enum.IsDefined(typeof(SoundFlags), readFlag))
-					return false;
+				var audioFlags = (SoundFlags)s.ReadByte();
+				sampleBits = (audioFlags & SoundFlags._16Bit) == 0 ? 8 : 16;
+				channels = (audioFlags & SoundFlags.Stereo) == 0 ? 1 : 2;
+				lengthInSeconds = (float)(outputSize * 8) / (channels * sampleBits * sampleRate);
 
 				var readFormat = s.ReadByte();
 				if (!Enum.IsDefined(typeof(SoundFormat), readFormat))
 					return false;
 
+				if (readFormat == (int)SoundFormat.WestwoodCompressed)
+					throw new NotImplementedException();
+
 				var offsetPosition = s.Position;
+				var streamLength = s.Length;
+				var segmentLength = (int)(streamLength - offsetPosition);
 
 				result = () =>
 				{
-					var audioStream = SegmentStream.CreateWithoutOwningStream(s, offsetPosition, (int)(s.Length - offsetPosition));
+					var audioStream = SegmentStream.CreateWithoutOwningStream(s, offsetPosition, segmentLength);
 					return new AudStream(audioStream, outputSize, dataSize);
 				};
 			}
@@ -104,10 +87,7 @@ namespace OpenRA.Mods.Cnc.FileFormats
 				this.dataSize = dataSize;
 			}
 
-			public override long Length
-			{
-				get { return outputSize; }
-			}
+			public override long Length => outputSize;
 
 			protected override bool BufferData(Stream baseStream, Queue<byte> data)
 			{

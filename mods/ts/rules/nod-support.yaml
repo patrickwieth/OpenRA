@@ -72,12 +72,19 @@ NAPOST:
 	GrantCondition@IDISABLE:
 		RequiresCondition: lowpower || powerdown || empdisable
 		Condition: disabled
-	WithIdleOverlay@LIGHTS:
+	WithIdleOverlay@LIGHTS-BRIGHT:
 		RequiresCondition: !build-incomplete && !disabled
-		Sequence: lights
+		Sequence: lights-bright
+		Palette: bright
 	WithIdleOverlay@CHAINOFLIGHTS:
 		RequiresCondition: !build-incomplete && !disabled
 		Sequence: chainoflights
+		Palette: player-nobright
+		IsPlayerPalette: True
+	WithIdleOverlay@CHAINOFLIGHTS-BRIGHT:
+		RequiresCondition: !build-incomplete && !disabled
+		Sequence: chainoflights-bright
+		Palette: bright
 	LineBuildSegmentExternalCondition:
 		RequiresCondition: !build-incomplete && !disabled
 		Condition: active-posts
@@ -99,6 +106,9 @@ NAFNCE:
 	EnergyWall:
 		ActiveCondition: active-posts == 2
 		Weapon: LaserFence
+		TerrainTypes: Clear, Rough, Road, DirtRoad, Green, Sand, Pavement
+	RequiresBuildableArea:
+		Adjacent: 4
 	GrantConditionOnLineBuildDirection@X:
 		Direction: X
 		Condition: laserfence-direction-x
@@ -113,11 +123,27 @@ NAFNCE:
 		Type: laserfence
 		Sequence: enabled-x
 		Name: x-enabled
+		Palette: player-nobright
+		IsPlayerPalette: True
+	WithWallSpriteBody@XENABLED-BRIGHT:
+		RequiresCondition: laserfence-direction-x && active-posts == 2
+		Type: laserfence
+		Sequence: enabled-x-bright
+		Name: x-enabled-bright
+		Palette: bright
 	WithWallSpriteBody@YENABLED:
 		RequiresCondition: laserfence-direction-y && active-posts == 2
 		Type: laserfence
 		Sequence: enabled-y
 		Name: y-enabled
+		Palette: player-nobright
+		IsPlayerPalette: True
+	WithWallSpriteBody@YENABLED-BRIGHT:
+		RequiresCondition: laserfence-direction-y && active-posts == 2
+		Type: laserfence
+		Sequence: enabled-y-bright
+		Name: y-enabled-bright
+		Palette: bright
 	WithSpriteBody@XDISABLED:
 		RequiresCondition: laserfence-direction-x && active-posts < 2
 		Sequence: disabled-x
@@ -139,7 +165,7 @@ NAFNCE:
 		Pieces: 0, 1
 		Range: 2c0, 5c0
 	Interactable:
-		Bounds: 48, 24
+		Bounds: 1448, 1448
 
 NALASR:
 	Inherits: ^Defense
@@ -168,8 +194,7 @@ NALASR:
 		Offset: 298,-171,288
 		RealignDelay: -1
 	AttackTurreted:
-		RequiresCondition: !build-incomplete
-		PauseOnCondition: empdisable || disabled
+		PauseOnCondition: empdisable || disabled || build-incomplete
 	Armament:
 		Weapon: TurretLaserFire
 		LocalOffset: 498,0,317
@@ -208,8 +233,7 @@ NAOBEL:
 		Weapon: ObeliskLaserFire
 		LocalOffset: 1980,297,1131
 	AttackCharges:
-		RequiresCondition: !build-incomplete
-		PauseOnCondition: empdisable || disabled
+		PauseOnCondition: empdisable || disabled || build-incomplete
 		ChargeLevel: 65
 		ChargingCondition: charging
 	AmbientSound:
@@ -252,8 +276,7 @@ NASAM:
 		InitialFacing: 896
 		RealignDelay: -1
 	AttackTurreted:
-		RequiresCondition: !build-incomplete
-		PauseOnCondition: empdisable || disabled
+		PauseOnCondition: empdisable || disabled || build-incomplete
 	WithSpriteTurret:
 		RequiresCondition: !build-incomplete
 		Recoils: false

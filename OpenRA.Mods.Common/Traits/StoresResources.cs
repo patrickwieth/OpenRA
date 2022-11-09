@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -29,7 +29,7 @@ namespace OpenRA.Mods.Common.Traits
 		PlayerResources player;
 
 		[Sync]
-		public int Stored { get { return player.ResourceCapacity == 0 ? 0 : (int)((long)info.Capacity * player.Resources / player.ResourceCapacity); } }
+		public int Stored => player.ResourceCapacity == 0 ? 0 : (int)((long)info.Capacity * player.Resources / player.ResourceCapacity);
 
 		public StoresResources(Actor self, StoresResourcesInfo info)
 		{
@@ -37,7 +37,7 @@ namespace OpenRA.Mods.Common.Traits
 			player = self.Owner.PlayerActor.Trait<PlayerResources>();
 		}
 
-		int IStoreResources.Capacity { get { return info.Capacity; } }
+		int IStoreResources.Capacity => info.Capacity;
 
 		void INotifyOwnerChanged.OnOwnerChanged(Actor self, Player oldOwner, Player newOwner)
 		{

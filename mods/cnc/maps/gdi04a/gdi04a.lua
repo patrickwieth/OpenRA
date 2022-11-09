@@ -1,5 +1,5 @@
 --[[
-   Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+   Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
    This file is part of OpenRA, which is free software. It is made
    available to you under the terms of the GNU General Public License
    as published by the Free Software Foundation, either version 3 of
@@ -122,16 +122,16 @@ WorldLoaded = function()
 	end)
 
 	Trigger.OnEnteredFootprint(AutoTrigger, function(a, id)
-		if not autoTrigger and a.Owner == GDI then
-			autoTrigger = true
+		if not AutoTriggered and a.Owner == GDI then
+			AutoTriggered = true
 			Trigger.RemoveFootprintTrigger(id)
 			BuildAuto()
 		end
 	end)
 
 	Trigger.OnEnteredFootprint(GDIHeliTrigger, function(a, id)
-		if not gdiHeliTrigger and a.Owner == GDI then
-			gdiHeliTrigger = true
+		if not GDIHeliTriggered and a.Owner == GDI then
+			GDIHeliTriggered = true
 			Trigger.RemoveFootprintTrigger(id)
 			Reinforcements.ReinforceWithTransport(GDI, "tran", nil, { GDIHeliEntry.Location, GDIHeliLZ.Location })
 		end

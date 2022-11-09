@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -11,12 +11,23 @@
 
 using System;
 using System.Linq;
+using OpenRA.Server;
 
 namespace OpenRA.Mods.Common.Lint
 {
-	public class CheckTraitPrerequisites : ILintRulesPass
+	public class CheckTraitPrerequisites : ILintRulesPass, ILintServerMapPass
 	{
-		public void Run(Action<string> emitError, Action<string> emitWarning, ModData modData, Ruleset rules)
+		void ILintRulesPass.Run(Action<string> emitError, Action<string> emitWarning, ModData modData, Ruleset rules)
+		{
+			Run(emitError, emitWarning, rules);
+		}
+
+		void ILintServerMapPass.Run(Action<string> emitError, Action<string> emitWarning, ModData modData, MapPreview map, Ruleset mapRules)
+		{
+			Run(emitError, emitWarning, mapRules);
+		}
+
+		void Run(Action<string> emitError, Action<string> emitWarning, Ruleset rules)
 		{
 			foreach (var actorInfo in rules.Actors)
 			{
@@ -24,11 +35,11 @@ namespace OpenRA.Mods.Common.Lint
 				{
 					var hasTraits = actorInfo.Value.TraitsInConstructOrder().Any();
 					if (!hasTraits)
-						emitWarning("Actor {0} has no traits. Is this intended?".F(actorInfo.Key));
+						emitWarning($"Actor {actorInfo.Key} has no traits. Is this intended?");
 				}
 				catch (Exception e)
 				{
-					emitError("Actor {0} is not constructible; failure: {1}".F(actorInfo.Key, e.Message));
+					emitError($"Actor {actorInfo.Key} is not constructible; failure: {e.Message}");
 				}
 			}
 		}

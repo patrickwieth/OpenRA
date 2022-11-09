@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -69,14 +69,14 @@ namespace OpenRA
 				il.MarkLabel(l);
 			}
 			else if (type != typeof(int))
-				throw new NotImplementedException("SyncAttribute on member of unhashable type: {0}".F(type.FullName));
+				throw new NotImplementedException($"SyncAttribute on member of unhashable type: {type.FullName}");
 
 			il.Emit(OpCodes.Xor);
 		}
 
 		static Func<object, int> GenerateHashFunc(Type t)
 		{
-			var d = new DynamicMethod("hash_{0}".F(t.Name), typeof(int), new Type[] { typeof(object) }, t);
+			var d = new DynamicMethod($"hash_{t.Name}", typeof(int), new Type[] { typeof(object) }, t);
 			var il = d.GetILGenerator();
 			var this_ = il.DeclareLocal(t).LocalIndex;
 			il.Emit(OpCodes.Ldarg_0);
@@ -112,7 +112,7 @@ namespace OpenRA
 
 		public static int HashCPos(CPos i2)
 		{
-			return ((i2.X * 5) ^ (i2.Y * 3)) / 4;
+			return i2.Bits;
 		}
 
 		public static int HashCVec(CVec i2)
@@ -142,10 +142,11 @@ namespace OpenRA
 					return (int)(t.Actor.ActorID << 16) * 0x567;
 
 				case TargetType.FrozenActor:
-					if (t.FrozenActor.Actor == null)
+					var actor = t.FrozenActor.Actor;
+					if (actor == null)
 						return 0;
 
-					return (int)(t.FrozenActor.Actor.ActorID << 16) * 0x567;
+					return (int)(actor.ActorID << 16) * 0x567;
 
 				case TargetType.Terrain:
 					return HashUsingHashCode(t.CenterPosition);
@@ -161,6 +162,11 @@ namespace OpenRA
 			return t.GetHashCode();
 		}
 
+		public static void RunUnsynced(World world, Action fn)
+		{
+			RunUnsynced(Game.Settings.Debug.SyncCheckUnsyncedCode, world, () => { fn(); return true; });
+		}
+
 		public static void RunUnsynced(bool checkSyncHash, World world, Action fn)
 		{
 			RunUnsynced(checkSyncHash, world, () => { fn(); return true; });
@@ -168,23 +174,32 @@ namespace OpenRA
 
 		static bool inUnsyncedCode = false;
 
+		public static T RunUnsynced<T>(World world, Func<T> fn)
+		{
+			return RunUnsynced(Game.Settings.Debug.SyncCheckUnsyncedCode, world, fn);
+		}
+
 		public static T RunUnsynced<T>(bool checkSyncHash, World world, Func<T> fn)
 		{
-			if (world == null)
+			// PERF: Detect sync changes in top level entry point only. Do not recalculate sync hash during reentry.
+			if (inUnsyncedCode || world == null)
 				return fn();
 
 			var sync = checkSyncHash ? world.SyncHash() : 0;
-			var prevInUnsyncedCode = inUnsyncedCode;
 			inUnsyncedCode = true;
 
+			// Running this inside a try with a finally statement means isUnsyncedCode is set to false again as soon as fn completes
 			try
 			{
 				return fn();
 			}
 			finally
 			{
-				inUnsyncedCode = prevInUnsyncedCode;
-				if (checkSyncHash && sync != world.SyncHash())
+				inUnsyncedCode = false;
+
+				// When the world is disposing all actors and effects have been removed
+				// So do not check the hash for a disposing world since it definitively has changed
+				if (checkSyncHash && !world.Disposing && sync != world.SyncHash())
 					throw new InvalidOperationException("RunUnsynced: sync-changing code may not run here");
 			}
 		}

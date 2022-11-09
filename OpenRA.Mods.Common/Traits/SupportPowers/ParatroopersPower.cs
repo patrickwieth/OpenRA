@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -27,8 +27,11 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly WVec SquadOffset = new WVec(-1536, 1536, 0);
 
 		[NotificationReference("Speech")]
-		[Desc("Notification to play when entering the drop zone.")]
+		[Desc("Speech notification to play when entering the drop zone.")]
 		public readonly string ReinforcementsArrivedSpeechNotification = null;
+
+		[Desc("Text notification to display when entering the drop zone.")]
+		public readonly string ReinforcementsArrivedTextNotification = null;
 
 		[Desc("Number of facings that the delivery aircraft may approach from.")]
 		public readonly int QuantizedFacings = 32;
@@ -38,7 +41,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		[ActorReference(typeof(PassengerInfo))]
 		[Desc("Troops to be delivered.  They will be distributed between the planes if SquadSize > 1.")]
-		public readonly string[] DropItems = { };
+		public readonly string[] DropItems = Array.Empty<string>();
 
 		[Desc("Risks stuck units when they don't have the Paratrooper trait.")]
 		public readonly bool AllowImpassableCells = false;
@@ -103,12 +106,12 @@ namespace OpenRA.Mods.Common.Traits
 
 			var utLower = info.UnitType.ToLowerInvariant();
 			if (!self.World.Map.Rules.Actors.TryGetValue(utLower, out var unitType))
-				throw new YamlException("Actors ruleset does not include the entry '{0}'".F(utLower));
+				throw new YamlException($"Actors ruleset does not include the entry '{utLower}'");
 
 			var altitude = unitType.TraitInfo<AircraftInfo>().CruiseAltitude.Length;
 			var dropRotation = WRot.FromYaw(facing.Value);
 			var delta = new WVec(0, -1024, 0).Rotate(dropRotation);
-			target = target + new WVec(0, 0, altitude);
+			target += new WVec(0, 0, altitude);
 			var startEdge = target - (self.World.Map.DistanceToEdge(target, -delta) + info.Cordon).Length * delta / 1024;
 			var finishEdge = target + (self.World.Map.DistanceToEdge(target, delta) + info.Cordon).Length * delta / 1024;
 
@@ -134,8 +137,12 @@ namespace OpenRA.Mods.Common.Traits
 				RemoveBeacon(beacon);
 
 				if (!aircraftInRange.Any(kv => kv.Value))
+				{
 					Game.Sound.PlayNotification(self.World.Map.Rules, self.Owner, "Speech",
 						info.ReinforcementsArrivedSpeechNotification, self.Owner.Faction.InternalName);
+
+					TextNotificationsManager.AddTransientLine(info.ReinforcementsArrivedTextNotification, self.Owner);
+				}
 
 				aircraftInRange[a] = true;
 			};
@@ -269,7 +276,6 @@ namespace OpenRA.Mods.Common.Traits
 
 			camera.QueueActivity(new Wait(info.CameraRemoveDelay));
 			camera.QueueActivity(new RemoveSelf());
-			camera = null;
 		}
 
 		void RemoveBeacon(Beacon beacon)
@@ -280,7 +286,6 @@ namespace OpenRA.Mods.Common.Traits
 			Self.World.AddFrameEndTask(w =>
 			{
 				w.Remove(beacon);
-				beacon = null;
 			});
 		}
 	}

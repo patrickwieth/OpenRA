@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -39,7 +39,7 @@ namespace OpenRA.Mods.Cnc.FileFormats
 
 		public override string ToString()
 		{
-			return "{0} - offset 0x{1:x8} - length 0x{2:x8}".F(Filename, Offset, Length);
+			return $"{Filename} - offset 0x{Offset:x8} - length 0x{Length:x8}";
 		}
 	}
 }

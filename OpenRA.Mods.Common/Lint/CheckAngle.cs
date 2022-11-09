@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -11,17 +11,27 @@
 
 using System;
 using OpenRA.Mods.Common.Projectiles;
+using OpenRA.Server;
 
 namespace OpenRA.Mods.Common.Lint
 {
-	class CheckAngle : ILintRulesPass
+	class CheckAngle : ILintRulesPass, ILintServerMapPass
 	{
-		public void Run(Action<string> emitError, Action<string> emitWarning, ModData modData, Ruleset rules)
+		void ILintRulesPass.Run(Action<string> emitError, Action<string> emitWarning, ModData modData, Ruleset rules)
+		{
+			Run(emitError, rules);
+		}
+
+		void ILintServerMapPass.Run(Action<string> emitError, Action<string> emitWarning, ModData modData, MapPreview map, Ruleset mapRules)
+		{
+			Run(emitError, mapRules);
+		}
+
+		void Run(Action<string> emitError, Ruleset rules)
 		{
 			foreach (var weaponInfo in rules.Weapons)
 			{
-				var missile = weaponInfo.Value.Projectile as MissileInfo;
-				if (missile != null)
+				if (weaponInfo.Value.Projectile is MissileInfo missile)
 				{
 					var minAngle = missile.MinimumLaunchAngle.Angle;
 					var maxAngle = missile.MaximumLaunchAngle.Angle;
@@ -31,8 +41,7 @@ namespace OpenRA.Mods.Common.Lint
 					CheckLaunchAngles(weaponInfo.Key, minAngle, testMaxAngle, maxAngle, emitError);
 				}
 
-				var bullet = weaponInfo.Value.Projectile as BulletInfo;
-				if (bullet != null)
+				if (weaponInfo.Value.Projectile is BulletInfo bullet)
 				{
 					var minAngle = bullet.LaunchAngle[0].Angle;
 					var maxAngle = bullet.LaunchAngle.Length > 1 ? bullet.LaunchAngle[1].Angle : minAngle;
@@ -52,16 +61,16 @@ namespace OpenRA.Mods.Common.Lint
 		static void CheckLaunchAngles(string weaponInfo, int minAngle, bool testMaxAngle, int maxAngle, Action<string> emitError)
 		{
 			if (InvalidAngle(minAngle))
-				emitError("Weapon `{0}`: Projectile minimum LaunchAngle must not exceed (-)255!".F(weaponInfo));
+				emitError($"Weapon `{weaponInfo}`: Projectile minimum LaunchAngle must not exceed (-)255!");
 			if (testMaxAngle && InvalidAngle(maxAngle))
-				emitError("Weapon `{0}`: Projectile maximum LaunchAngle must not exceed (-)255!".F(weaponInfo));
+				emitError($"Weapon `{weaponInfo}`: Projectile maximum LaunchAngle must not exceed (-)255!");
 
 			if ((minAngle < 256) && (maxAngle < 256) && (minAngle > maxAngle))
-				emitError("Weapon `{0}`: Projectile minimum LaunchAngle must not exceed maximum LaunchAngle!".F(weaponInfo));
+				emitError($"Weapon `{weaponInfo}`: Projectile minimum LaunchAngle must not exceed maximum LaunchAngle!");
 			if ((minAngle > 768) && (maxAngle > 768) && (minAngle > maxAngle))
-				emitError("Weapon `{0}`: Projectile minimum LaunchAngle must not exceed maximum LaunchAngle!".F(weaponInfo));
+				emitError($"Weapon `{weaponInfo}`: Projectile minimum LaunchAngle must not exceed maximum LaunchAngle!");
 			if ((minAngle < 256) && (maxAngle > 768))
-				emitError("Weapon `{0}`: Projectile minimum LaunchAngle must not exceed maximum LaunchAngle!".F(weaponInfo));
+				emitError($"Weapon `{weaponInfo}`: Projectile minimum LaunchAngle must not exceed maximum LaunchAngle!");
 		}
 	}
 }

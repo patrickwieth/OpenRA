@@ -1,5 +1,5 @@
 --[[
-   Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+   Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
    This file is part of OpenRA, which is free software. It is made
    available to you under the terms of the GNU General Public License
    as published by the Free Software Foundation, either version 3 of
@@ -21,16 +21,16 @@ SovietBase = { SovietConyard, SovietRefinery, SovietPower1, SovietPower2, Soviet
 
 IdlingUnits = { }
 
-if Map.LobbyOption("difficulty") == "easy" then
+if Difficulty == "easy" then
 	DateTime.TimeLimit = DateTime.Minutes(10) + DateTime.Seconds(3)
 
-elseif Map.LobbyOption("difficulty") == "normal" then
+elseif Difficulty == "normal" then
 	DateTime.TimeLimit = DateTime.Minutes(5) + DateTime.Seconds(3)
 	InfantryTypes = { "e1", "e1", "e1", "e2", "e2", "e1" }
 	InfantryDelay = DateTime.Seconds(18)
 	AttackGroupSize = 5
 
-elseif Map.LobbyOption("difficulty") == "hard" then
+elseif Difficulty == "hard" then
 	DateTime.TimeLimit = DateTime.Minutes(3) + DateTime.Seconds(3)
 	InfantryTypes = { "e1", "e1", "e1", "e2", "e2", "e1" }
 	InfantryDelay = DateTime.Seconds(10)
@@ -141,7 +141,7 @@ SendAttack = function()
 	end
 
 	Utils.Do(units, function(unit)
-		if Map.LobbyOption("difficulty") ~= "tough" then
+		if Difficulty ~= "tough" then
 			unit.AttackMove(DeployPoint.Location)
 		end
 		Trigger.OnIdle(unit, unit.Hunt)
@@ -180,7 +180,7 @@ SendTrucks = function()
 
 		DateTime.TimeLimit = 0
 		UserInterface.SetMissionText("")
-		ConvoyObjective = player.AddPrimaryObjective("Escort the convoy.")
+		ConvoyObjective = player.AddObjective("Escort the convoy.")
 
 		Media.PlaySpeechNotification(player, "ConvoyApproaching")
 		Trigger.AfterDelay(DateTime.Seconds(3), function()
@@ -218,26 +218,12 @@ WorldLoaded = function()
 	england = Player.GetPlayer("England")
 	ussr = Player.GetPlayer("USSR")
 
-	Trigger.OnObjectiveAdded(player, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "New " .. string.lower(p.GetObjectiveType(id)) .. " objective")
-	end)
-	Trigger.OnObjectiveCompleted(player, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "Objective completed")
-	end)
-	Trigger.OnObjectiveFailed(player, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "Objective failed")
-	end)
-	Trigger.OnPlayerLost(player, function()
-		Media.PlaySpeechNotification(player, "MissionFailed")
-	end)
-	Trigger.OnPlayerWon(player, function()
-		Media.PlaySpeechNotification(player, "MissionAccomplished")
-	end)
+	InitObjectives(player)
 
-	ussrObj = ussr.AddPrimaryObjective("Deny the allies!")
+	ussrObj = ussr.AddObjective("Deny the allies!")
 
-	SecureObjective = player.AddPrimaryObjective("Secure the convoy's path.")
-	ConquestObjective = player.AddPrimaryObjective("Eliminate the entire soviet presence in this area.")
+	SecureObjective = player.AddObjective("Secure the convoy's path.")
+	ConquestObjective = player.AddObjective("Eliminate the entire soviet presence in this area.")
 
 	Trigger.AfterDelay(DateTime.Seconds(1), function() Media.PlaySpeechNotification(allies, "MissionTimerInitialised") end)
 

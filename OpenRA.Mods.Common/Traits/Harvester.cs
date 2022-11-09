@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -11,17 +11,16 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
-using OpenRA.Activities;
 using OpenRA.Mods.Common.Activities;
 using OpenRA.Mods.Common.Orders;
-using OpenRA.Mods.Common.Pathfinder;
 using OpenRA.Primitives;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
 {
-	public class HarvesterInfo : TraitInfo, Requires<MobileInfo>
+	public class HarvesterInfo : ConditionalTraitInfo, Requires<MobileInfo>
 	{
 		public readonly HashSet<string> DeliveryBuildings = new HashSet<string>();
 
@@ -90,27 +89,31 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Color to use for the target line of harvest orders.")]
 		public readonly Color DeliverLineColor = Color.Green;
 
+		[CursorReference]
 		[Desc("Cursor to display when able to unload at target actor.")]
 		public readonly string EnterCursor = "enter";
 
+		[CursorReference]
 		[Desc("Cursor to display when unable to unload at target actor.")]
 		public readonly string EnterBlockedCursor = "enter-blocked";
+
+		[CursorReference]
+		[Desc("Cursor to display when ordering to harvest resources.")]
+		public readonly string HarvestCursor = "harvest";
 
 		public override object Create(ActorInitializer init) { return new Harvester(init.Self, this); }
 	}
 
-	public class Harvester : IIssueOrder, IResolveOrder, IOrderVoice,
+	public class Harvester : ConditionalTrait<HarvesterInfo>, IIssueOrder, IResolveOrder, IOrderVoice,
 		ISpeedModifier, ISync, INotifyCreated
 	{
-		public readonly HarvesterInfo Info;
-		public readonly IReadOnlyDictionary<ResourceTypeInfo, int> Contents;
+		public readonly IReadOnlyDictionary<string, int> Contents;
 
 		readonly Mobile mobile;
-		readonly ResourceLayer resLayer;
+		readonly IResourceLayer resourceLayer;
 		readonly ResourceClaimLayer claimLayer;
-		readonly Dictionary<ResourceTypeInfo, int> contents = new Dictionary<ResourceTypeInfo, int>();
+		readonly Dictionary<string, int> contents = new Dictionary<string, int>();
 		int conditionToken = Actor.InvalidConditionToken;
-		HarvesterResourceMultiplier[] resourceMultipliers;
 
 		[Sync]
 		public Actor LastLinkedProc = null;
@@ -122,40 +125,38 @@ namespace OpenRA.Mods.Common.Traits
 		int currentUnloadTicks;
 
 		[Sync]
-		public int ContentValue
+		public int ContentHash
 		{
 			get
 			{
 				var value = 0;
 				foreach (var c in contents)
-					value += c.Key.ValuePerUnit * c.Value;
+					value += c.Value << c.Key.Length;
 				return value;
 			}
 		}
 
 		public Harvester(Actor self, HarvesterInfo info)
+			: base(info)
 		{
-			Info = info;
-			Contents = new ReadOnlyDictionary<ResourceTypeInfo, int>(contents);
-
+			Contents = new ReadOnlyDictionary<string, int>(contents);
 			mobile = self.Trait<Mobile>();
-			resLayer = self.World.WorldActor.Trait<ResourceLayer>();
+			resourceLayer = self.World.WorldActor.Trait<IResourceLayer>();
 			claimLayer = self.World.WorldActor.Trait<ResourceClaimLayer>();
 		}
 
-		void INotifyCreated.Created(Actor self)
+		protected override void Created(Actor self)
 		{
-			resourceMultipliers = self.TraitsImplementing<HarvesterResourceMultiplier>().ToArray();
 			UpdateCondition(self);
-
-			self.QueueActivity(new CallFunc(() => ChooseNewProc(self, null)));
 
 			// Note: This is queued in a FrameEndTask because otherwise the activity is dropped/overridden while moving out of a factory.
 			if (Info.SearchOnCreation)
 				self.World.AddFrameEndTask(w => self.QueueActivity(new FindAndDeliverResources(self)));
+
+			base.Created(self);
 		}
 
-		public void LinkProc(Actor self, Actor proc)
+		public void LinkProc(Actor proc)
 		{
 			LinkedProc = proc;
 		}
@@ -169,7 +170,7 @@ namespace OpenRA.Mods.Common.Traits
 		public void ChooseNewProc(Actor self, Actor ignore)
 		{
 			LastLinkedProc = null;
-			LinkProc(self, ClosestProc(self, ignore));
+			LinkProc(ClosestProc(self, ignore));
 		}
 
 		bool IsAcceptableProcType(Actor proc)
@@ -181,6 +182,7 @@ namespace OpenRA.Mods.Common.Traits
 		public Actor ClosestProc(Actor self, Actor ignore)
 		{
 			// Find all refineries and their occupancy count:
+			// Exclude refineries with too many harvesters clogging the delivery location.
 			var refineries = self.World.ActorsWithTrait<IAcceptResources>()
 				.Where(r => r.Actor != ignore && r.Actor.Owner == self.Owner && IsAcceptableProcType(r.Actor))
 				.Select(r => new
@@ -188,37 +190,35 @@ namespace OpenRA.Mods.Common.Traits
 					Location = r.Actor.Location + r.Trait.DeliveryOffset,
 					Actor = r.Actor,
 					Occupancy = self.World.ActorsHavingTrait<Harvester>(h => h.LinkedProc == r.Actor).Count()
-				}).ToLookup(r => r.Location);
+				})
+				.Where(r => r.Occupancy < Info.MaxUnloadQueue)
+				.ToDictionary(r => r.Location);
+
+			if (refineries.Count == 0)
+				return null;
 
 			// Start a search from each refinery's delivery location:
-			List<CPos> path;
-
-			using (var search = PathSearch.FromPoints(self.World, mobile.Locomotor, self, refineries.Select(r => r.Key), self.Location, BlockedByActor.None)
-				.WithCustomCost(location =>
+			var path = mobile.PathFinder.FindPathToTargetCell(
+				self, refineries.Select(r => r.Key), self.Location, BlockedByActor.None,
+				location =>
 				{
-					if (!refineries.Contains(location))
+					if (!refineries.ContainsKey(location))
 						return 0;
 
-					var occupancy = refineries[location].First().Occupancy;
-
-					// Too many harvesters clogs up the refinery's delivery location:
-					if (occupancy >= Info.MaxUnloadQueue)
-						return PathGraph.CostForInvalidCell;
-
 					// Prefer refineries with less occupancy (multiplier is to offset distance cost):
+					var occupancy = refineries[location].Occupancy;
 					return occupancy * Info.UnloadQueueCostModifier;
-				}))
-				path = self.World.WorldActor.Trait<IPathFinder>().FindPath(search);
+				});
 
-			if (path.Count != 0)
-				return refineries[path.Last()].First().Actor;
+			if (path.Count > 0)
+				return refineries[path.Last()].Actor;
 
 			return null;
 		}
 
-		public bool IsFull { get { return contents.Values.Sum() == Info.Capacity; } }
-		public bool IsEmpty { get { return contents.Values.Sum() == 0; } }
-		public int Fullness { get { return contents.Values.Sum() * 100 / Info.Capacity; } }
+		public bool IsFull => contents.Values.Sum() == Info.Capacity;
+		public bool IsEmpty => contents.Values.Sum() == 0;
+		public int Fullness => contents.Values.Sum() * 100 / Info.Capacity;
 
 		void UpdateCondition(Actor self)
 		{
@@ -233,18 +233,18 @@ namespace OpenRA.Mods.Common.Traits
 				conditionToken = self.RevokeCondition(conditionToken);
 		}
 
-		public void AcceptResource(Actor self, ResourceType type)
+		public void AcceptResource(Actor self, string resourceType)
 		{
-			if (!contents.ContainsKey(type.Info))
-				contents[type.Info] = 1;
+			if (!contents.ContainsKey(resourceType))
+				contents[resourceType] = 1;
 			else
-				contents[type.Info]++;
+				contents[resourceType]++;
 
 			UpdateCondition(self);
 		}
 
 		// Returns true when unloading is complete
-		public bool TickUnload(Actor self, Actor proc)
+		public virtual bool TickUnload(Actor self, Actor proc)
 		{
 			// Wait until the next bale is ready
 			if (--currentUnloadTicks > 0)
@@ -252,44 +252,49 @@ namespace OpenRA.Mods.Common.Traits
 
 			if (contents.Keys.Count > 0)
 			{
-				var type = contents.First().Key;
-				var iao = proc.Trait<IAcceptResources>();
-				var count = Math.Min(contents[type], Info.BaleUnloadAmount);
-				var value = Util.ApplyPercentageModifiers(type.ValuePerUnit * count, resourceMultipliers.Select(m => m.GetModifier()));
+				var acceptResources = proc.Trait<IAcceptResources>();
+				foreach (var c in contents)
+				{
+					var resourceType = c.Key;
+					var count = Math.Min(c.Value, Info.BaleUnloadAmount);
+					var accepted = acceptResources.AcceptResources(resourceType, count);
+					if (accepted == 0)
+						continue;
 
-				if (!iao.CanGiveResource(value))
+					contents[resourceType] -= accepted;
+					if (contents[resourceType] <= 0)
+						contents.Remove(resourceType);
+
+					currentUnloadTicks = Info.BaleUnloadDelay;
+					UpdateCondition(self);
 					return false;
-
-				iao.GiveResource(value);
-				contents[type] -= count;
-				if (contents[type] == 0)
-					contents.Remove(type);
-
-				currentUnloadTicks = Info.BaleUnloadDelay;
-				UpdateCondition(self);
+				}
 			}
 
 			return contents.Count == 0;
 		}
 
-		public bool CanHarvestCell(Actor self, CPos cell)
+		public bool CanHarvestCell(CPos cell)
 		{
 			// Resources only exist in the ground layer
 			if (cell.Layer != 0)
 				return false;
 
-			var resType = resLayer.GetResourceType(cell);
-			if (resType == null)
+			var resourceType = resourceLayer.GetResource(cell).Type;
+			if (resourceType == null)
 				return false;
 
 			// Can the harvester collect this kind of resource?
-			return Info.Resources.Contains(resType.Info.Type);
+			return Info.Resources.Contains(resourceType);
 		}
 
 		IEnumerable<IOrderTargeter> IIssueOrder.Orders
 		{
 			get
 			{
+				if (IsTraitDisabled)
+					yield break;
+
 				yield return new EnterAlliedActorTargeter<IAcceptResourcesInfo>(
 					"Deliver",
 					5,
@@ -325,7 +330,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (order.OrderString == "Harvest")
 			{
 				// NOTE: An explicit harvest order allows the harvester to decide which refinery to deliver to.
-				LinkProc(self, null);
+				LinkProc(null);
 
 				CPos loc;
 				if (order.Target.Type != TargetType.Invalid)
@@ -366,14 +371,24 @@ namespace OpenRA.Mods.Common.Traits
 			return 100 - (100 - Info.FullyLoadedSpeed) * contents.Values.Sum() / Info.Capacity;
 		}
 
+		protected override void TraitDisabled(Actor self)
+		{
+			LastLinkedProc = null;
+			LinkedProc = null;
+			contents.Clear();
+
+			if (conditionToken != Actor.InvalidConditionToken)
+				conditionToken = self.RevokeCondition(conditionToken);
+		}
+
 		class HarvestOrderTargeter : IOrderTargeter
 		{
-			public string OrderID { get { return "Harvest"; } }
-			public int OrderPriority { get { return 10; } }
+			public string OrderID => "Harvest";
+			public int OrderPriority => 10;
 			public bool IsQueued { get; protected set; }
 			public bool TargetOverridesSelection(Actor self, in Target target, List<Actor> actorsAt, CPos xy, TargetModifiers modifiers) { return true; }
 
-			public bool CanTarget(Actor self, in Target target, List<Actor> othersAtTarget, ref TargetModifiers modifiers, ref string cursor)
+			public bool CanTarget(Actor self, in Target target, ref TargetModifiers modifiers, ref string cursor)
 			{
 				if (target.Type != TargetType.Terrain)
 					return false;
@@ -388,14 +403,14 @@ namespace OpenRA.Mods.Common.Traits
 					return false;
 
 				var info = self.Info.TraitInfo<HarvesterInfo>();
-				var res = self.World.WorldActor.TraitsImplementing<ResourceRenderer>()
+				var res = self.World.WorldActor.TraitsImplementing<IResourceRenderer>()
 					.Select(r => r.GetRenderedResourceType(location))
-					.FirstOrDefault(r => r != null && info.Resources.Contains(r.Info.Type));
+					.FirstOrDefault(r => r != null && info.Resources.Contains(r));
 
 				if (res == null)
 					return false;
 
-				cursor = "harvest";
+				cursor = info.HarvestCursor;
 				IsQueued = modifiers.HasModifier(TargetModifiers.ForceQueue);
 
 				return true;

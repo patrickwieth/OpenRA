@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -55,13 +55,11 @@ namespace OpenRA.Mods.Common.Traits
 				Info.ConstructionYardTypes.Contains(a.Info.Name))
 				.RandomOrDefault(world.LocalRandom);
 
-			return randomConstructionYard != null ? randomConstructionYard.Location : initialBaseCenter;
+			return randomConstructionYard?.Location ?? initialBaseCenter;
 		}
 
 		readonly World world;
 		readonly Player player;
-
-		readonly Predicate<Actor> unitCannotBeOrdered;
 
 		IBotPositionsUpdated[] notifyPositionsUpdated;
 		IBotRequestUnitProduction[] requestUnitProduction;
@@ -75,7 +73,6 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			world = self.World;
 			player = self.Owner;
-			unitCannotBeOrdered = a => a.Owner != player || a.IsDead || !a.IsInWorld;
 		}
 
 		protected override void Created(Actor self)
@@ -113,7 +110,7 @@ namespace OpenRA.Mods.Common.Traits
 				// No construction yards - Build a new MCV
 				if (ShouldBuildMCV())
 				{
-					var unitBuilder = requestUnitProduction.FirstOrDefault(Exts.IsTraitEnabled);
+					var unitBuilder = requestUnitProduction.FirstEnabledTraitOrDefault();
 					if (unitBuilder != null)
 					{
 						var mcvInfo = AIUtils.GetInfoByCommonName(Info.McvTypes, player);
@@ -163,7 +160,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			// If the MCV has to move first, we can't be sure it reaches the destination alive, so we only
 			// update base and defense center if the MCV is deployed immediately (i.e. at game start).
-			// TODO: This could be adressed via INotifyTransform.
+			// TODO: This could be addressed via INotifyTransform.
 			foreach (var n in notifyPositionsUpdated)
 			{
 				n.UpdatedBaseCenter(mcv.Location);

@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -10,15 +10,15 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
-using OpenRA.Graphics;
 using OpenRA.Mods.Common.Graphics;
+using OpenRA.Mods.Common.Terrain;
+using OpenRA.Mods.Common.Traits;
 
 namespace OpenRA.Mods.Common.UtilityCommands
 {
 	class CheckMissingSprites : IUtilityCommand
 	{
-		string IUtilityCommand.Name { get { return "--check-missing-sprites"; } }
+		string IUtilityCommand.Name => "--check-missing-sprites";
 
 		bool IUtilityCommand.ValidateArguments(string[] args)
 		{
@@ -45,40 +45,17 @@ namespace OpenRA.Mods.Common.UtilityCommands
 					try
 					{
 						Console.WriteLine("Tileset: " + kv.Key);
-						var tileset = modData.DefaultTileSets[kv.Key];
-						var missingImages = new HashSet<string>();
-						Action<uint, string> onMissingImage = (id, f) =>
-						{
-							Console.WriteLine("\tTemplate `{0}` references sprite `{1}` that does not exist.", id, f);
-							missingImages.Add(f);
-							failed = true;
-						};
+						var terrainInfo = modData.DefaultTerrainInfo[kv.Key];
 
-						var theater = new Theater(tileset, onMissingImage);
-						foreach (var t in tileset.Templates)
-						{
-							for (var v = 0; v < t.Value.Images.Length; v++)
-							{
-								if (!missingImages.Contains(t.Value.Images[v]))
-								{
-									for (var i = 0; i < t.Value.TilesCount; i++)
-									{
-										if (t.Value[i] == null || theater.HasTileSprite(new TerrainTile(t.Key, (byte)i), v))
-											continue;
-
-										Console.WriteLine("\tTemplate `{0}` references frame {1} that does not exist in sprite `{2}`.", t.Key, i, t.Value.Images[v]);
-										failed = true;
-									}
-								}
-							}
-						}
+						if (terrainInfo is ITemplatedTerrainInfo templatedTerrainInfo)
+							foreach (var r in modData.DefaultRules.Actors[SystemActors.World].TraitInfos<ITiledTerrainRendererInfo>())
+								failed |= r.ValidateTileSprites(templatedTerrainInfo, Console.WriteLine);
 
 						foreach (var image in kv.Value.Images)
 						{
 							foreach (var sequence in kv.Value.Sequences(image))
 							{
-								var s = kv.Value.GetSequence(image, sequence) as FileNotFoundSequence;
-								if (s == null)
+								if (!(kv.Value.GetSequence(image, sequence) is FileNotFoundSequence s))
 									continue;
 
 								Console.WriteLine("\tSequence `{0}.{1}` references sprite `{2}` that does not exist.", image, sequence, s.Filename);
@@ -90,12 +67,12 @@ namespace OpenRA.Mods.Common.UtilityCommands
 					{
 						// The stacktrace associated with yaml errors are not very useful
 						// Suppress them to make the lint output less intimidating for modders
-						Console.WriteLine("\t{0}".F(e.Message));
+						Console.WriteLine($"\t{e.Message}");
 						failed = true;
 					}
 					catch (Exception e)
 					{
-						Console.WriteLine("Failed with exception: {0}".F(e));
+						Console.WriteLine($"Failed with exception: {e}");
 						failed = true;
 					}
 				}
@@ -104,7 +81,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 			{
 				// The stacktrace associated with yaml errors are not very useful
 				// Suppress them to make the lint output less intimidating for modders
-				Console.WriteLine("{0}".F(e.Message));
+				Console.WriteLine($"{e.Message}");
 				failed = true;
 			}
 

@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -21,7 +21,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 {
 	public interface IRenderActorPreviewSpritesInfo : ITraitInfoInterface
 	{
-		IEnumerable<IActorPreview> RenderPreviewSprites(ActorPreviewInitializer init, RenderSpritesInfo rs, string image, int facings, PaletteReference p);
+		IEnumerable<IActorPreview> RenderPreviewSprites(ActorPreviewInitializer init, string image, int facings, PaletteReference p);
 	}
 
 	[Desc("Render trait fundament that won't work without additional With* render traits.")]
@@ -41,9 +41,6 @@ namespace OpenRA.Mods.Common.Traits.Render
 		[Desc("Custom PlayerColorPalette: BaseName")]
 		public readonly string PlayerPalette = "player";
 
-		[Desc("Change the sprite image size.")]
-		public readonly float Scale = 1f;
-
 		public override object Create(ActorInitializer init) { return new RenderSprites(init, this); }
 
 		public IEnumerable<IActorPreview> RenderPreview(ActorPreviewInitializer init)
@@ -51,7 +48,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 			var sequenceProvider = init.World.Map.Rules.Sequences;
 			var faction = init.GetValue<FactionInit, string>(this);
 			var ownerName = init.Get<OwnerInit>().InternalName;
-			var image = GetImage(init.Actor, sequenceProvider, faction);
+			var image = GetImage(init.Actor, faction);
 			var palette = init.WorldRenderer.Palette(Palette ?? PlayerPalette + ownerName);
 
 			var facings = 0;
@@ -63,16 +60,16 @@ namespace OpenRA.Mods.Common.Traits.Render
 				if (facings == -1)
 				{
 					var qbo = init.Actor.TraitInfoOrDefault<IQuantizeBodyOrientationInfo>();
-					facings = qbo != null ? qbo.QuantizedBodyFacings(init.Actor, sequenceProvider, faction) : 1;
+					facings = qbo?.QuantizedBodyFacings(init.Actor, sequenceProvider, faction) ?? 1;
 				}
 			}
 
 			foreach (var spi in init.Actor.TraitInfos<IRenderActorPreviewSpritesInfo>())
-				foreach (var preview in spi.RenderPreviewSprites(init, this, image, facings, palette))
+				foreach (var preview in spi.RenderPreviewSprites(init, image, facings, palette))
 					yield return preview;
 		}
 
-		public string GetImage(ActorInfo actor, SequenceProvider sequenceProvider, string faction)
+		public string GetImage(ActorInfo actor, string faction)
 		{
 			if (FactionImages != null && !string.IsNullOrEmpty(faction) && FactionImages.TryGetValue(faction, out var factionImage))
 				return factionImage.ToLowerInvariant();
@@ -121,13 +118,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 					PaletteReference = null;
 			}
 
-			public bool IsVisible
-			{
-				get
-				{
-					return Animation.DisableFunc == null || !Animation.DisableFunc();
-				}
-			}
+			public bool IsVisible => Animation.DisableFunc == null || !Animation.DisableFunc();
 
 			public bool Tick()
 			{
@@ -136,7 +127,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 
 				// Return to the caller whether the renderable position or size has changed
 				var visible = IsVisible;
-				var offset = Animation.OffsetFunc != null ? Animation.OffsetFunc() : WVec.Zero;
+				var offset = Animation.OffsetFunc?.Invoke() ?? WVec.Zero;
 				var sequence = Animation.Animation.CurrentSequence;
 
 				var updated = visible != cachedVisible || offset != cachedOffset || sequence != cachedSequence;
@@ -173,7 +164,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 			if (cachedImage != null)
 				return cachedImage;
 
-			return cachedImage = Info.GetImage(self.Info, self.World.Map.Rules.Sequences, faction);
+			return cachedImage = Info.GetImage(self.Info, faction);
 		}
 
 		public void UpdatePalette()
@@ -198,7 +189,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 					a.CachePalette(wr, owner);
 				}
 
-				foreach (var r in a.Animation.Render(self, wr, a.PaletteReference, Info.Scale))
+				foreach (var r in a.Animation.Render(self, a.PaletteReference))
 					yield return r;
 			}
 		}
@@ -207,7 +198,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 		{
 			foreach (var a in anims)
 				if (a.IsVisible)
-					yield return a.Animation.ScreenBounds(self, wr, Info.Scale);
+					yield return a.Animation.ScreenBounds(self, wr);
 		}
 
 		void ITick.Tick(Actor self)
@@ -270,17 +261,17 @@ namespace OpenRA.Mods.Common.Traits.Render
 		}
 
 		// Required by WithSpriteBody and WithInfantryBody
-		public int2 AutoSelectionSize(Actor self)
+		public int2 AutoSelectionSize()
 		{
-			return AutoRenderSize(self);
+			return AutoRenderSize();
 		}
 
 		// Required by WithSpriteBody and WithInfantryBody
-		public int2 AutoRenderSize(Actor self)
+		public int2 AutoRenderSize()
 		{
 			return anims.Where(b => b.IsVisible
 				&& b.Animation.Animation.CurrentSequence != null)
-					.Select(a => (a.Animation.Animation.Image.Size.XY * Info.Scale).ToInt2())
+					.Select(a => (a.Animation.Animation.Image.Size.XY * a.Animation.Animation.CurrentSequence.Scale).ToInt2())
 					.FirstOrDefault();
 		}
 

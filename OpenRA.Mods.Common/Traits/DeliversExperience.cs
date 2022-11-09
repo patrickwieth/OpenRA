@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -17,7 +17,7 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
 {
-	[Desc("This actor can grant experience levels equal to it's own current level via entering to other actors with the `AcceptsDeliveredExperience` trait.")]
+	[Desc("This actor can grant experience levels equal to it's own current level via entering to other actors with the `" + nameof(AcceptsDeliveredExperience) + "` trait.")]
 	class DeliversExperienceInfo : TraitInfo, Requires<GainsExperienceInfo>
 	{
 		[Desc("The amount of experience the donating player receives.")]
@@ -26,6 +26,7 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Identifier checked against AcceptsDeliveredExperience.ValidTypes. Only needed if the latter is not empty.")]
 		public readonly string Type = null;
 
+		[CursorReference]
 		[Desc("Cursor to display when hovering over a valid actor to deliver experience to.")]
 		public readonly string Cursor = "enter";
 
@@ -109,7 +110,7 @@ namespace OpenRA.Mods.Common.Traits
 					return false;
 
 				var targetInfo = target.Info.TraitInfoOrDefault<AcceptsDeliveredExperienceInfo>();
-				if (targetInfo == null || !targetInfo.ValidRelationships.HasStance(target.Owner.RelationshipWith(self.Owner)))
+				if (targetInfo == null || !targetInfo.ValidRelationships.HasRelationship(target.Owner.RelationshipWith(self.Owner)))
 					return false;
 
 				if (targetInfo.ValidTypes.Count == 0)
@@ -129,7 +130,7 @@ namespace OpenRA.Mods.Common.Traits
 					return false;
 
 				var targetInfo = target.Info.TraitInfoOrDefault<AcceptsDeliveredExperienceInfo>();
-				if (targetInfo == null || !targetInfo.ValidRelationships.HasStance(target.Owner.RelationshipWith(self.Owner)))
+				if (targetInfo == null || !targetInfo.ValidRelationships.HasRelationship(target.Owner.RelationshipWith(self.Owner)))
 					return false;
 
 				if (targetInfo.ValidTypes.Count == 0)

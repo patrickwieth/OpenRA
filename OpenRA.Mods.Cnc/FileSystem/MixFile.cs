@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -11,6 +11,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using OpenRA.FileSystem;
@@ -24,14 +25,14 @@ namespace OpenRA.Mods.Cnc.FileSystem
 	{
 		public sealed class MixFile : IReadOnlyPackage
 		{
-			public string Name { get; private set; }
-			public IEnumerable<string> Contents { get { return index.Keys; } }
+			public string Name { get; }
+			public IEnumerable<string> Contents => index.Keys;
 
 			readonly Dictionary<string, PackageEntry> index;
 			readonly long dataStart;
 			readonly Stream s;
 
-			public MixFile(Stream s, string filename, HashSet<string> allPossibleFilenames)
+			public MixFile(Stream s, string filename, string[] globalFilenames)
 			{
 				Name = filename;
 				this.s = s;
@@ -53,8 +54,8 @@ namespace OpenRA.Mods.Cnc.FileSystem
 						entries = ParseHeader(s, isCncMix ? 0 : 4, out dataStart);
 
 					index = ParseIndex(entries.ToDictionaryWithConflictLog(x => x.Hash,
-						"{0} ({1} format, Encrypted: {2}, DataStart: {3})".F(filename, isCncMix ? "C&C" : "RA/TS/RA2", isEncrypted, dataStart),
-						null, x => "(offs={0}, len={1})".F(x.Offset, x.Length)), allPossibleFilenames);
+						$"{filename} ({(isCncMix ? "C&C" : "RA/TS/RA2")} format, Encrypted: {isEncrypted}, DataStart: {dataStart})",
+						null, x => $"(offs={x.Offset}, len={x.Length})"), globalFilenames);
 				}
 				catch (Exception)
 				{
@@ -63,10 +64,11 @@ namespace OpenRA.Mods.Cnc.FileSystem
 				}
 			}
 
-			Dictionary<string, PackageEntry> ParseIndex(Dictionary<uint, PackageEntry> entries, HashSet<string> allPossibleFilenames)
+			Dictionary<string, PackageEntry> ParseIndex(Dictionary<uint, PackageEntry> entries, string[] globalFilenames)
 			{
 				var classicIndex = new Dictionary<string, PackageEntry>();
 				var crcIndex = new Dictionary<string, PackageEntry>();
+				IEnumerable<string> allPossibleFilenames = globalFilenames;
 
 				// Try and find a local mix database
 				var dbNameClassic = PackageEntry.HashFilename("local mix database.dat", PackageHashType.Classic);
@@ -78,15 +80,14 @@ namespace OpenRA.Mods.Cnc.FileSystem
 						using (var content = GetContent(kv.Value))
 						{
 							var db = new XccLocalDatabase(content);
-							foreach (var e in db.Entries)
-								allPossibleFilenames.Add(e);
+							allPossibleFilenames = allPossibleFilenames.Concat(db.Entries);
 						}
 
 						break;
 					}
 				}
 
-				foreach (var filename in allPossibleFilenames)
+				foreach (var filename in allPossibleFilenames.Distinct())
 				{
 					var classicHash = PackageEntry.HashFilename(filename, PackageHashType.Classic);
 					var crcHash = PackageEntry.HashFilename(filename, PackageHashType.CRC32);
@@ -102,7 +103,7 @@ namespace OpenRA.Mods.Cnc.FileSystem
 
 				var unknown = entries.Count - bestIndex.Count;
 				if (unknown > 0)
-					Log.Write("debug", "{0}: failed to resolve filenames for {1} unknown hashes".F(Name, unknown));
+					Log.Write("debug", $"{Name}: failed to resolve filenames for {unknown} unknown hashes");
 
 				return bestIndex;
 			}
@@ -158,13 +159,13 @@ namespace OpenRA.Mods.Cnc.FileSystem
 			static uint[] ReadBlocks(Stream s, long offset, int count)
 			{
 				if (offset < 0)
-					throw new ArgumentOutOfRangeException("offset", "Non-negative number required.");
+					throw new ArgumentOutOfRangeException(nameof(offset), "Non-negative number required.");
 
 				if (count < 0)
-					throw new ArgumentOutOfRangeException("count", "Non-negative number required.");
+					throw new ArgumentOutOfRangeException(nameof(count), "Non-negative number required.");
 
 				if (offset + (count * 2) > s.Length)
-					throw new ArgumentException("Bytes to read {0} and offset {1} greater than stream length {2}.".F(count * 2, offset, s.Length));
+					throw new ArgumentException($"Bytes to read {count * 2} and offset {offset} greater than stream length {s.Length}.");
 
 				s.Seek(offset, SeekOrigin.Begin);
 
@@ -222,6 +223,8 @@ namespace OpenRA.Mods.Cnc.FileSystem
 			}
 		}
 
+		string[] globalFilenames;
+
 		bool IPackageLoader.TryParsePackage(Stream s, string filename, FS context, out IReadOnlyPackage package)
 		{
 			if (!filename.EndsWith(".mix", StringComparison.InvariantCultureIgnoreCase))
@@ -231,13 +234,12 @@ namespace OpenRA.Mods.Cnc.FileSystem
 			}
 
 			// Load the global mix database
-			var allPossibleFilenames = new HashSet<string>();
-			if (context.TryOpen("global mix database.dat", out var mixDatabase))
-				using (var db = new XccGlobalDatabase(mixDatabase))
-					foreach (var e in db.Entries)
-						allPossibleFilenames.Add(e);
+			if (globalFilenames == null)
+				if (context.TryOpen("global mix database.dat", out var mixDatabase))
+					using (var db = new XccGlobalDatabase(mixDatabase))
+						globalFilenames = db.Entries.Distinct().ToArray();
 
-			package = new MixFile(s, filename, allPossibleFilenames);
+			package = new MixFile(s, filename, globalFilenames ?? Array.Empty<string>());
 			return true;
 		}
 	}

@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -68,23 +68,17 @@ namespace OpenRA.Mods.Common.Traits.BotModules.Squads
 				FuzzyStateMachine.Update(this);
 		}
 
-		public bool IsValid { get { return Units.Any(); } }
+		public bool IsValid => Units.Count > 0;
 
 		public Actor TargetActor
 		{
-			get { return Target.Actor; }
-			set { Target = Target.FromActor(value); }
+			get => Target.Actor;
+			set => Target = Target.FromActor(value);
 		}
 
-		public bool IsTargetValid
-		{
-			get { return Target.IsValidFor(Units.FirstOrDefault()) && !Target.Actor.Info.HasTraitInfo<HuskInfo>(); }
-		}
+		public bool IsTargetValid => Target.IsValidFor(Units.FirstOrDefault()) && !Target.Actor.Info.HasTraitInfo<HuskInfo>();
 
-		public bool IsTargetVisible
-		{
-			get { return TargetActor.CanBeViewedByPlayer(Bot.Player); }
-		}
+		public bool IsTargetVisible => TargetActor.CanBeViewedByPlayer(Bot.Player);
 
 		public WPos CenterPosition { get { return Units.Select(u => u.CenterPosition).Average(); } }
 

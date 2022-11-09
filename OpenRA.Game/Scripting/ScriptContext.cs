@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -81,8 +81,8 @@ namespace OpenRA.Scripting
 	/// </remarks>
 	public abstract class ScriptGlobal : ScriptObjectWrapper
 	{
-		protected override string DuplicateKeyError(string memberName) { return "Table '{0}' defines multiple members '{1}'".F(Name, memberName); }
-		protected override string MemberNotFoundError(string memberName) { return "Table '{0}' does not define a property '{1}'".F(Name, memberName); }
+		protected override string DuplicateKeyError(string memberName) { return $"Table '{Name}' defines multiple members '{memberName}'"; }
+		protected override string MemberNotFoundError(string memberName) { return $"Table '{Name}' does not define a property '{memberName}'"; }
 
 		public readonly string Name;
 		public ScriptGlobal(ScriptContext context)
@@ -92,7 +92,7 @@ namespace OpenRA.Scripting
 			var type = GetType();
 			var names = type.GetCustomAttributes<ScriptGlobalAttribute>(true);
 			if (names.Length != 1)
-				throw new InvalidOperationException("[ScriptGlobal] attribute not found for global table '{0}'".F(type));
+				throw new InvalidOperationException($"[ScriptGlobal] attribute not found for global table '{type}'");
 
 			Name = names.First().Name;
 			Bind(new[] { this });
@@ -129,8 +129,8 @@ namespace OpenRA.Scripting
 		// Restrict the number of instructions that will be run per map function call
 		const int MaxUserScriptInstructions = 1000000;
 
-		public World World { get; private set; }
-		public WorldRenderer WorldRenderer { get; private set; }
+		public World World { get; }
+		public WorldRenderer WorldRenderer { get; }
 
 		readonly MemoryConstrainedLuaRuntime runtime;
 		readonly LuaFunction tick;
@@ -159,7 +159,7 @@ namespace OpenRA.Scripting
 			var knownPlayerCommands = Game.ModData.ObjectCreator
 				.GetTypesImplementing<ScriptPlayerProperties>()
 				.ToArray();
-			PlayerCommands = FilterCommands(world.Map.Rules.Actors["player"], knownPlayerCommands);
+			PlayerCommands = FilterCommands(world.Map.Rules.Actors[SystemActors.Player], knownPlayerCommands);
 
 			runtime.Globals["EngineDir"] = Platform.EngineDir;
 			runtime.DoBuffer(File.Open(Path.Combine(Platform.EngineDir, "lua", "scriptwrapper.lua"), FileMode.Open, FileAccess.Read).ReadAllText(), "scriptwrapper.lua").Dispose();
@@ -187,7 +187,7 @@ namespace OpenRA.Scripting
 					});
 
 					if (ctor == null)
-						throw new InvalidOperationException("{0} must define a constructor that takes a ScriptContext context parameter".F(b.Name));
+						throw new InvalidOperationException($"{b.Name} must define a constructor that takes a ScriptContext context parameter");
 
 					var binding = (ScriptGlobal)ctor.Invoke(new[] { this });
 					using (var obj = binding.ToLuaValue(this))
@@ -236,7 +236,7 @@ namespace OpenRA.Scripting
 			using (var registerGlobal = (LuaFunction)runtime.Globals["RegisterSandboxedGlobal"])
 			{
 				if (runtime.Globals.ContainsKey(name))
-					throw new LuaException("The global name '{0}' is reserved, and may not be used by a map actor".F(name));
+					throw new LuaException($"The global name '{name}' is reserved, and may not be used by a map actor");
 
 				using (var obj = a.ToLuaValue(this))
 					registerGlobal.Call(name, obj).Dispose();
@@ -252,7 +252,7 @@ namespace OpenRA.Scripting
 				worldLoaded.Call().Dispose();
 		}
 
-		public void Tick(Actor self)
+		public void Tick()
 		{
 			if (FatalErrorOccurred || disposed)
 				return;
@@ -279,7 +279,7 @@ namespace OpenRA.Scripting
 			return outer.SelectMany(i => i.GetGenericArguments());
 		}
 
-		static readonly object[] NoArguments = new object[0];
+		static readonly object[] NoArguments = Array.Empty<object>();
 		Type[] FilterActorCommands(ActorInfo ai)
 		{
 			return FilterCommands(ai, knownActorCommands);
@@ -287,7 +287,7 @@ namespace OpenRA.Scripting
 
 		Type[] FilterCommands(ActorInfo ai, Type[] knownCommands)
 		{
-			var method = typeof(ActorInfo).GetMethod("HasTraitInfo");
+			var method = typeof(ActorInfo).GetMethod(nameof(ActorInfo.HasTraitInfo));
 			return knownCommands.Where(c => ExtractRequiredTypes(c)
 				.All(t => (bool)method.MakeGenericMethod(t).Invoke(ai, NoArguments)))
 				.ToArray();

@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -17,24 +17,30 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 {
 	public class ConnectionLogic : ChromeLogic
 	{
-		Action onConnect, onAbort;
-		Action<string> onRetry;
+		readonly Action onConnect;
+		readonly Action onAbort;
+		readonly Action<string> onRetry;
 
-		void ConnectionStateChanged(OrderManager om)
+		[TranslationReference("endpoint")]
+		static readonly string ConnectingToEndpoint = "connecting-to-endpoint";
+
+		void ConnectionStateChanged(OrderManager om, string password, NetworkConnection connection)
 		{
-			if (om.Connection.ConnectionState == ConnectionState.Connected)
+			if (connection.ConnectionState == ConnectionState.Connected)
 			{
 				CloseWindow();
 				onConnect();
 			}
-			else if (om.Connection.ConnectionState == ConnectionState.NotConnected)
+			else if (connection.ConnectionState == ConnectionState.NotConnected)
 			{
 				CloseWindow();
 
-				var switchPanel = om.ServerExternalMod != null ? "CONNECTION_SWITCHMOD_PANEL" : "CONNECTIONFAILED_PANEL";
+				var switchPanel = CurrentServerSettings.ServerExternalMod != null ? "CONNECTION_SWITCHMOD_PANEL" : "CONNECTIONFAILED_PANEL";
 				Ui.OpenWindow(switchPanel, new WidgetArgs()
 				{
 					{ "orderManager", om },
+					{ "connection", connection },
+					{ "password", password },
 					{ "onAbort", onAbort },
 					{ "onRetry", onRetry }
 				});
@@ -48,7 +54,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		}
 
 		[ObjectCreator.UseCtor]
-		public ConnectionLogic(Widget widget, ConnectionTarget endpoint, Action onConnect, Action onAbort, Action<string> onRetry)
+		public ConnectionLogic(Widget widget, ModData modData, ConnectionTarget endpoint, Action onConnect, Action onAbort, Action<string> onRetry)
 		{
 			this.onConnect = onConnect;
 			this.onAbort = onAbort;
@@ -59,8 +65,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			var panel = widget;
 			panel.Get<ButtonWidget>("ABORT_BUTTON").OnClick = () => { CloseWindow(); onAbort(); };
 
-			widget.Get<LabelWidget>("CONNECTING_DESC").GetText = () =>
-				"Connecting to {0}...".F(endpoint);
+			var connectingDesc = modData.Translation.GetString(ConnectingToEndpoint, Translation.Arguments("endpoint", endpoint));
+			widget.Get<LabelWidget>("CONNECTING_DESC").GetText = () => connectingDesc;
 		}
 
 		public static void Connect(ConnectionTarget endpoint, string password, Action onConnect, Action onAbort)
@@ -80,11 +86,23 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 	public class ConnectionFailedLogic : ChromeLogic
 	{
-		PasswordFieldWidget passwordField;
+		readonly PasswordFieldWidget passwordField;
 		bool passwordOffsetAdjusted;
 
+		[TranslationReference("target")]
+		static readonly string CouldNotConnectToTarget = "could-not-connect-to-target";
+
+		[TranslationReference]
+		static readonly string UnknownError = "unknown-error";
+
+		[TranslationReference]
+		static readonly string PasswordRequired = "password-required";
+
+		[TranslationReference]
+		static readonly string ConnectionFailed = "connection-failed";
+
 		[ObjectCreator.UseCtor]
-		public ConnectionFailedLogic(Widget widget, OrderManager orderManager, Action onAbort, Action<string> onRetry)
+		public ConnectionFailedLogic(Widget widget, ModData modData, OrderManager orderManager, NetworkConnection connection, string password, Action onAbort, Action<string> onRetry)
 		{
 			var panel = widget;
 			var abortButton = panel.Get<ButtonWidget>("ABORT_BUTTON");
@@ -96,20 +114,22 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			retryButton.Visible = onRetry != null;
 			retryButton.OnClick = () =>
 			{
-				var password = passwordField != null && passwordField.IsVisible() ? passwordField.Text : orderManager.Password;
+				var pass = passwordField != null && passwordField.IsVisible() ? passwordField.Text : password;
 
 				Ui.CloseWindow();
-				onRetry(password);
+				onRetry(pass);
 			};
 
-			widget.Get<LabelWidget>("CONNECTING_DESC").GetText = () =>
-				"Could not connect to {0}".F(orderManager.Endpoint);
+			var connectingDescText = modData.Translation.GetString(CouldNotConnectToTarget, Translation.Arguments("target", connection.Target));
+			widget.Get<LabelWidget>("CONNECTING_DESC").GetText = () => connectingDescText;
 
 			var connectionError = widget.Get<LabelWidget>("CONNECTION_ERROR");
-			connectionError.GetText = () => orderManager.ServerError ?? orderManager.Connection.ErrorMessage ?? "Unknown error";
+			var connectionErrorText = modData.Translation.GetString(orderManager.ServerError) ?? connection.ErrorMessage ?? modData.Translation.GetString(UnknownError);
+			connectionError.GetText = () => connectionErrorText;
 
 			var panelTitle = widget.Get<LabelWidget>("TITLE");
-			panelTitle.GetText = () => orderManager.AuthenticationFailed ? "Password Required" : "Connection Failed";
+			var panelTitleText = orderManager.AuthenticationFailed ? modData.Translation.GetString(PasswordRequired) : modData.Translation.GetString(ConnectionFailed);
+			panelTitle.GetText = () => panelTitleText;
 
 			passwordField = panel.GetOrNull<PasswordFieldWidget>("PASSWORD");
 			if (passwordField != null)
@@ -118,8 +138,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				passwordField.IsVisible = () => orderManager.AuthenticationFailed;
 				var passwordLabel = widget.Get<LabelWidget>("PASSWORD_LABEL");
 				passwordLabel.IsVisible = passwordField.IsVisible;
-				passwordField.OnEnterKey = () => { retryButton.OnClick(); return true; };
-				passwordField.OnEscKey = () => { abortButton.OnClick(); return true; };
+				passwordField.OnEnterKey = _ => { retryButton.OnClick(); return true; };
+				passwordField.OnEscKey = _ => { abortButton.OnClick(); return true; };
 			}
 
 			passwordOffsetAdjusted = false;
@@ -150,23 +170,26 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 	public class ConnectionSwitchModLogic : ChromeLogic
 	{
+		[TranslationReference]
+		static readonly string ModSwitchFailed = "mod-switch-failed";
+
 		[ObjectCreator.UseCtor]
-		public ConnectionSwitchModLogic(Widget widget, OrderManager orderManager, Action onAbort, Action<string> onRetry)
+		public ConnectionSwitchModLogic(Widget widget, OrderManager orderManager, NetworkConnection connection, Action onAbort, Action<string> onRetry)
 		{
 			var panel = widget;
 			var abortButton = panel.Get<ButtonWidget>("ABORT_BUTTON");
 			var switchButton = panel.Get<ButtonWidget>("SWITCH_BUTTON");
 
-			var mod = orderManager.ServerExternalMod;
+			var mod = CurrentServerSettings.ServerExternalMod;
 			var modTitle = mod.Title;
 			var modVersion = mod.Version;
 
 			switchButton.OnClick = () =>
 			{
-				var launchCommand = "Launch.URI={0}".F(new UriBuilder("tcp", orderManager.Connection.EndPoint.Address.ToString(), orderManager.Connection.EndPoint.Port));
-				Game.SwitchToExternalMod(orderManager.ServerExternalMod, new[] { launchCommand }, () =>
+				var launchCommand = $"Launch.URI={new UriBuilder("tcp", connection.EndPoint.Address.ToString(), connection.EndPoint.Port)}";
+				Game.SwitchToExternalMod(CurrentServerSettings.ServerExternalMod, new[] { launchCommand }, () =>
 				{
-					orderManager.ServerError = "Failed to switch mod.";
+					orderManager.ServerError = ModSwitchFailed;
 					Ui.CloseWindow();
 					Ui.OpenWindow("CONNECTIONFAILED_PANEL", new WidgetArgs()
 					{

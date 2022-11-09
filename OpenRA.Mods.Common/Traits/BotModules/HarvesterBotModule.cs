@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -13,7 +13,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Mods.Common.Activities;
-using OpenRA.Mods.Common.Pathfinder;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
@@ -44,15 +43,14 @@ namespace OpenRA.Mods.Common.Traits
 			public readonly Actor Actor;
 			public readonly Harvester Harvester;
 			public readonly Parachutable Parachutable;
-			public readonly Locomotor Locomotor;
+			public readonly Mobile Mobile;
 
 			public HarvesterTraitWrapper(Actor actor)
 			{
 				Actor = actor;
 				Harvester = actor.Trait<Harvester>();
 				Parachutable = actor.TraitOrDefault<Parachutable>();
-				var mobile = actor.Trait<Mobile>();
-				Locomotor = mobile.Locomotor;
+				Mobile = actor.Trait<Mobile>();
 			}
 		}
 
@@ -61,9 +59,7 @@ namespace OpenRA.Mods.Common.Traits
 		readonly Func<Actor, bool> unitCannotBeOrdered;
 		readonly Dictionary<Actor, HarvesterTraitWrapper> harvesters = new Dictionary<Actor, HarvesterTraitWrapper>();
 
-		IPathFinder pathfinder;
-		DomainIndex domainIndex;
-		ResourceLayer resLayer;
+		IResourceLayer resourceLayer;
 		ResourceClaimLayer claimLayer;
 		IBotRequestUnitProduction[] requestUnitProduction;
 		int scanForIdleHarvestersTicks;
@@ -83,16 +79,16 @@ namespace OpenRA.Mods.Common.Traits
 
 		protected override void TraitEnabled(Actor self)
 		{
-			pathfinder = world.WorldActor.Trait<IPathFinder>();
-			domainIndex = world.WorldActor.Trait<DomainIndex>();
-			resLayer = world.WorldActor.TraitOrDefault<ResourceLayer>();
+			resourceLayer = world.WorldActor.TraitOrDefault<IResourceLayer>();
 			claimLayer = world.WorldActor.TraitOrDefault<ResourceClaimLayer>();
-			scanForIdleHarvestersTicks = Info.ScanForIdleHarvestersInterval;
+
+			// Avoid all AIs scanning for idle harvesters on the same tick, randomize their initial scan delay.
+			scanForIdleHarvestersTicks = world.LocalRandom.Next(Info.ScanForIdleHarvestersInterval, Info.ScanForIdleHarvestersInterval * 2);
 		}
 
 		void IBotTick.BotTick(IBot bot)
 		{
-			if (resLayer == null || resLayer.IsResourceLayerEmpty)
+			if (resourceLayer == null || resourceLayer.IsEmpty)
 				return;
 
 			if (--scanForIdleHarvestersTicks > 0)
@@ -115,10 +111,8 @@ namespace OpenRA.Mods.Common.Traits
 			{
 				if (!h.Key.IsIdle)
 				{
-					var act = h.Key.CurrentActivity as FindAndDeliverResources;
-
 					// Ignore this actor if FindAndDeliverResources is working fine or it is performing a different activity
-					if (act == null || !act.LastSearchFailed)
+					if (!(h.Key.CurrentActivity is FindAndDeliverResources act) || !act.LastSearchFailed)
 						continue;
 				}
 
@@ -127,13 +121,13 @@ namespace OpenRA.Mods.Common.Traits
 
 				// Tell the idle harvester to quit slacking:
 				var newSafeResourcePatch = FindNextResource(h.Key, h.Value);
-				AIUtils.BotDebug("AI: Harvester {0} is idle. Ordering to {1} in search for new resources.".F(h.Key, newSafeResourcePatch));
+				AIUtils.BotDebug($"AI: Harvester {h.Key} is idle. Ordering to {newSafeResourcePatch} in search for new resources.");
 				bot.QueueOrder(new Order("Harvest", h.Key, newSafeResourcePatch, false));
 			}
 
 			// Less harvesters than refineries - build a new harvester
-			var unitBuilder = requestUnitProduction.FirstOrDefault(Exts.IsTraitEnabled);
-			if (unitBuilder != null && Info.HarvesterTypes.Any())
+			var unitBuilder = requestUnitProduction.FirstEnabledTraitOrDefault();
+			if (unitBuilder != null && Info.HarvesterTypes.Count > 0)
 			{
 				var harvInfo = AIUtils.GetInfoByCommonName(Info.HarvesterTypes, player);
 				var harvCountTooLow = AIUtils.CountActorByCommonName(Info.HarvesterTypes, player) < AIUtils.CountBuildingByCommonName(Info.RefineryTypes, player);
@@ -145,16 +139,14 @@ namespace OpenRA.Mods.Common.Traits
 		Target FindNextResource(Actor actor, HarvesterTraitWrapper harv)
 		{
 			Func<CPos, bool> isValidResource = cell =>
-				domainIndex.IsPassable(actor.Location, cell, harv.Locomotor) &&
-				harv.Harvester.CanHarvestCell(actor, cell) &&
+				harv.Harvester.CanHarvestCell(cell) &&
 				claimLayer.CanClaimCell(actor, cell);
 
-			var path = pathfinder.FindPath(
-				PathSearch.Search(world, harv.Locomotor, actor, BlockedByActor.Stationary, isValidResource)
-					.WithCustomCost(loc => world.FindActorsInCircle(world.Map.CenterOfCell(loc), Info.HarvesterEnemyAvoidanceRadius)
-						.Where(u => !u.IsDead && actor.Owner.RelationshipWith(u.Owner) == PlayerRelationship.Enemy)
-						.Sum(u => Math.Max(WDist.Zero.Length, Info.HarvesterEnemyAvoidanceRadius.Length - (world.Map.CenterOfCell(loc) - u.CenterPosition).Length)))
-					.FromPoint(actor.Location));
+			var path = harv.Mobile.PathFinder.FindPathToTargetCellByPredicate(
+				actor, new[] { actor.Location }, isValidResource, BlockedByActor.Stationary,
+				loc => world.FindActorsInCircle(world.Map.CenterOfCell(loc), Info.HarvesterEnemyAvoidanceRadius)
+					.Where(u => !u.IsDead && actor.Owner.RelationshipWith(u.Owner) == PlayerRelationship.Enemy)
+					.Sum(u => Math.Max(WDist.Zero.Length, Info.HarvesterEnemyAvoidanceRadius.Length - (world.Map.CenterOfCell(loc) - u.CenterPosition).Length)));
 
 			if (path.Count == 0)
 				return Target.Invalid;

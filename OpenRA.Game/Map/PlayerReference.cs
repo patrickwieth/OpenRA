@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -9,6 +9,7 @@
  */
 #endregion
 
+using System;
 using OpenRA.Primitives;
 
 namespace OpenRA
@@ -53,8 +54,8 @@ namespace OpenRA
 		public bool LockHandicap = false;
 		public int Handicap = 0;
 
-		public string[] Allies = { };
-		public string[] Enemies = { };
+		public string[] Allies = Array.Empty<string>();
+		public string[] Enemies = Array.Empty<string>();
 
 		public PlayerReference() { }
 		public PlayerReference(MiniYaml my) { FieldLoader.Load(this, my); }

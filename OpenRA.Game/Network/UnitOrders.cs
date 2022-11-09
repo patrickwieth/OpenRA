@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -22,7 +22,7 @@ namespace OpenRA.Network
 
 		static Player FindPlayerByClient(this World world, Session.Client c)
 		{
-			return world.Players.FirstOrDefault(p => (p.ClientIndex == c.Index && p.PlayerReference.Playable));
+			return world.Players.FirstOrDefault(p => p.ClientIndex == c.Index && p.PlayerReference.Playable);
 		}
 
 		internal static void ProcessOrder(OrderManager orderManager, World world, int clientId, Order order)
@@ -31,20 +31,37 @@ namespace OpenRA.Network
 			{
 				// Server message
 				case "Message":
-					Game.AddSystemLine(order.TargetString);
+					TextNotificationsManager.AddSystemLine(order.TargetString);
 					break;
 
-				// Reports that the target player disconnected
-				case "Disconnected":
+				// Client side translated server message
+				case "LocalizedMessage":
 					{
-						var client = orderManager.LobbyInfo.ClientWithIndex(clientId);
-						if (client != null)
+						if (string.IsNullOrEmpty(order.TargetString))
+							break;
+
+						var yaml = MiniYaml.FromString(order.TargetString);
+						foreach (var node in yaml)
 						{
-							client.State = Session.ClientState.Disconnected;
-							var player = world?.FindPlayerByClient(client);
-							if (player != null)
-								world.OnPlayerDisconnected(player);
+							var localizedMessage = new LocalizedMessage(Game.ModData, node.Value);
+							TextNotificationsManager.AddSystemLine(localizedMessage.TranslatedText);
 						}
+
+						break;
+					}
+
+				case "DisableChatEntry":
+					{
+						// Order must originate from the server
+						// Don't disable chat in replays
+						if (clientId != 0 || (world != null && world.IsReplay))
+							break;
+
+						// Server may send MaxValue to indicate that it is disabled until further notice
+						if (order.ExtraData == uint.MaxValue)
+							TextNotificationsManager.ChatDisabledUntil = uint.MaxValue;
+						else
+							TextNotificationsManager.ChatDisabledUntil = Game.RunTime + order.ExtraData;
 
 						break;
 					}
@@ -63,14 +80,14 @@ namespace OpenRA.Network
 						// ExtraData 0 means this is a normal chat order, everything else is team chat
 						if (order.ExtraData == 0)
 						{
-							var p = world != null ? world.FindPlayerByClient(client) : null;
+							var p = world?.FindPlayerByClient(client);
 							var suffix = (p != null && p.WinState == WinState.Lost) ? " (Dead)" : "";
 							suffix = client.IsObserver ? " (Spectator)" : suffix;
 
 							if (orderManager.LocalClient != null && client != orderManager.LocalClient && client.Team > 0 && client.Team == orderManager.LocalClient.Team)
 								suffix += " (Ally)";
 
-							Game.AddChatLine(client.Name + suffix, client.Color, message);
+							TextNotificationsManager.AddChatLine(clientId, client.Name + suffix, message, client.Color);
 							break;
 						}
 
@@ -79,7 +96,7 @@ namespace OpenRA.Network
 						{
 							var prefix = order.ExtraData == uint.MaxValue ? "[Spectators] " : "[Team] ";
 							if (orderManager.LocalClient != null && client.Team == orderManager.LocalClient.Team)
-								Game.AddChatLine(prefix + client.Name, client.Color, message);
+								TextNotificationsManager.AddChatLine(clientId, prefix + client.Name, message, client.Color);
 
 							break;
 						}
@@ -93,7 +110,7 @@ namespace OpenRA.Network
 						{
 							// Validate before adding the line
 							if (client.IsObserver || (player != null && player.WinState != WinState.Undefined))
-								Game.AddChatLine("[Spectators] " + client.Name, client.Color, message);
+								TextNotificationsManager.AddChatLine(clientId, "[Spectators] " + client.Name, message, client.Color);
 
 							break;
 						}
@@ -103,7 +120,7 @@ namespace OpenRA.Network
 							&& world.LocalPlayer != null && world.LocalPlayer.WinState == WinState.Undefined;
 
 						if (valid && (isSameTeam || world.IsReplay))
-							Game.AddChatLine("[Team" + (world.IsReplay ? " " + order.ExtraData : "") + "] " + client.Name, client.Color, message);
+							TextNotificationsManager.AddChatLine(clientId, "[Team" + (world.IsReplay ? " " + order.ExtraData : "") + "] " + client.Name, message, client.Color);
 
 						break;
 					}
@@ -133,7 +150,7 @@ namespace OpenRA.Network
 									FieldLoader.GetValue<int>("SaveSyncFrame", saveSyncFrame.Value.Value);
 						}
 						else
-							Game.AddSystemLine("The game has started.");
+							TextNotificationsManager.AddSystemLine("The game has started.");
 
 						Game.StartGame(orderManager.LobbyInfo.GlobalSettings.Map, WorldType.Regular);
 						break;
@@ -151,7 +168,7 @@ namespace OpenRA.Network
 
 				case "GameSaved":
 					if (!orderManager.World.IsReplay)
-						Game.AddSystemLine("Game saved");
+						TextNotificationsManager.AddSystemLine("Game saved");
 
 					foreach (var nsr in orderManager.World.WorldActor.TraitsImplementing<INotifyGameSaved>())
 						nsr.GameSaved(orderManager.World);
@@ -170,8 +187,8 @@ namespace OpenRA.Network
 
 							if (orderManager.World.Paused != pause && world != null && world.LobbyInfo.NonBotClients.Count() > 1)
 							{
-								var pausetext = "The game is {0} by {1}".F(pause ? "paused" : "un-paused", client.Name);
-								Game.AddSystemLine(pausetext);
+								var pausetext = $"The game is {(pause ? "paused" : "un-paused")} by {client.Name}";
+								TextNotificationsManager.AddSystemLine(pausetext);
 							}
 
 							orderManager.World.Paused = pause;
@@ -192,7 +209,7 @@ namespace OpenRA.Network
 							Game.ExternalMods.TryGetValue(externalKey, out var external))
 						{
 							// The ConnectionFailedLogic will prompt the user to switch mods
-							orderManager.ServerExternalMod = external;
+							CurrentServerSettings.ServerExternalMod = external;
 							orderManager.Connection.Dispose();
 							break;
 						}
@@ -218,7 +235,7 @@ namespace OpenRA.Network
 							Client = info,
 							Mod = mod.Id,
 							Version = mod.Metadata.Version,
-							Password = orderManager.Password,
+							Password = CurrentServerSettings.Password,
 							Fingerprint = localProfile.Fingerprint,
 							OrdersProtocol = ProtocolVersion.Orders
 						};
@@ -254,7 +271,6 @@ namespace OpenRA.Network
 				case "SyncInfo":
 					{
 						orderManager.LobbyInfo = Session.Deserialize(order.TargetString);
-						SetOrderLag(orderManager);
 						Game.SyncLobbyInfo();
 						break;
 					}
@@ -304,29 +320,24 @@ namespace OpenRA.Network
 								orderManager.LobbyInfo.GlobalSettings = Session.Global.Deserialize(node.Value);
 						}
 
-						SetOrderLag(orderManager);
 						Game.SyncLobbyInfo();
 						break;
 					}
 
-				case "SyncClientPings":
+				case "SyncConnectionQuality":
 					{
-						var pings = new List<Session.ClientPing>();
 						var nodes = MiniYaml.FromString(order.TargetString);
 						foreach (var node in nodes)
 						{
 							var strings = node.Key.Split('@');
-							if (strings[0] == "ClientPing")
-								pings.Add(Session.ClientPing.Deserialize(node.Value));
+							if (strings[0] == "ConnectionQuality")
+							{
+								var client = orderManager.LobbyInfo.Clients.FirstOrDefault(c => c.Index == int.Parse(strings[1]));
+								if (client != null)
+									client.ConnectionQuality = FieldLoader.GetValue<Session.ConnectionQuality>("ConnectionQuality", node.Value.Value);
+							}
 						}
 
-						orderManager.LobbyInfo.ClientPings = pings;
-						break;
-					}
-
-				case "Ping":
-					{
-						orderManager.IssueOrder(Order.FromTargetString("Pong", order.TargetString, true));
 						break;
 					}
 
@@ -353,15 +364,6 @@ namespace OpenRA.Network
 
 			if (world.OrderValidators.All(vo => vo.OrderValidation(orderManager, world, clientId, order)))
 				order.Subject.ResolveOrder(order);
-		}
-
-		static void SetOrderLag(OrderManager o)
-		{
-			if (o.FramesAhead != o.LobbyInfo.GlobalSettings.OrderLatency && !o.GameStarted)
-			{
-				o.FramesAhead = o.LobbyInfo.GlobalSettings.OrderLatency;
-				Log.Write("server", "Order lag is now {0} frames.", o.LobbyInfo.GlobalSettings.OrderLatency);
-			}
 		}
 	}
 }

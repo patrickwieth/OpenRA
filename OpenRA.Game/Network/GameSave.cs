@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -71,7 +71,7 @@ namespace OpenRA.Network
 
 		public MiniYamlNode Serialize(string key)
 		{
-			return new MiniYamlNode("SlotClient@{0}".F(key), FieldSaver.Save(this));
+			return new MiniYamlNode($"SlotClient@{key}", FieldSaver.Save(this));
 		}
 	}
 
@@ -86,7 +86,7 @@ namespace OpenRA.Network
 		// Loaded from file and updated during gameplay
 		public int LastOrdersFrame { get; private set; }
 		public int LastSyncFrame { get; private set; }
-		byte[] lastSyncPacket = new byte[0];
+		byte[] lastSyncPacket = Array.Empty<byte>();
 
 		// Loaded from file or set on game start
 		public Session.Global GlobalSettings { get; private set; }
@@ -95,7 +95,7 @@ namespace OpenRA.Network
 		public Dictionary<int, MiniYaml> TraitData = new Dictionary<int, MiniYaml>();
 
 		// Set on game start
-		int[] clientsBySlotIndex = { };
+		int[] clientsBySlotIndex = Array.Empty<int>();
 		int firstBotSlotIndex = -1;
 
 		public GameSave()
@@ -195,7 +195,7 @@ namespace OpenRA.Network
 			{
 				if (data.Length != Order.SyncHashOrderLength)
 				{
-					Log.Write("debug", "Dropped sync order with length {0}. Expected length {1}.".F(data.Length, Order.SyncHashOrderLength));
+					Log.Write("debug", $"Dropped sync order with length {data.Length}. Expected length {Order.SyncHashOrderLength}.");
 					return;
 				}
 

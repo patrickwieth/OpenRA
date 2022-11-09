@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -24,6 +24,8 @@ namespace OpenRA.Mods.Common.LoadScreens
 		public LaunchArguments Launch;
 		protected ModData ModData { get; private set; }
 
+		bool initialized;
+
 		public virtual void Init(ModData modData, Dictionary<string, string> info)
 		{
 			ModData = modData;
@@ -31,12 +33,15 @@ namespace OpenRA.Mods.Common.LoadScreens
 
 		public virtual void Display()
 		{
-			if (Game.Renderer == null)
+			if (Game.Renderer == null || initialized)
 				return;
 
 			// Draw a black screen
 			Game.Renderer.BeginUI();
 			Game.Renderer.EndFrame(new NullInputHandler());
+
+			// PERF: draw the screen only once
+			initialized = true;
 		}
 
 		public virtual void StartGame(Arguments args)
@@ -47,7 +52,7 @@ namespace OpenRA.Mods.Common.LoadScreens
 
 			if (!string.IsNullOrEmpty(Launch.Benchmark))
 			{
-				Console.WriteLine("Saving benchmark data into {0}".F(Path.Combine(Platform.SupportDir, "Logs")));
+				Console.WriteLine($"Saving benchmark data into {Path.Combine(Platform.SupportDir, "Logs")}");
 
 				Game.BenchmarkMode(Launch.Benchmark);
 			}
@@ -78,7 +83,7 @@ namespace OpenRA.Mods.Common.LoadScreens
 				}
 				catch { }
 
-				if (ReplayUtils.PromptConfirmReplayCompatibility(replayMeta, Game.LoadShellMap))
+				if (ReplayUtils.PromptConfirmReplayCompatibility(replayMeta, Game.ModData, Game.LoadShellMap))
 					Game.JoinReplay(Launch.Replay);
 
 				if (replayMeta != null)

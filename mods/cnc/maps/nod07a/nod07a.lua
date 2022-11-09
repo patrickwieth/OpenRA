@@ -1,5 +1,5 @@
 --[[
-   Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+   Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
    This file is part of OpenRA, which is free software. It is made
    available to you under the terms of the GNU General Public License
    as published by the Free Software Foundation, either version 3 of
@@ -119,8 +119,8 @@ SendReinforcementsWave = function(team)
 end
 
 Trigger.OnEnteredFootprint(AbandonedBaseTrigger, function(a, id)
-	if not abandonedBaseTrigger and a.Owner == Nod then
-		abandonedBaseTrigger = true
+	if not AbandonedBaseTriggered and a.Owner == Nod then
+		AbandonedBaseTriggered = true
 		Trigger.RemoveFootprintTrigger(id)
 
 		FlareCamera = Actor.Create("camera", true, { Owner = Nod, Location = waypoint25.Location })
@@ -141,8 +141,8 @@ Trigger.OnEnteredFootprint(AbandonedBaseTrigger, function(a, id)
 end)
 
 Trigger.OnEnteredFootprint(ReinforcementsTrigger, function(a, id)
-	if not reinforcementsTrigger and a.Owner == Nod and a.Type ~= "harv" then
-		reinforcementsTrigger = true
+	if not ReinforcementsTriggered and a.Owner == Nod and a.Type ~= "harv" then
+		ReinforcementsTriggered = true
 		Trigger.RemoveFootprintTrigger(id)
 
 		Trigger.AfterDelay(DateTime.Seconds(5), function()

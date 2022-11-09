@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -13,6 +13,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using OpenRA.Mods.Common.FileFormats;
 using OpenRA.Widgets;
@@ -26,6 +27,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 		enum Mode { Progress, Message, List }
 
+		readonly ModData modData;
 		readonly ModContent content;
 		readonly Dictionary<string, ModContent.ModSource> sources;
 
@@ -52,15 +54,72 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 		Mode visible = Mode.Progress;
 
+		[TranslationReference]
+		static readonly string DetectingDrives = "detecting-drives";
+
+		[TranslationReference]
+		static readonly string CheckingDiscs = "checking-discs";
+
+		[TranslationReference("title")]
+		static readonly string SearchingDiscFor = "searching-disc-for";
+
+		[TranslationReference]
+		static readonly string ContentPackageInstallation = "content-package-installation";
+
+		[TranslationReference]
+		static readonly string GameDiscs = "game-discs";
+
+		[TranslationReference]
+		static readonly string DigitalInstalls = "digital-installs";
+
+		[TranslationReference]
+		static readonly string GameContentNotFound = "game-content-not-found";
+
+		[TranslationReference]
+		static readonly string AlternativeContentSources = "alternative-content-sources";
+
+		[TranslationReference]
+		static readonly string InstallingContent = "installing-content";
+
+		[TranslationReference("filename")]
+		static readonly string CopyingFilename = "copying-filename";
+
+		[TranslationReference("filename", "progress")]
+		static readonly string CopyingFilenameProgress = "copying-filename-progress";
+
+		[TranslationReference]
+		static readonly string InstallationFailed = "installation-failed";
+
+		[TranslationReference]
+		static readonly string CheckInstallLog = "check-install-log";
+
+		[TranslationReference("filename")]
+		static readonly string Extracing = "extracting-filename";
+
+		[TranslationReference("filename", "progress")]
+		static readonly string ExtracingProgress = "extracting-filename-progress";
+
+		[TranslationReference]
+		static readonly string Continue = "continue";
+
+		[TranslationReference]
+		static readonly string Cancel = "cancel";
+
+		[TranslationReference]
+		static readonly string Retry = "retry";
+
+		[TranslationReference]
+		static readonly string Back = "back";
+
 		[ObjectCreator.UseCtor]
-		public InstallFromDiscLogic(Widget widget, ModContent content, Dictionary<string, ModContent.ModSource> sources, Action afterInstall)
+		public InstallFromDiscLogic(Widget widget, ModData modData, ModContent content, Dictionary<string, ModContent.ModSource> sources)
 		{
+			this.modData = modData;
 			this.content = content;
 			this.sources = sources;
 
 			Log.AddChannel("install", "install.log");
 
-			// this.afterInstall = afterInstall;
 			panel = widget.Get("DISC_INSTALL_PANEL");
 
 			titleLabel = panel.Get<LabelWidget>("TITLE");
@@ -108,8 +167,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 		void DetectContentDisks()
 		{
-			var message = "Detecting drives";
-			ShowProgressbar("Checking Discs", () => message);
+			var message = modData.Translation.GetString(DetectingDrives);
+			ShowProgressbar(modData.Translation.GetString(CheckingDiscs), () => message);
 			ShowBackRetry(DetectContentDisks);
 
 			new Task(() =>
@@ -132,12 +191,12 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 				foreach (var kv in sources)
 				{
-					message = "Searching for " + kv.Value.Title;
+					message = modData.Translation.GetString(SearchingDiscFor, Translation.Arguments("title", kv.Value.Title));
 
 					var path = FindSourcePath(kv.Value, volumes);
 					if (path != null)
 					{
-						Log.Write("install", "Using installer `{0}: {1}` of type `{2}`:", kv.Key, kv.Value.Title, kv.Value.Type);
+						Log.Write("install", $"Using installer `{kv.Key}: {kv.Value.Title}` of type `{kv.Value.Type}`:");
 
 						var packages = content.Packages.Values
 							.Where(p => p.Sources.Contains(kv.Key) && !p.IsInstalled())
@@ -148,7 +207,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 						{
 							Game.RunAfterTick(() =>
 							{
-								ShowList(kv.Value.Title, "The following content packages will be installed:", packages);
+								ShowList(kv.Value.Title, modData.Translation.GetString(ContentPackageInstallation), packages);
 								ShowContinueCancel(() => InstallFromDisc(path, kv.Value));
 							});
 
@@ -169,22 +228,22 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 				var options = new Dictionary<string, IEnumerable<string>>()
 				{
-					{ "Game Discs", discs },
+					{ modData.Translation.GetString(GameDiscs), discs },
 				};
 
 				if (Platform.CurrentPlatform == PlatformType.Windows)
 				{
 					var installations = missingSources
-						.Where(s => s.Type == ModContent.SourceType.Install)
+						.Where(s => s.Type == ModContent.SourceType.RegistryDirectory || s.Type == ModContent.SourceType.RegistryDirectoryFromFile)
 						.Select(s => s.Title)
 						.Distinct();
 
-					options.Add("Digital Installs", installations);
+					options.Add(modData.Translation.GetString(DigitalInstalls), installations);
 				}
 
 				Game.RunAfterTick(() =>
 				{
-					ShowList("Game Content Not Found", "Please insert or install one of the following content sources:", options);
+					ShowList(modData.Translation.GetString(GameContentNotFound), modData.Translation.GetString(AlternativeContentSources), options);
 					ShowBackRetry(DetectContentDisks);
 				});
 			}).Start();
@@ -193,7 +252,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		void InstallFromDisc(string path, ModContent.ModSource modSource)
 		{
 			var message = "";
-			ShowProgressbar("Installing Content", () => message);
+			ShowProgressbar(modData.Translation.GetString(InstallingContent), () => message);
 			ShowDisabledCancel();
 
 			new Task(() =>
@@ -207,77 +266,77 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 						switch (i.Key)
 						{
 							case "copy":
-							{
-								var sourceDir = Path.Combine(path, i.Value.Value);
-								foreach (var node in i.Value.Nodes)
 								{
-									var sourcePath = Path.Combine(sourceDir, node.Value.Value);
-									var targetPath = Platform.ResolvePath(node.Key);
-									if (File.Exists(targetPath))
+									var sourceDir = Path.Combine(path, i.Value.Value);
+									foreach (var node in i.Value.Nodes)
 									{
-										Log.Write("install", "Ignoring installed file " + targetPath);
-										continue;
+										var sourcePath = Path.Combine(sourceDir, node.Value.Value);
+										var targetPath = Platform.ResolvePath(node.Key);
+										if (File.Exists(targetPath))
+										{
+											Log.Write("install", "Ignoring installed file " + targetPath);
+											continue;
+										}
+
+										Log.Write("install", $"Copying {sourcePath} -> {targetPath}");
+										extracted.Add(targetPath);
+										Directory.CreateDirectory(Path.GetDirectoryName(targetPath));
+
+										using (var source = File.OpenRead(sourcePath))
+										using (var target = File.OpenWrite(targetPath))
+										{
+											var displayFilename = Path.GetFileName(targetPath);
+											var length = source.Length;
+
+											Action<long> onProgress = null;
+											if (length < ShowPercentageThreshold)
+												message = modData.Translation.GetString(CopyingFilename, Translation.Arguments("filename", displayFilename));
+											else
+												onProgress = b => message = modData.Translation.GetString(CopyingFilenameProgress, Translation.Arguments("filename", displayFilename, "progress", 100 * b / length));
+
+											CopyStream(source, target, length, onProgress);
+										}
 									}
 
-									Log.Write("install", "Copying {0} -> {1}".F(sourcePath, targetPath));
-									extracted.Add(targetPath);
-									Directory.CreateDirectory(Path.GetDirectoryName(targetPath));
-
-									using (var source = File.OpenRead(sourcePath))
-									using (var target = File.OpenWrite(targetPath))
-									{
-										var displayFilename = Path.GetFileName(targetPath);
-										var length = source.Length;
-
-										Action<long> onProgress = null;
-										if (length < ShowPercentageThreshold)
-											message = "Copying " + displayFilename;
-										else
-											onProgress = b => message = "Copying " + displayFilename + " ({0}%)".F(100 * b / length);
-
-										CopyStream(source, target, length, onProgress);
-									}
+									break;
 								}
 
-								break;
-							}
-
 							case "extract-raw":
-							{
-								ExtractFromPackage(ExtractionType.Raw, path, i.Value, extracted, m => message = m);
-								break;
-							}
+								{
+									ExtractFromPackage(modData, ExtractionType.Raw, path, i.Value, extracted, m => message = m);
+									break;
+								}
 
 							case "extract-blast":
-							{
-								ExtractFromPackage(ExtractionType.Blast, path, i.Value, extracted, m => message = m);
-								break;
-							}
+								{
+									ExtractFromPackage(modData, ExtractionType.Blast, path, i.Value, extracted, m => message = m);
+									break;
+								}
 
 							case "extract-mscab":
-							{
-								ExtractFromMSCab(path, i.Value, extracted, m => message = m);
-								break;
-							}
+								{
+									ExtractFromMSCab(modData, path, i.Value, extracted, m => message = m);
+									break;
+								}
 
 							case "extract-iscab":
-							{
-								ExtractFromISCab(path, i.Value, extracted, m => message = m);
-								break;
-							}
+								{
+									ExtractFromISCab(modData, path, i.Value, extracted, m => message = m);
+									break;
+								}
 
 							case "delete":
-							{
-								// Yaml path may be specified relative to a named directory (e.g. ^SupportDir) or the detected disc path
-								var sourcePath = i.Value.Value.StartsWith("^") ? Platform.ResolvePath(i.Value.Value) : Path.Combine(path, i.Value.Value);
+								{
+									// Yaml path may be specified relative to a named directory (e.g. ^SupportDir) or the detected disc path
+									var sourcePath = i.Value.Value.StartsWith("^") ? Platform.ResolvePath(i.Value.Value) : Path.Combine(path, i.Value.Value);
 
-								Log.Write("debug", "Deleting {0}", sourcePath);
-								File.Delete(sourcePath);
-								break;
-							}
+									Log.Write("debug", $"Deleting {sourcePath}");
+									File.Delete(sourcePath);
+									break;
+								}
 
 							default:
-								Log.Write("debug", "Unknown installation command {0} - ignoring", i.Key);
+								Log.Write("debug", $"Unknown installation command {i.Key} - ignoring");
 								break;
 						}
 					}
@@ -296,7 +355,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 					Game.RunAfterTick(() =>
 					{
-						ShowMessage("Installation Failed", "Refer to install.log in the logs directory for details.");
+						ShowMessage(modData.Translation.GetString(InstallationFailed), modData.Translation.GetString(CheckInstallLog));
 						ShowBackRetry(() => InstallFromDisc(path, modSource));
 					});
 				}
@@ -320,7 +379,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 		enum ExtractionType { Raw, Blast }
 
-		static void ExtractFromPackage(ExtractionType type, string path, MiniYaml actionYaml, List<string> extractedFiles, Action<string> updateMessage)
+		static void ExtractFromPackage(ModData modData, ExtractionType type, string path, MiniYaml actionYaml, List<string> extractedFiles, Action<string> updateMessage)
 		{
 			// Yaml path may be specified relative to a named directory (e.g. ^SupportDir) or the detected disc path
 			var sourcePath = actionYaml.Value.StartsWith("^") ? Platform.ResolvePath(actionYaml.Value) : Path.Combine(path, actionYaml.Value);
@@ -360,13 +419,13 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 					Action<long> onProgress = null;
 					if (length < ShowPercentageThreshold)
-						updateMessage("Extracting " + displayFilename);
+						updateMessage(modData.Translation.GetString(Extracing, Translation.Arguments("filename", displayFilename)));
 					else
-						onProgress = b => updateMessage("Extracting " + displayFilename + " ({0}%)".F(100 * b / length));
+						onProgress = b => updateMessage(modData.Translation.GetString(ExtracingProgress, Translation.Arguments("filename", displayFilename, "progress", 100 * b / length)));
 
 					using (var target = File.OpenWrite(targetPath))
 					{
-						Log.Write("install", "Extracting {0} -> {1}".F(sourcePath, targetPath));
+						Log.Write("install", $"Extracting {sourcePath} -> {targetPath}");
 						if (type == ExtractionType.Blast)
 							Blast.Decompress(source, target, (read, _) => onProgress?.Invoke(read));
 						else
@@ -376,7 +435,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			}
 		}
 
-		static void ExtractFromMSCab(string path, MiniYaml actionYaml, List<string> extractedFiles, Action<string> updateMessage)
+		static void ExtractFromMSCab(ModData modData, string path, MiniYaml actionYaml, List<string> extractedFiles, Action<string> updateMessage)
 		{
 			// Yaml path may be specified relative to a named directory (e.g. ^SupportDir) or the detected disc path
 			var sourcePath = actionYaml.Value.StartsWith("^") ? Platform.ResolvePath(actionYaml.Value) : Path.Combine(path, actionYaml.Value);
@@ -398,16 +457,16 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					Directory.CreateDirectory(Path.GetDirectoryName(targetPath));
 					using (var target = File.OpenWrite(targetPath))
 					{
-						Log.Write("install", "Extracting {0} -> {1}".F(sourcePath, targetPath));
+						Log.Write("install", $"Extracting {sourcePath} -> {targetPath}");
 						var displayFilename = Path.GetFileName(Path.GetFileName(targetPath));
-						Action<int> onProgress = percent => updateMessage("Extracting {0} ({1}%)".F(displayFilename, percent));
+						Action<int> onProgress = percent => updateMessage(modData.Translation.GetString(ExtracingProgress, Translation.Arguments("filename", displayFilename, "progress", percent)));
 						reader.ExtractFile(node.Value.Value, target, onProgress);
 					}
 				}
 			}
 		}
 
-		static void ExtractFromISCab(string path, MiniYaml actionYaml, List<string> extractedFiles, Action<string> updateMessage)
+		static void ExtractFromISCab(ModData modData, string path, MiniYaml actionYaml, List<string> extractedFiles, Action<string> updateMessage)
 		{
 			// Yaml path may be specified relative to a named directory (e.g. ^SupportDir) or the detected disc path
 			var sourcePath = actionYaml.Value.StartsWith("^") ? Platform.ResolvePath(actionYaml.Value) : Path.Combine(path, actionYaml.Value);
@@ -447,9 +506,9 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 						Directory.CreateDirectory(Path.GetDirectoryName(targetPath));
 						using (var target = File.OpenWrite(targetPath))
 						{
-							Log.Write("install", "Extracting {0} -> {1}".F(sourcePath, targetPath));
+							Log.Write("install", $"Extracting {sourcePath} -> {targetPath}");
 							var displayFilename = Path.GetFileName(Path.GetFileName(targetPath));
-							Action<int> onProgress = percent => updateMessage("Extracting {0} ({1}%)".F(displayFilename, percent));
+							Action<int> onProgress = percent => updateMessage(modData.Translation.GetString(ExtracingProgress, Translation.Arguments("filename", displayFilename, "progress", percent)));
 							reader.ExtractFile(node.Value.Value, target, onProgress);
 						}
 					}
@@ -464,7 +523,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 		string FindSourcePath(ModContent.ModSource source, IEnumerable<string> volumes)
 		{
-			if (source.Type == ModContent.SourceType.Install)
+			if (source.Type == ModContent.SourceType.RegistryDirectory || source.Type == ModContent.SourceType.RegistryDirectoryFromFile)
 			{
 				if (source.RegistryKey == null)
 					return null;
@@ -472,11 +531,18 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				if (Platform.CurrentPlatform != PlatformType.Windows)
 					return null;
 
+				// We need an extra check for the platform here to silence a warning when the registry is accessed
+				// TODO: Remove this once our platform checks use the same method
+				if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+					return null;
+
 				foreach (var prefix in source.RegistryPrefixes)
 				{
-					var path = Microsoft.Win32.Registry.GetValue(prefix + source.RegistryKey, source.RegistryValue, null) as string;
-					if (path == null)
+					if (!(Microsoft.Win32.Registry.GetValue(prefix + source.RegistryKey, source.RegistryValue, null) is string path))
 						continue;
+
+					if (source.Type == ModContent.SourceType.RegistryDirectoryFromFile)
+						path = Path.GetDirectoryName(path);
 
 					return IsValidSourcePath(path, source) ? path : null;
 				}
@@ -492,7 +558,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			return null;
 		}
 
-		bool IsValidSourcePath(string path, ModContent.ModSource source)
+		static bool IsValidSourcePath(string path, ModContent.ModSource source)
 		{
 			try
 			{
@@ -522,7 +588,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 								return false;
 						}
 						else if (CryptoUtil.SHA1Hash(fileStream) != kv.Value.Value)
-								return false;
+							return false;
 					}
 				}
 			}
@@ -620,11 +686,11 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		void ShowContinueCancel(Action continueAction)
 		{
 			primaryButton.OnClick = continueAction;
-			primaryButton.Text = "Continue";
+			primaryButton.Text = modData.Translation.GetString(Continue);
 			primaryButton.Visible = true;
 
 			secondaryButton.OnClick = Ui.CloseWindow;
-			secondaryButton.Text = "Cancel";
+			secondaryButton.Text = modData.Translation.GetString(Cancel);
 			secondaryButton.Visible = true;
 			secondaryButton.Disabled = false;
 			Game.RunAfterTick(Ui.ResetTooltips);
@@ -633,11 +699,11 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		void ShowBackRetry(Action retryAction)
 		{
 			primaryButton.OnClick = retryAction;
-			primaryButton.Text = "Retry";
+			primaryButton.Text = modData.Translation.GetString(Retry);
 			primaryButton.Visible = true;
 
 			secondaryButton.OnClick = Ui.CloseWindow;
-			secondaryButton.Text = "Back";
+			secondaryButton.Text = modData.Translation.GetString(Back);
 			secondaryButton.Visible = true;
 			secondaryButton.Disabled = false;
 			Game.RunAfterTick(Ui.ResetTooltips);

@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -35,7 +35,7 @@ namespace OpenRA.Mods.Cnc.Scripting
 			var infiltrates = infiltratesTraits.FirstOrDefault(x => !x.IsTraitDisabled && x.Info.Types.Overlaps(target.GetEnabledTargetTypes()));
 
 			if (infiltrates == null)
-				throw new LuaException("{0} tried to infiltrate invalid target {1}!".F(Self, target));
+				throw new LuaException($"{Self} tried to infiltrate invalid target {target}!");
 
 			// NB: Scripted actions get no visible targetlines.
 			Self.QueueActivity(new Infiltrate(Self, Target.FromActor(target), infiltrates, null));

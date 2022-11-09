@@ -1,4 +1,4 @@
-﻿#region Copyright & License Information
+#region Copyright & License Information
 /*
  * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
@@ -12,7 +12,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using OpenRA.Mods.Common.Pathfinder;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
@@ -46,9 +45,6 @@ namespace OpenRA.Mods.Common.Traits
 
 		int waitDelayTicks;
 
-		IPathFinder pathfinder;
-		DomainIndex domainIndex;
-
 		IBotRequestUnitProduction[] requestUnitProduction;
 
 		public BridgeRepairBotModule(Actor self, BridgeRepairBotModuleInfo info)
@@ -67,9 +63,6 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			// Avoid all AIs reevaluating assignments on the same tick, randomize their initial evaluation delay.
 			waitDelayTicks = world.LocalRandom.Next(Info.MinimumWaitDelay);
-
-			pathfinder = world.WorldActor.Trait<IPathFinder>();
-			domainIndex = world.WorldActor.Trait<DomainIndex>();
 
 			requestUnitProduction = player.PlayerActor.TraitsImplementing<IBotRequestUnitProduction>().ToArray();
 		}
@@ -135,17 +128,17 @@ namespace OpenRA.Mods.Common.Traits
 
 		Target SafePath(Actor repairer, Actor target)
 		{
-			var locomotor = repairer.Trait<Mobile>().Locomotor;
+			var mobile = repairer.Trait<Mobile>();
+			var locomotor = mobile.Locomotor;
 
-			if (!domainIndex.IsPassable(repairer.Location, target.Location, locomotor))
+			if (!mobile.PathFinder.PathExistsForLocomotor(locomotor, repairer.Location, target.Location))
 				return Target.Invalid;
 
-			var path = pathfinder.FindPath(
-				PathSearch.FromPoint(world, locomotor, repairer, repairer.Location, target.Location, BlockedByActor.None)
-					.WithCustomCost(loc => world.FindActorsInCircle(world.Map.CenterOfCell(loc), Info.EnemyAvoidanceRadius)
-						.Where(u => !u.IsDead && repairer.Owner.RelationshipWith(u.Owner) == PlayerRelationship.Enemy && repairer.IsTargetableBy(u))
-						.Sum(u => Math.Max(WDist.Zero.Length, Info.EnemyAvoidanceRadius.Length - (world.Map.CenterOfCell(loc) - u.CenterPosition).Length)))
-					.FromPoint(repairer.Location));
+			var path = mobile.PathFinder.FindPathToTargetCellByPredicate(
+				repairer, new[] { repairer.Location }, loc => true, BlockedByActor.Stationary,
+				loc => world.FindActorsInCircle(world.Map.CenterOfCell(loc), Info.EnemyAvoidanceRadius)
+					.Where(u => !u.IsDead && repairer.Owner.RelationshipWith(u.Owner) == PlayerRelationship.Enemy && repairer.IsTargetableBy(u))
+					.Sum(u => Math.Max(WDist.Zero.Length, Info.EnemyAvoidanceRadius.Length - (world.Map.CenterOfCell(loc) - u.CenterPosition).Length)));
 
 			if (path.Count == 0)
 				return Target.Invalid;

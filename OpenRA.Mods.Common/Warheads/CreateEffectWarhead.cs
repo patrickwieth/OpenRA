@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -9,6 +9,7 @@
  */
 #endregion
 
+using System;
 using System.Linq;
 using OpenRA.GameRules;
 using OpenRA.Mods.Common.Effects;
@@ -18,11 +19,12 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Warheads
 {
+	[Desc("Spawn a sprite with sound.")]
 	public class CreateEffectWarhead : Warhead
 	{
 		[SequenceReference(nameof(Image), allowNullImage: true)]
 		[Desc("List of explosion sequences that can be used.")]
-		public readonly string[] Explosions = new string[0];
+		public readonly string[] Explosions = Array.Empty<string>();
 
 		[Desc("Image containing explosion effect sequence.")]
 		public readonly string Image = "explosion";
@@ -38,7 +40,7 @@ namespace OpenRA.Mods.Common.Warheads
 		public readonly bool ForceDisplayAtGroundLevel = false;
 
 		[Desc("List of sounds that can be played on impact.")]
-		public readonly string[] ImpactSounds = new string[0];
+		public readonly string[] ImpactSounds = Array.Empty<string>();
 
 		[Desc("Chance of impact sound to play.")]
 		public readonly int ImpactSoundChance = 100;
@@ -62,7 +64,7 @@ namespace OpenRA.Mods.Common.Warheads
 				if (!AffectsParent && victim == firedBy)
 					continue;
 
-				var activeShapes = victim.TraitsImplementing<HitShape>().Where(Exts.IsTraitEnabled);
+				var activeShapes = victim.TraitsImplementing<HitShape>().Where(t => !t.IsTraitDisabled);
 				if (!activeShapes.Any(s => s.DistanceFromEdge(victim, pos).Length <= 0))
 					continue;
 
@@ -79,8 +81,8 @@ namespace OpenRA.Mods.Common.Warheads
 		// (and to prevent returning ImpactActorType.Invalid on AffectsParent=false)
 		public override bool IsValidAgainst(Actor victim, Actor firedBy)
 		{
-			var stance = firedBy.Owner.RelationshipWith(victim.Owner);
-			if (!ValidRelationships.HasStance(stance))
+			var relationship = firedBy.Owner.RelationshipWith(victim.Owner);
+			if (!ValidRelationships.HasRelationship(relationship))
 				return false;
 
 			// A target type is valid if it is in the valid targets list, and not in the invalid targets list.

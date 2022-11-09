@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -51,11 +51,11 @@ namespace OpenRA.Graphics
 		// Viewport geometry (world-px)
 		public int2 CenterLocation { get; private set; }
 
-		public WPos CenterPosition { get { return worldRenderer.ProjectedPosition(CenterLocation); } }
+		public WPos CenterPosition => worldRenderer.ProjectedPosition(CenterLocation);
 
-		public Rectangle Rectangle { get { return new Rectangle(TopLeft, new Size(viewportSize.X, viewportSize.Y)); } }
-		public int2 TopLeft { get { return CenterLocation - viewportSize / 2; } }
-		public int2 BottomRight { get { return CenterLocation + viewportSize / 2; } }
+		public Rectangle Rectangle => new Rectangle(TopLeft, new Size(viewportSize.X, viewportSize.Y));
+		public int2 TopLeft => CenterLocation - viewportSize / 2;
+		public int2 BottomRight => CenterLocation + viewportSize / 2;
 		int2 viewportSize;
 		ProjectedCellRegion cells;
 		bool cellsDirty = true;
@@ -75,10 +75,7 @@ namespace OpenRA.Graphics
 
 		public float Zoom
 		{
-			get
-			{
-				return zoom;
-			}
+			get => zoom;
 
 			private set
 			{
@@ -89,7 +86,7 @@ namespace OpenRA.Graphics
 			}
 		}
 
-		public float MinZoom { get { return minZoom; } }
+		public float MinZoom => minZoom;
 
 		public void AdjustZoom(float dz)
 		{
@@ -241,7 +238,7 @@ namespace OpenRA.Graphics
 
 			if (unlockMinZoom)
 			{
-				// Specators and the map editor support zooming out by an extra factor of two.
+				// Spectators and the map editor support zooming out by an extra factor of two.
 				// TODO: Allow zooming out until the full map is visible
 				// We need to improve our viewport scroll handling to center the map as we zoom out
 				// before this will work well enough to enable
@@ -252,6 +249,9 @@ namespace OpenRA.Graphics
 				Zoom = minZoom;
 			else
 				Zoom = Zoom.Clamp(minZoom, maxZoom);
+
+			var maxSize = (1f / (unlockMinZoom ? unlockedMinZoom : minZoom) * new float2(Game.Renderer.NativeResolution));
+			Game.Renderer.SetMaximumViewportSize(new Size((int)maxSize.X, (int)maxSize.Y));
 
 			foreach (var t in worldRenderer.World.WorldActor.TraitsImplementing<INotifyViewportZoomExtentsChanged>())
 				t.ViewportZoomExtentsChanged(minZoom, maxZoom);

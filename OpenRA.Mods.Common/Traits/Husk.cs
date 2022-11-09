@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -36,11 +36,10 @@ namespace OpenRA.Mods.Common.Traits
 
 		public IReadOnlyDictionary<CPos, SubCell> OccupiedCells(ActorInfo info, CPos location, SubCell subCell = SubCell.Any)
 		{
-			var occupied = new Dictionary<CPos, SubCell>() { { location, SubCell.FullCell } };
-			return new ReadOnlyDictionary<CPos, SubCell>(occupied);
+			return new Dictionary<CPos, SubCell>() { { location, SubCell.FullCell } };
 		}
 
-		bool IOccupySpaceInfo.SharesCell { get { return false; } }
+		bool IOccupySpaceInfo.SharesCell => false;
 
 		public bool CanEnterCell(World world, Actor self, CPos cell, SubCell subCell = SubCell.FullCell, Actor ignoreActor = null, BlockedByActor check = BlockedByActor.All)
 		{
@@ -60,7 +59,7 @@ namespace OpenRA.Mods.Common.Traits
 		readonly int dragSpeed;
 		readonly WPos finalPosition;
 
-		INotifyVisualPositionChanged[] notifyVisualPositionChanged;
+		INotifyCenterPositionChanged[] notifyCenterPositionChanged;
 
 		[Sync]
 		public CPos TopLeft { get; private set; }
@@ -73,13 +72,13 @@ namespace OpenRA.Mods.Common.Traits
 		[Sync]
 		public WAngle Facing
 		{
-			get { return orientation.Yaw; }
-			set { orientation = orientation.WithYaw(value); }
+			get => orientation.Yaw;
+			set => orientation = orientation.WithYaw(value);
 		}
 
-		public WRot Orientation { get { return orientation; } }
+		public WRot Orientation => orientation;
 
-		public WAngle TurnSpeed { get { return WAngle.Zero; } }
+		public WAngle TurnSpeed => WAngle.Zero;
 
 		public Husk(ActorInitializer init, HuskInfo info)
 		{
@@ -102,7 +101,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (dragSpeed > 0 && distance > 0)
 				self.QueueActivity(new Drag(self, CenterPosition, finalPosition, distance / dragSpeed));
 
-			notifyVisualPositionChanged = self.TraitsImplementing<INotifyVisualPositionChanged>().ToArray();
+			notifyCenterPositionChanged = self.TraitsImplementing<INotifyCenterPositionChanged>().ToArray();
 		}
 
 		public bool CanExistInCell(CPos cell)
@@ -138,15 +137,15 @@ namespace OpenRA.Mods.Common.Traits
 
 		public void SetPosition(Actor self, CPos cell, SubCell subCell = SubCell.Any) { SetPosition(self, self.World.Map.CenterOfCell(cell)); }
 
-		public void SetVisualPosition(Actor self, WPos pos)
+		public void SetCenterPosition(Actor self, WPos pos)
 		{
 			CenterPosition = pos;
 			self.World.ScreenMap.AddOrUpdate(self);
 
-			// This can be called from the constructor before notifyVisualPositionChanged is assigned.
-			if (notifyVisualPositionChanged != null)
-				foreach (var n in notifyVisualPositionChanged)
-					n.VisualPositionChanged(self, 0, 0);
+			// This can be called from the constructor before notifyCenterPositionChanged is assigned.
+			if (notifyCenterPositionChanged != null)
+				foreach (var n in notifyCenterPositionChanged)
+					n.CenterPositionChanged(self, 0, 0);
 		}
 
 		public void SetPosition(Actor self, WPos pos)
@@ -175,8 +174,8 @@ namespace OpenRA.Mods.Common.Traits
 		}
 
 		// We return self.Owner if there's no effective owner
-		bool IEffectiveOwner.Disguised { get { return true; } }
-		Player IEffectiveOwner.Owner { get { return effectiveOwner; } }
+		bool IEffectiveOwner.Disguised => true;
+		Player IEffectiveOwner.Owner => effectiveOwner;
 	}
 
 	public class HuskSpeedInit : ValueActorInit<int>, ISingleInstanceInit

@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -22,7 +22,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 
 	class UpdateModCommand : IUtilityCommand
 	{
-		string IUtilityCommand.Name { get { return "--update-mod"; } }
+		string IUtilityCommand.Name => "--update-mod";
 
 		bool IUtilityCommand.ValidateArguments(string[] args) { return true; }
 
@@ -62,7 +62,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 				Console.WriteLine("   Individual Rules:");
 				foreach (var kv in ruleGroups)
 				{
-					if (!kv.Value.Any())
+					if (kv.Value.Count == 0)
 						continue;
 
 					Console.WriteLine("      " + kv.Key + ":");
@@ -167,9 +167,9 @@ namespace OpenRA.Mods.Common.UtilityCommands
 			foreach (var rule in rules)
 			{
 				var manualSteps = new List<string>();
-				var allFiles = new YamlFileSet();
+				YamlFileSet allFiles;
 
-				LogLine(logWriter, "{0}: {1}", rule.GetType().Name, rule.Name);
+				LogLine(logWriter, $"{rule.GetType().Name}: {rule.Name}");
 
 				try
 				{
@@ -205,7 +205,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 							var mapSteps = UpdateUtils.UpdateMap(modData, package, rule, out var mapFiles, mapExternalFilenames);
 							allFiles.AddRange(mapFiles);
 
-							if (mapSteps.Any())
+							if (mapSteps.Count > 0)
 								manualSteps.Add("Map: " + package.Name + ":\n" + UpdateUtils.FormatMessageList(mapSteps));
 						}
 						catch (Exception ex)
@@ -237,7 +237,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 				// Files are saved after each successful automated rule update
 				allFiles.Save();
 
-				if (manualSteps.Any())
+				if (manualSteps.Count > 0)
 				{
 					LogLine(logWriter, "   Manual changes are required to complete this update:");
 					LogLine(logWriter, UpdateUtils.FormatMessageList(manualSteps, 1));
@@ -246,7 +246,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 				LogLine(logWriter);
 			}
 
-			if (externalFilenames.Any())
+			if (externalFilenames.Count > 0)
 			{
 				LogLine(logWriter, "The following external mod files have been ignored:");
 				LogLine(logWriter, UpdateUtils.FormatMessageList(externalFilenames));

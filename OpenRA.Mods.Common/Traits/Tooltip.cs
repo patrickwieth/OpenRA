@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -15,7 +15,6 @@ namespace OpenRA.Mods.Common.Traits
 {
 	public abstract class TooltipInfoBase : ConditionalTraitInfo, Requires<IMouseBoundsInfo>
 	{
-		[Translate]
 		public readonly string Name = "";
 	}
 
@@ -28,7 +27,6 @@ namespace OpenRA.Mods.Common.Traits
 	[Desc("Shown in the build palette widget.")]
 	public class TooltipInfo : TooltipInfoBase, ITooltipInfo
 	{
-		[Translate]
 		[Desc("An optional generic name (i.e. \"Soldier\" or \"Structure\")" +
 			"to be shown to chosen players.")]
 		public readonly string GenericName = null;
@@ -36,15 +34,12 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Prefix generic tooltip name with 'Ally/Neutral/EnemyPrefix'.")]
 		public readonly bool GenericStancePrefix = true;
 
-		[Translate]
 		[Desc("Prefix to display in the tooltip for allied units.")]
 		public readonly string AllyPrefix = "Allied";
 
-		[Translate]
 		[Desc("Prefix to display in the tooltip for neutral units.")]
 		public readonly string NeutralPrefix = null;
 
-		[Translate]
 		[Desc("Prefix to display in the tooltip for enemy units.")]
 		public readonly string EnemyPrefix = "Enemy";
 
@@ -56,24 +51,24 @@ namespace OpenRA.Mods.Common.Traits
 
 		public override object Create(ActorInitializer init) { return new Tooltip(init.Self, this); }
 
-		public string TooltipForPlayerStance(PlayerRelationship stance)
+		public string TooltipForPlayerStance(PlayerRelationship relationship)
 		{
-			if (stance == PlayerRelationship.None || !GenericVisibility.HasStance(stance))
+			if (relationship == PlayerRelationship.None || !GenericVisibility.HasRelationship(relationship))
 				return Name;
 
-			if (GenericStancePrefix && !string.IsNullOrEmpty(AllyPrefix) && stance == PlayerRelationship.Ally)
+			if (GenericStancePrefix && !string.IsNullOrEmpty(AllyPrefix) && relationship == PlayerRelationship.Ally)
 				return AllyPrefix + " " + GenericName;
 
-			if (GenericStancePrefix && !string.IsNullOrEmpty(NeutralPrefix) && stance == PlayerRelationship.Neutral)
+			if (GenericStancePrefix && !string.IsNullOrEmpty(NeutralPrefix) && relationship == PlayerRelationship.Neutral)
 				return NeutralPrefix + " " + GenericName;
 
-			if (GenericStancePrefix && !string.IsNullOrEmpty(EnemyPrefix) && stance == PlayerRelationship.Enemy)
+			if (GenericStancePrefix && !string.IsNullOrEmpty(EnemyPrefix) && relationship == PlayerRelationship.Enemy)
 				return EnemyPrefix + " " + GenericName;
 
 			return GenericName;
 		}
 
-		public bool IsOwnerRowVisible { get { return ShowOwnerRow; } }
+		public bool IsOwnerRowVisible => ShowOwnerRow;
 	}
 
 	public class Tooltip : ConditionalTrait<TooltipInfo>, ITooltip
@@ -81,15 +76,9 @@ namespace OpenRA.Mods.Common.Traits
 		readonly Actor self;
 		readonly TooltipInfo info;
 
-		public ITooltipInfo TooltipInfo { get { return info; } }
+		public ITooltipInfo TooltipInfo => info;
 
-		public Player Owner
-		{
-			get
-			{
-				return self.EffectiveOwner != null ? self.EffectiveOwner.Owner : self.Owner;
-			}
-		}
+		public Player Owner => self.EffectiveOwner != null ? self.EffectiveOwner.Owner : self.Owner;
 
 		public Tooltip(Actor self, TooltipInfo info)
 			: base(info)

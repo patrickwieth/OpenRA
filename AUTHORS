@@ -4,6 +4,7 @@ hard work of many contributors.
 The OpenRA developers are:
     * Chris Forbes (chrisf)
     * Lukas Franke (abcdefg30)
+    * Matthias Mailänder (Mailaender)
     * Paul Chote (pchote)
     * Reaperrr
 
@@ -13,7 +14,6 @@ Previous developers included:
     * Curtis Shmyr (hamb)
     * Daniel Hernandez (Mancano)
     * Igor Popov (ihptru)
-    * Matthias Mailänder (Mailaender)
     * Megan Bowra-Dean (beedee)
     * Mike Bundy (kehaar)
     * Oliver Brakmann (obrakmann)
@@ -24,6 +24,7 @@ Previous developers included:
 
 Also thanks to:
     * abmyii
+    * anvilvapre (anvilvapre)
     * Adam Valy (Tschokky)
     * Akseli Virtanen (RAGEQUIT)
     * Alexander Fast (mizipzor)
@@ -37,6 +38,7 @@ Also thanks to:
     * Arik Lirette (Angusm3)
     * Barnaby Smith (mvi)
     * Bellator
+    * Bernd Stellwag (burned42)
     * Biofreak
     * Braxton Williams (Buddytex)
     * Brendan Gluth (Mechanical_Man)
@@ -46,6 +48,7 @@ Also thanks to:
     * Chris Cameron (Vesuvian)
     * Chris Grant (Unit158)
     * Christer Ulfsparre (Holloweye)
+    * Christoph Lahner (chlah)
     * clem
     * Cody Brittain (Generalcamo)
     * Constantin Helmig (CH4Code)
@@ -58,6 +61,7 @@ Also thanks to:
     * DeadlySurprise
     * Dmitri Suvorov (suvjunmd)
     * dtluna
+    * Eduardo Cáceres (eduherminio)
     * Erasmus Schroder (rasco)
     * Eric Bajumpaa (SteelPhase)
     * Evgeniy Sergeev (evgeniysergeev)
@@ -69,12 +73,14 @@ Also thanks to:
     * Glenn Martin Jensen (Baxxster)
     * Gordon Martin (Happy0)
     * Guido Lipke (LipkeGu)
+    * Gustas Kažukauskas (Punsho)
     * Hervé Matysiak (Herve-M)
     * Huw Pascoe
     * Ian T. Jacobsen (Smilex)
     * Imago
     * Iran
     * Ishan Bhargava (ishantheperson)
+    * Ivaylo Draganov (dragunoff)
     * Jacob Dufault (jacobdufault)
     * James Dunne (jsd)
     * James Gilbert (DSUK)
@@ -135,12 +141,12 @@ Also thanks to:
     * Rikhardur Bjarni Einarsson (WolfGaming)
     * Sascha Biedermann (bidifx)
     * Sean Hunt (coppro)
-    * Sebastien Kerguen (xanax)
     * Shawn Collins (UberWaffe)
     * Simon Verbeke (Saticmotion)
     * Stuart McHattie (SDJMcHattie)
     * Taryn Hill (Phrohdoh)
     * Teemu Nieminen (Temeez)
+    * Thomas Christlieb (ThomasChr)
     * Tim Mylemans (gecko)
     * Tirili
     * Tomas Einarsson (Mesacer)
@@ -173,9 +179,17 @@ under the MIT license.
 Using FuzzyLogicLibrary (fuzzynet) by Dmitry
 Kaluzhny and released under the GNU GPL terms.
 
-Using Open.Nat by Lucas Ontivero, based on the work
-of Alan McGovern and Ben Motmans and distributed
-under the MIT license.
+Using Mono.Nat by Alan McGovern, Ben Motmans,
+Nicholas Terry distributed under the MIT license.
+
+Using MP3Sharp by Robert Bruke and Zane Wagner
+licensed under the GNU LGPL Version 3.
+
+Using TagLib# by Stephen Shaw licensed under the
+GNU LGPL Version 2.1.
+
+Using NVorbis by Andrew Ward distributed under
+the MIT license.
 
 Using ICSharpCode.SharpZipLib initially by Mike
 Krueger and distributed under the GNU GPL terms.
@@ -190,6 +204,12 @@ Using Json.NET developed by James Newton-King
 distributed under MIT License.
 
 Using ANGLE distributed under the BS3 3-Clause license.
+
+Using Pfim developed by Nick Babcock
+distributed under the MIT license.
+
+Using Linguini by the Space Station 14 team
+licensed under Apache and MIT terms.
 
 This site or product includes IP2Location LITE data
 available from http://www.ip2location.com.

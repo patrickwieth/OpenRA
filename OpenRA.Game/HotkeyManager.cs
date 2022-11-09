@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -35,12 +35,12 @@ namespace OpenRA
 
 			foreach (var kv in settings)
 			{
-				if (definitions.ContainsKey(kv.Key))
+				if (definitions.ContainsKey(kv.Key) && !definitions[kv.Key].Readonly)
 					keys[kv.Key] = kv.Value;
 			}
 
 			foreach (var hd in definitions)
-				hd.Value.HasDuplicates = GetFirstDuplicate(hd.Value.Name, this[hd.Value.Name].GetValue(), hd.Value) != null;
+				hd.Value.HasDuplicates = GetFirstDuplicate(hd.Value, this[hd.Value.Name].GetValue()) != null;
 		}
 
 		internal Func<Hotkey> GetHotkeyReference(string name)
@@ -61,6 +61,9 @@ namespace OpenRA
 			if (!definitions.TryGetValue(name, out var definition))
 				return;
 
+			if (definition.Readonly)
+				return;
+
 			keys[name] = value;
 			if (value != definition.Default)
 				settings[name] = value;
@@ -68,7 +71,7 @@ namespace OpenRA
 				settings.Remove(name);
 
 			var hadDuplicates = definition.HasDuplicates;
-			definition.HasDuplicates = GetFirstDuplicate(definition.Name, this[definition.Name].GetValue(), definition) != null;
+			definition.HasDuplicates = GetFirstDuplicate(definition, this[definition.Name].GetValue()) != null;
 
 			if (hadDuplicates || definition.HasDuplicates)
 			{
@@ -77,33 +80,30 @@ namespace OpenRA
 					if (hd.Value == definition)
 						continue;
 
-					hd.Value.HasDuplicates = GetFirstDuplicate(hd.Value.Name, this[hd.Value.Name].GetValue(), hd.Value) != null;
+					hd.Value.HasDuplicates = GetFirstDuplicate(hd.Value, this[hd.Value.Name].GetValue()) != null;
 				}
 			}
 		}
 
-		public HotkeyDefinition GetFirstDuplicate(string name, Hotkey value, HotkeyDefinition definition)
+		public HotkeyDefinition GetFirstDuplicate(HotkeyDefinition definition, Hotkey value)
 		{
+			if (definition == null)
+				return null;
+
 			foreach (var kv in keys)
 			{
-				if (kv.Key == name)
+				if (kv.Key == definition.Name)
 					continue;
 
-				if (kv.Value == value && definitions[kv.Key].Types.Overlaps(definition.Types))
+				if (kv.Value == value && definitions[kv.Key].Contexts.Overlaps(definition.Contexts))
 					return definitions[kv.Key];
 			}
 
 			return null;
 		}
 
-		public HotkeyReference this[string name]
-		{
-			get
-			{
-				return new HotkeyReference(GetHotkeyReference(name));
-			}
-		}
+		public HotkeyReference this[string name] => new HotkeyReference(GetHotkeyReference(name));
 
-		public IEnumerable<HotkeyDefinition> Definitions { get { return definitions.Values; } }
+		public IEnumerable<HotkeyDefinition> Definitions => definitions.Values;
 	}
 }

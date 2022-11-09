@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -45,13 +45,16 @@ namespace OpenRA.Mods.Common.Traits.Render
 
 		public override object Create(ActorInitializer init) { return new WithIdleOverlay(init.Self, this); }
 
-		public IEnumerable<IActorPreview> RenderPreviewSprites(ActorPreviewInitializer init, RenderSpritesInfo rs, string image, int facings, PaletteReference p)
+		public IEnumerable<IActorPreview> RenderPreviewSprites(ActorPreviewInitializer init, string image, int facings, PaletteReference p)
 		{
 			if (!EnabledByDefault)
 				yield break;
 
 			if (Palette != null)
-				p = init.WorldRenderer.Palette(Palette);
+			{
+				var ownerName = init.Get<OwnerInit>().InternalName;
+				p = init.WorldRenderer.Palette(IsPlayerPalette ? Palette + ownerName : Palette);
+			}
 
 			Func<WAngle> facing;
 			var dynamicfacingInit = init.GetOrDefault<DynamicFacingInit>();
@@ -63,8 +66,11 @@ namespace OpenRA.Mods.Common.Traits.Render
 				facing = () => f;
 			}
 
-			var anim = new Animation(init.World, Image ?? image, facing);
-			anim.IsDecoration = IsDecoration;
+			var anim = new Animation(init.World, Image ?? image, facing)
+			{
+				IsDecoration = IsDecoration
+			};
+
 			anim.PlayRepeating(RenderSprites.NormalizeSequence(anim, init.GetDamageState(), Sequence));
 
 			var body = init.Actor.TraitInfo<BodyOrientationInfo>();
@@ -76,7 +82,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 				return tmpOffset.Y + tmpOffset.Z + 1;
 			};
 
-			yield return new SpriteActorPreview(anim, offset, zOffset, p, rs.Scale);
+			yield return new SpriteActorPreview(anim, offset, zOffset, p);
 		}
 	}
 
@@ -91,8 +97,11 @@ namespace OpenRA.Mods.Common.Traits.Render
 			var body = self.Trait<BodyOrientation>();
 
 			var image = info.Image ?? rs.GetImage(self);
-			overlay = new Animation(self.World, image, () => IsTraitPaused);
-			overlay.IsDecoration = info.IsDecoration;
+			overlay = new Animation(self.World, image, () => IsTraitPaused)
+			{
+				IsDecoration = info.IsDecoration
+			};
+
 			if (info.StartSequence != null)
 				overlay.PlayThen(RenderSprites.NormalizeSequence(overlay, self.GetDamageState(), info.StartSequence),
 					() => overlay.PlayRepeating(RenderSprites.NormalizeSequence(overlay, self.GetDamageState(), info.Sequence)));
@@ -100,7 +109,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 				overlay.PlayRepeating(RenderSprites.NormalizeSequence(overlay, self.GetDamageState(), info.Sequence));
 
 			var anim = new AnimationWithOffset(overlay,
-				() => body.LocalToWorld(info.Offset.Rotate(body.QuantizeOrientation(self, self.Orientation))),
+				() => body.LocalToWorld(info.Offset.Rotate(body.QuantizeOrientation(self.Orientation))),
 				() => IsTraitDisabled,
 				p => RenderUtils.ZOffsetFromCenter(self, p, 1));
 

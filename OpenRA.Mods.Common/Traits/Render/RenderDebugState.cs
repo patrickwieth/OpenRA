@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -32,7 +32,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 		readonly SpriteFont font;
 		readonly Actor self;
 		readonly WVec offset;
-		SquadManagerBotModule ai;
+		SquadManagerBotModule[] squadManagerModules;
 
 		Color color;
 		string tagString;
@@ -40,7 +40,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 		public RenderDebugState(Actor self, RenderDebugStateInfo info)
 		{
 			var buildingInfo = self.Info.TraitInfoOrDefault<BuildingInfo>();
-			var yOffset = buildingInfo == null ? 1 : buildingInfo.Dimensions.Y;
+			var yOffset = buildingInfo?.Dimensions.Y ?? 1;
 			offset = new WVec(0, 512 * yOffset, 0);
 
 			this.self = self;
@@ -52,7 +52,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 
 		void INotifyCreated.Created(Actor self)
 		{
-			ai = self.Owner.PlayerActor.TraitsImplementing<SquadManagerBotModule>().FirstOrDefault(Exts.IsTraitEnabled);
+			squadManagerModules = self.Owner.PlayerActor.TraitsImplementing<SquadManagerBotModule>().ToArray();
 		}
 
 		void INotifyAddedToWorld.AddedToWorld(Actor self)
@@ -86,18 +86,15 @@ namespace OpenRA.Mods.Common.Traits.Render
 			if (!self.Owner.IsBot)
 				yield break;
 
-			if (ai == null)
-				yield break;
-
-			var squads = ai.Squads;
-			var squad = squads.FirstOrDefault(x => x.Units.Contains(self));
+			var squads = squadManagerModules.FirstEnabledConditionalTraitOrDefault()?.Squads;
+			var squad = squads?.FirstOrDefault(x => x.Units.Contains(self));
 			if (squad == null)
 				yield break;
 
-			var aiSquadInfo = "{0}, {1}".F(squad.Type, squad.TargetActor);
+			var aiSquadInfo = $"{squad.Type}, {squad.TargetActor}";
 			yield return new TextAnnotationRenderable(font, self.CenterPosition + offset, 0, color, aiSquadInfo);
 		}
 
-		bool IRenderAnnotationsWhenSelected.SpatiallyPartitionable { get { return true; } }
+		bool IRenderAnnotationsWhenSelected.SpatiallyPartitionable => true;
 	}
 }

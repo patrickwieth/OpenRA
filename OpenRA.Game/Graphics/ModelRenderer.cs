@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -42,6 +42,7 @@ namespace OpenRA.Graphics
 		static readonly float[] ZVector = new float[] { 0, 0, 1, 1 };
 		static readonly float[] FlipMtx = Util.ScaleMatrix(1, -1, 1);
 		static readonly float[] ShadowScaleFlipMtx = Util.ScaleMatrix(2, -2, 2);
+		static readonly float[] GroundNormal = { 0, 0, 1, 1 };
 
 		readonly Renderer renderer;
 		readonly IShader shader;
@@ -64,7 +65,7 @@ namespace OpenRA.Graphics
 			shader.SetTexture("Palette", palette);
 		}
 
-		public void SetViewportParams(Size screen, int2 scroll)
+		public void SetViewportParams()
 		{
 			var a = 2f / renderer.SheetSize;
 			var view = new[]
@@ -80,7 +81,7 @@ namespace OpenRA.Graphics
 
 		public ModelRenderProxy RenderAsync(
 			WorldRenderer wr, IEnumerable<ModelAnimation> models, in WRot camera, float scale,
-			float[] groundNormal, in WRot lightSource, float[] lightAmbientColor, float[] lightDiffuseColor,
+			in WRot groundOrientation, in WRot lightSource, float[] lightAmbientColor, float[] lightDiffuseColor,
 			PaletteReference color, PaletteReference normals, PaletteReference shadowPalette)
 		{
 			if (!isInFrame)
@@ -92,7 +93,10 @@ namespace OpenRA.Graphics
 			// Correct for bogus light source definition
 			var lightYaw = Util.MakeFloatMatrix(new WRot(WAngle.Zero, WAngle.Zero, -lightSource.Yaw).AsMatrix());
 			var lightPitch = Util.MakeFloatMatrix(new WRot(WAngle.Zero, -lightSource.Pitch, WAngle.Zero).AsMatrix());
-			var shadowTransform = Util.MatrixMultiply(lightPitch, lightYaw);
+			var ground = Util.MakeFloatMatrix(groundOrientation.AsMatrix());
+			var shadowTransform = Util.MatrixMultiply(Util.MatrixMultiply(lightPitch, lightYaw), Util.MatrixInverse(ground));
+
+			var groundNormal = Util.MatrixVectorMultiply(ground, GroundNormal);
 
 			var invShadowTransform = Util.MatrixInverse(shadowTransform);
 			var cameraTransform = Util.MakeFloatMatrix(camera.AsMatrix());
@@ -205,7 +209,7 @@ namespace OpenRA.Graphics
 						var t = m.Model.TransformationMatrix(i, frame);
 						var it = Util.MatrixInverse(t);
 						if (it == null)
-							throw new InvalidOperationException("Failed to invert the transformed matrix of frame {0} during RenderAsync.".F(i));
+							throw new InvalidOperationException($"Failed to invert the transformed matrix of frame {i} during RenderAsync.");
 
 						// Transform light vector from shadow -> world -> limb coords
 						var lightDirection = ExtractRotationVector(Util.MatrixMultiply(it, lightTransform));

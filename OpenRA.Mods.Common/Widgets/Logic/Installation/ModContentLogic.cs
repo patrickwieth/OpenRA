@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -20,6 +20,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 {
 	public class ModContentLogic : ChromeLogic
 	{
+		readonly ModData modData;
 		readonly ModContent content;
 		readonly ScrollPanelWidget scrollPanel;
 		readonly Widget template;
@@ -29,9 +30,13 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 		bool discAvailable;
 
+		[TranslationReference]
+		static readonly string ManualInstall = "manual-install";
+
 		[ObjectCreator.UseCtor]
-		public ModContentLogic(Widget widget, ModData modData, Manifest mod, ModContent content, Action onCancel)
+		public ModContentLogic(ModData modData, Widget widget, Manifest mod, ModContent content, Action onCancel)
 		{
+			this.modData = modData;
 			this.content = content;
 
 			var panel = widget.Get("CONTENT_PANEL");
@@ -55,7 +60,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			template = scrollPanel.Get<ContainerWidget>("PACKAGE_TEMPLATE");
 
 			var headerTemplate = panel.Get<LabelWidget>("HEADER_TEMPLATE");
-			var headerLines = !string.IsNullOrEmpty(content.HeaderMessage) ? content.HeaderMessage.Replace("\\n", "\n").Split('\n') : new string[0];
+			var headerLines = !string.IsNullOrEmpty(content.HeaderMessage) ? content.HeaderMessage.Replace("\\n", "\n").Split('\n') : Array.Empty<string>();
 			var headerHeight = 0;
 			foreach (var l in headerLines)
 			{
@@ -77,7 +82,6 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 			discButton.OnClick = () => Ui.OpenWindow("DISC_INSTALL_PANEL", new WidgetArgs
 			{
-				{ "afterInstall", () => { } },
 				{ "sources", sources },
 				{ "content", content }
 			});
@@ -138,12 +142,15 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				var requiresDiscWidget = container.Get<LabelWidget>("REQUIRES_DISC");
 				requiresDiscWidget.IsVisible = () => !installed && !downloadEnabled;
 				if (!isSourceAvailable)
-					requiresDiscWidget.GetText = () => "Manual Install";
+				{
+					var manualInstall = modData.Translation.GetString(ManualInstall);
+					requiresDiscWidget.GetText = () => manualInstall;
+				}
 
 				scrollPanel.AddChild(container);
 			}
 
-			discAvailable = content.Packages.Values.Any(p => p.Sources.Any() && !p.IsInstalled());
+			discAvailable = content.Packages.Values.Any(p => p.Sources.Length > 0 && !p.IsInstalled());
 		}
 	}
 }

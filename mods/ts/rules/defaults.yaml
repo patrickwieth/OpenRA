@@ -17,6 +17,7 @@
 ^GainsExperience:
 	GainsExperience:
 		LevelUpNotification: LevelUp
+		LevelUpTextNotification: Unit promoted.
 		Conditions:
 			500: rank
 			1000: rank
@@ -101,7 +102,7 @@
 
 ^EmpVisualEffects:
 	WithColoredOverlay@EMPDISABLE:
-		Palette: disabled
+		Color: 000000B4
 	WithIdleOverlay@EMPDISABLE:
 		Sequence: emp-overlay
 		Palette: effect
@@ -130,6 +131,7 @@
 		CloakSound: cloak5.aud
 		UncloakSound: cloak5.aud
 		UncloakOn: Attack, Unload, Infiltrate, Demolish, Damage, Heal
+		CloakType: nod-stealth
 	ExternalCondition@CLOAKGENERATOR:
 		Condition: cloakgenerator
 	ExternalCondition@CRATE-CLOAK:
@@ -324,9 +326,10 @@
 		TerrainTypes: Clear, Rough, Road, DirtRoad, Green, Sand, Pavement
 		UndeploySounds: cashturn.aud
 	ActorPreviewPlaceBuildingPreview:
-		Palette: placefootprint
-		LineBuildSegmentPalette: placelinesegment
-		OverridePalette: placebuilding
+		Palette: ra
+		FootprintAlpha: 0.7
+		LineBuildFootprintAlpha: 0.5
+		PreviewAlpha: 0.55
 		FootprintUnderPreview: Valid, LineBuild, Invalid
 		FootprintOverPreview: None
 	RequiresBuildableArea:
@@ -385,6 +388,7 @@
 	OwnerLostAction:
 		Action: Kill
 	CaptureNotification:
+		TextNotification: Building captured.
 	Demolishable:
 		Condition: being-demolished
 	Sellable:
@@ -457,7 +461,7 @@
 	Tooltip:
 		Name: Crate
 	Crate:
-		Lifetime: 180
+		Duration: 4500
 		TerrainTypes: Clear, Rough, Sand, Road, DirtRoad, Tiberium, BlueTiberium, Veins, Green, Pavement
 	RenderSprites:
 		Palette: terraindecoration
@@ -465,7 +469,7 @@
 	MapEditorData:
 		Categories: System
 	Interactable:
-		Bounds: 24,24
+		Bounds: 724, 1448
 
 ^Wall:
 	Inherits@1: ^SpriteActor
@@ -483,8 +487,9 @@
 		TerrainTypes: Clear, Rough, Road, DirtRoad, Green, Sand, Pavement
 		UndeploySounds: cashturn.aud
 	FootprintPlaceBuildingPreview:
-		Palette: placefootprint
-		LineBuildSegmentPalette: placelinesegment
+		Palette: ra
+		FootprintAlpha: 0.7
+		LineBuildFootprintAlpha: 0.5
 	RequiresBuildableArea:
 		AreaTypes: building
 		Adjacent: 7
@@ -533,8 +538,9 @@
 		UndeploySounds: cashturn.aud
 	SequencePlaceBuildingPreview:
 		Sequence: place
-		SequencePalette: placebuilding
-		Palette: placefootprint
+		Palette: ra
+		FootprintAlpha: 0.7
+		SequenceAlpha: 0.55
 	KillsSelf:
 		RemoveInstead: true
 	RenderSprites:
@@ -567,8 +573,8 @@
 		Locomotor: foot
 	TurnOnIdle:
 	Selectable:
-		DecorationBounds: 15,23,0,-9
-		Bounds: 24,24,0,-9
+		DecorationBounds: 452, 1387, 0, -543
+		Bounds: 724, 1448, 0, -543
 	Voiced:
 		VoiceSet: Infantry
 	Targetable:
@@ -582,7 +588,7 @@
 		ValidDamageStates: Light, Medium, Heavy, Critical
 	QuantizeFacingsFromSequence:
 		Sequence: stand
-	WithInfantryBody:
+	WithSplitAttackPaletteInfantryBody:
 	AttackMove:
 		Voice: Move
 	Passenger:
@@ -590,6 +596,7 @@
 		Voice: Move
 	HiddenUnderFog:
 	ActorLostNotification:
+		TextNotification: Unit lost.
 	DamagedByTerrain:
 		Terrain: Tiberium, BlueTiberium
 		Damage: 200
@@ -702,8 +709,11 @@
 			Prone350Percent: 350
 		DamageTriggers: TriggerProne
 		ProneOffset: 300,0,0
-	WithInfantryBody:
-		IdleSequences: idle1,idle2
+	WithSplitAttackPaletteInfantryBody:
+		IdleSequences: idle1, idle2
+		Palette: player-nomuzzle
+		IsPlayerPalette: true
+		SplitAttackPalette: muzzle
 
 ^Cyborg:
 	Inherits@1: ^Infantry
@@ -731,9 +741,12 @@
 			Prone350Percent: 350
 		ProneOffset: 300,0,0
 		ProneSequencePrefix: crippled-
-	WithInfantryBody:
+	WithSplitAttackPaletteInfantryBody:
 		DefaultAttackSequence: attack
 		IdleSequences: idle1, idle2
+		Palette: player-nomuzzle
+		IsPlayerPalette: true
+		SplitAttackPalette: muzzle
 	GrantConditionOnDamageState@CRITICAL:
 		Condition: critical
 		ValidDamageStates: Critical
@@ -771,8 +784,9 @@
 		Locomotor: wheeled
 		TurnSpeed: 20
 		Voice: Move
+		TerrainOrientationAdjustmentMargin: 256
 	Selectable:
-		Bounds: 40,24
+		Bounds: 1206, 1448
 	Voiced:
 		VoiceSet: Vehicle
 	Targetable:
@@ -794,6 +808,7 @@
 		Voice: Move
 	HiddenUnderFog:
 	ActorLostNotification:
+		TextNotification: Unit lost.
 	CaptureManager:
 		BeingCapturedCondition: being-captured
 	Capturable:
@@ -910,6 +925,7 @@
 		Voice: Move
 		MoveIntoShroud: false
 	ActorLostNotification:
+		TextNotification: Unit lost.
 	BodyOrientation:
 		QuantizedFacings: 0
 		CameraPitch: 85
@@ -978,7 +994,7 @@
 		TurnSpeed: 64
 		Locomotor: visceroid
 	Selectable:
-		Bounds: 26,26,0,-3
+		Bounds: 784, 1568, 0, -181
 	Targetable:
 		TargetTypes: Ground, Creep
 	AttackMove:
@@ -1024,25 +1040,49 @@
 
 ^Tree:
 	Inherits@1: ^SpriteActor
+	Inherits@2: ^ExistsInWorld
 	Interactable:
-	HiddenUnderShroud:
+	FrozenUnderFog:
 	RenderSprites:
 		Palette: terraindecoration
 	WithSpriteBody:
 	Building:
 		Footprint: x
 		Dimensions: 1, 1
-	AppearsOnRadar:
-	RadarColorFromTerrain:
-		Terrain: Tree
-	AppearsOnMapPreview:
-		Terrain: Tree
 	Tooltip:
 		Name: Tree
 	MapEditorData:
 		Categories: Tree
 	RequiresSpecificOwners:
 		ValidOwnerNames: Neutral
+	HitShape:
+	Health:
+		HP: 200000
+	Armor:
+		Type: Wood
+	Targetable:
+		TargetTypes: Trees, NoAutoTarget
+	GrantConditionOnDamageState@Small:
+		Condition: small-fire
+		ValidDamageStates: Medium
+	GrantConditionOnDamageState@Large:
+		Condition: large-fire
+		ValidDamageStates: Heavy, Critical
+	WithIdleOverlay@SmallFire:
+		Image: fire2
+		Palette: effect
+		RequiresCondition: small-fire
+	WithIdleOverlay@LargeFire:
+		Image: fire1
+		Palette: effect
+		RequiresCondition: large-fire
+	SpreadsCondition@Fire:
+		RequiresCondition: small-fire || large-fire
+		SpreadCondition: burning
+	ChangesHealth:
+		StartIfBelow: 101
+		Step: -500
+		RequiresCondition: small-fire || large-fire || burning
 
 ^Rock:
 	Inherits@1: ^SpriteActor
@@ -1054,11 +1094,6 @@
 	Building:
 		Footprint: x
 		Dimensions: 1, 1
-	AppearsOnRadar:
-	RadarColorFromTerrain:
-		Terrain: Rock
-	AppearsOnMapPreview:
-		Terrain: Rock
 	Tooltip:
 		Name: Rock
 	MapEditorData:
@@ -1142,7 +1177,7 @@
 		MaxHeightDelta: 3
 		RequiresCondition: !inside-tunnel
 	Selectable:
-		Bounds: 40,24
+		Bounds: 1206, 1448
 	Voiced:
 		VoiceSet: Vehicle
 	Targetable:
@@ -1204,7 +1239,7 @@
 	MapEditorData:
 		Categories: Tunnel
 	Interactable:
-		Bounds: 144, 144
+		Bounds: 4344, 8688
 
 ^Gate:
 	Inherits: ^Building
@@ -1296,7 +1331,7 @@
 ^DisableOnLowPower:
 	WithColoredOverlay@IDISABLE:
 		RequiresCondition: disabled
-		Palette: disabled
+		Color: 000000B4
 	GrantConditionOnPowerState@LOWPOWER:
 		Condition: lowpower
 		ValidPowerStates: Low, Critical
@@ -1307,7 +1342,7 @@
 ^DisableOnPowerDown:
 	WithColoredOverlay@IDISABLE:
 		RequiresCondition: disabled
-		Palette: disabled
+		Color: 000000B4
 	GrantCondition@IDISABLE:
 		RequiresCondition: powerdown
 		Condition: disabled
@@ -1397,6 +1432,7 @@
 	PrimaryBuilding:
 		PrimaryCondition: primary
 		SelectionNotification: PrimaryBuildingSelected
+		SelectionTextNotification: Primary building selected.
 	WithTextDecoration@primary:
 		RequiresCondition: primary
 		Position: Top

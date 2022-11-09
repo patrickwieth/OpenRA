@@ -48,10 +48,11 @@
 ^GainsExperience:
 	GainsExperience:
 		LevelUpNotification: LevelUp
+		LevelUpTextNotification: Unit promoted.
 		Conditions:
 			250: rank-veteran
 			500: rank-veteran
-			750: rank-veteran
+			700: rank-veteran
 		LevelUpImage: crate-effects
 	GrantCondition@RANK-ELITE:
 		RequiresCondition: rank-veteran >= 3
@@ -64,13 +65,13 @@
 		Modifier: 125
 	FirepowerMultiplier@RANK-ELITE:
 		RequiresCondition: rank-elite
-		Modifier: 125
+		Modifier: 150
 	DamageMultiplier@RANK-2:
 		RequiresCondition: rank-veteran == 2
 		Modifier: 80
 	DamageMultiplier@RANK-ELITE:
 		RequiresCondition: rank-elite
-		Modifier: 80
+		Modifier: 65
 	SpeedMultiplier@RANK-ELITE:
 		RequiresCondition: rank-elite
 		Modifier: 125
@@ -237,7 +238,7 @@
 		Locomotor: wheeled
 		TurnSpeed: 20
 	Selectable:
-		Bounds: 24,24
+		Bounds: 1024, 1024
 	Targetable:
 		TargetTypes: Ground, Vehicle
 	Repairable:
@@ -245,6 +246,7 @@
 	Passenger:
 		CargoType: Vehicle
 	ActorLostNotification:
+		TextNotification: Unit lost.
 	HiddenUnderFog:
 	AttackMove:
 	WithDamageOverlay:
@@ -288,7 +290,7 @@
 		TargetTypes: Air
 		RequiresCondition: airborne
 	Selectable:
-		Bounds: 24,24
+		Bounds: 1024, 1024
 	Repairable:
 		RepairActors: hpad
 	Aircraft:
@@ -303,6 +305,7 @@
 	HiddenUnderFog:
 		Type: GroundPosition
 	ActorLostNotification:
+		TextNotification: Unit lost.
 	Explodes:
 		Weapon: HeliExplode
 		EmptyWeapon: HeliExplode
@@ -344,8 +347,8 @@
 		AlwaysTurnInPlace: true
 		Locomotor: foot
 	Selectable:
-		Bounds: 18,18,0,-6
-		DecorationBounds: 12,17,0,-6
+		Bounds: 768, 768, 0, -256
+		DecorationBounds: 512, 725, 0, -256
 	Targetable:
 		TargetTypes: Ground, Infantry
 	QuantizeFacingsFromSequence:
@@ -387,6 +390,7 @@
 		Margin: 5, 6
 		RequiresCondition: hazmatsuits
 	ActorLostNotification:
+		TextNotification: Unit lost.
 	SpawnActorOnDeath:
 		Probability: 5
 		Actor: vice
@@ -456,25 +460,24 @@
 		IdleSequences: idle1, idle2
 		StandSequences: stand, stand2
 	AttackFrontal:
+		FacingTolerance: 0
 
 ^CivInfantry:
 	Inherits: ^Infantry
+	Inherits@selection: ^SelectableSupportUnit
 	Valued:
 		Cost: 10
 	Tooltip:
 		Name: Civilian
 		GenericVisibility: None
 	Mobile:
-		Speed: 56
+		Speed: 54
 	Health:
 		HP: 2500
 	RevealsShroud:
 		Range: 2c0
 	Passenger:
 		CustomPipType: gray
-	ActorLostNotification:
-		Notification: CivilianKilled
-		NotifyAll: true
 	ScaredyCat:
 		AvoidTerrainTypes: Tiberium, BlueTiberium
 	Crushable:
@@ -489,9 +492,11 @@
 		Categories: Civilian infantry
 
 ^ArmedCivilian:
+	Inherits@selection: ^SelectableCombatUnit
 	Armament:
 		Weapon: Pistol
 	AttackFrontal:
+		FacingTolerance: 0
 	WithInfantryBody:
 		DefaultAttackSequence: shoot
 
@@ -509,7 +514,7 @@
 	Armor:
 		Type: Wood
 	Buildable:
-		Queue: Biolab
+		Queue: Infantry.GDI, Infantry.Nod
 		BuildPaletteOrder: 50
 		Prerequisites: ~disabled
 	Valued:
@@ -523,7 +528,7 @@
 		Speed: 113
 		Voice: Move
 	Selectable:
-		Bounds: 24,24
+		Bounds: 1024, 1024
 	Targetable:
 		TargetTypes: Ground, Creep
 	HiddenUnderFog:
@@ -541,6 +546,7 @@
 		Voice: Attack
 	AttackFrontal:
 		Voice: Attack
+		FacingTolerance: 0
 	DeathSounds:
 	Voiced:
 		VoiceSet: DinoVoice
@@ -557,6 +563,8 @@
 	Inherits@selection: ^SelectableCombatUnit
 	Inherits@handicaps: ^PlayerHandicaps
 	Huntable:
+	OwnerLostAction:
+		Action: Kill
 	Health:
 		HP: 40000
 	Armor:
@@ -565,10 +573,10 @@
 		Range: 6c0
 	Mobile:
 		Voice: Move
-		Speed: 71
-		Locomotor: critter
+		Speed: 68
+		Locomotor: visc
 	Selectable:
-		Bounds: 24,24
+		Bounds: 1024, 1024
 	Targetable:
 		TargetTypes: Ground, Creep
 	AutoTarget:
@@ -577,7 +585,7 @@
 		Voice: Attack
 	HiddenUnderFog:
 	Valued:
-		Cost: 1000
+		Cost: 700
 	Tooltip:
 		Name: Visceroid
 	Armament:
@@ -586,6 +594,7 @@
 		MuzzleSequence: muzzle
 	AttackFrontal:
 		Voice: Attack
+		FacingTolerance: 0
 	BodyOrientation:
 		QuantizedFacings: 8
 	WithSpriteBody:
@@ -593,8 +602,12 @@
 	Guard:
 		Voice: Move
 	Guardable:
+	ChangesHealth:
+		Step: 100
+		Delay: 4
+		StartIfBelow: 100
 	DamagedByTerrain:
-		Damage: -100
+		Damage: -50
 		DamageInterval: 4
 		DamageTypes: TiberiumDeath
 		Terrain: Tiberium, BlueTiberium
@@ -612,7 +625,6 @@
 	Inherits@1: ^ExistsInWorld
 	Inherits@2: ^ClassicFacingSpriteActor
 	Inherits@handicaps: ^PlayerHandicaps
-	Huntable:
 	OwnerLostAction:
 		Action: Kill
 	AppearsOnRadar:
@@ -621,6 +633,7 @@
 		Type: GroundPosition
 		AlwaysVisibleRelationships: None
 	ActorLostNotification:
+		TextNotification: Unit lost.
 	AttackMove:
 	WithShadow:
 		Offset: 43, 128, 0
@@ -636,7 +649,6 @@
 ^Ship:
 	Inherits@1: ^ExistsInWorld
 	Inherits@3: ^SpriteActor
-	Inherits@selection: ^SelectableCombatUnit
 	Inherits@handicaps: ^PlayerHandicaps
 	Huntable:
 	OwnerLostAction:
@@ -645,6 +657,7 @@
 		TargetTypes: Ground, Water
 	HiddenUnderFog:
 	ActorLostNotification:
+		TextNotification: Unit lost.
 	AttackMove:
 	WithDamageOverlay:
 	Explodes:
@@ -679,7 +692,7 @@
 		Dimensions: 1,1
 		Footprint: x
 	ActorPreviewPlaceBuildingPreview:
-		OverridePalette: placebuilding
+		PreviewAlpha: 0.65
 	SoundOnDamageTransition:
 		DamagedSounds: xplobig4.aud
 		DestroyedSounds: crumble.aud, xplobig4.aud
@@ -690,9 +703,11 @@
 		EmptyWeapon: BuildingExplode
 	CaptureNotification:
 		Notification: BuildingCaptured
+		TextNotification: Building captured.
 		NewOwnerVoice: false
 	ActorLostNotification:
 		Notification: BuildingLost
+		TextNotification: Structure lost.
 	ShakeOnDeath:
 	Guardable:
 		Range: 3c0
@@ -784,6 +799,7 @@
 		Types: building
 	CaptureNotification:
 		Notification: CivilianBuildingCaptured
+		TextNotification: Civilian building captured.
 	RepairableBuilding:
 		RepairPercent: 40
 		RepairStep: 1400
@@ -817,6 +833,25 @@
 	RenderSprites:
 		Palette: terrain
 
+^CivHaystackOrIgloo:
+	Inherits: ^CivField
+	MapEditorData:
+		ExcludeTilesets: DESERT
+	-Tooltip:
+	GrantConditionOnTileSet@WINTER:
+		Condition: winter
+		TileSets: SNOW, WINTER
+	Tooltip@WINTER:
+		Name: Igloo
+		RequiresCondition: winter
+		GenericVisibility: None
+		ShowOwnerRow: false
+	Tooltip@SUMMER:
+		Name: Haystacks
+		RequiresCondition: !winter
+		GenericVisibility: None
+		ShowOwnerRow: false
+
 ^CivFieldHusk:
 	Inherits@1: ^SpriteActor
 	Interactable:
@@ -832,15 +867,33 @@
 		Palette: terrain
 	WithSpriteBody:
 	FrozenUnderFog:
-	ScriptTriggers:
 	MapEditorData:
 		Categories: Husk
+
+^CivHaystackOrIglooHusk:
+	Inherits: ^CivField
+	MapEditorData:
+		ExcludeTilesets: DESERT
+	-Tooltip:
+	GrantConditionOnTileSet@WINTER:
+		Condition: winter
+		TileSets: SNOW, WINTER
+	Tooltip@WINTER:
+		Name: Igloo (Destroyed)
+		RequiresCondition: winter
+		GenericVisibility: None
+		ShowOwnerRow: false
+	Tooltip@SUMMER:
+		Name: Haystacks (Destroyed)
+		RequiresCondition: !winter
+		GenericVisibility: None
+		ShowOwnerRow: false
 
 ^Wall:
 	Inherits@1: ^SpriteActor
 	Inherits@shape: ^1x1Shape
 	Interactable:
-		Bounds: 24,24
+		Bounds: 1024, 1024
 	CombatDebugOverlay:
 	AppearsOnRadar:
 	OwnerLostAction:
@@ -851,7 +904,7 @@
 		BuildSounds: hvydoor1.aud
 		TerrainTypes: Clear,Road
 	FootprintPlaceBuildingPreview:
-		LineBuildSegmentPalette: placelinesegment
+		LineBuildFootprintAlpha: 0.65
 	RequiresBuildableArea:
 		AreaTypes: building
 		Adjacent: 4
@@ -881,8 +934,6 @@
 		Terrain: Wall
 	MapEditorData:
 		Categories: Wall
-	UpdatesPlayerStatistics:
-		AddToAssetsValue: false
 
 ^Tree:
 	Inherits@1: ^SpriteActor
@@ -923,7 +974,6 @@
 		MinimumDamageState: Heavy
 		MaximumDamageState: Dead
 	HiddenUnderShroud:
-	ScriptTriggers:
 	HitShape:
 	MapEditorData:
 		Categories: Tree
@@ -946,7 +996,6 @@
 		Name: Tree (Burnt)
 		ShowOwnerRow: false
 	HiddenUnderShroud:
-	ScriptTriggers:
 	MapEditorData:
 		Categories: Tree
 	RequiresSpecificOwners:
@@ -994,7 +1043,6 @@
 	AppearsOnMapPreview:
 		Terrain: Tree
 	HiddenUnderShroud:
-	ScriptTriggers:
 	MapEditorData:
 		RequireTilesets: DESERT
 		Categories: Decoration
@@ -1032,7 +1080,7 @@
 	Tooltip:
 		GenericName: Destroyed Vehicle
 	WithColoredOverlay@IDISABLE:
-		Palette: disabled
+		Color: 000000B4
 	ScriptTriggers:
 	Explodes:
 		Weapon: UnitExplodeSmall
@@ -1104,7 +1152,7 @@
 		TerrainTypes: Clear, Rough, Road, Tiberium, BlueTiberium, Beach
 	RenderSprites:
 		Palette: effect
-		Image: crate
+		Image: scrate
 	WithCrateBody:
 		XmasImages: xcratea, xcrateb, xcratec, xcrated
 	MapEditorData:
@@ -1131,7 +1179,7 @@
 		ValidPowerStates: Low, Critical
 	WithColoredOverlay@IDISABLE:
 		RequiresCondition: lowpower
-		Palette: disabled
+		Color: 000000B4
 
 ^Selectable:
 	Selectable:

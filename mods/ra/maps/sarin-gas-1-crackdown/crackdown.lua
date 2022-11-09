@@ -1,5 +1,5 @@
 --[[
-   Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+   Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
    This file is part of OpenRA, which is free software. It is made
    available to you under the terms of the GNU General Public License
    as published by the Free Software Foundation, either version 3 of
@@ -86,8 +86,7 @@ MissionStart = function()
 	end)
 
 	Trigger.AfterDelay(DateTime.Minutes(1), function()
-		local difficulty = Map.LobbyOption("difficulty")
-		CombatTeam2 = CombatTeam2[difficulty]
+		CombatTeam2 = CombatTeam2[Difficulty]
 		Reinforcements.Reinforce(greece, CombatTeam2, { TruckEscapeCenter.Location, DefaultCameraPosition.Location })
 		Media.PlaySpeechNotification(greece, "ReinforcementsArrived")
 	end)
@@ -138,28 +137,12 @@ WorldLoaded = function()
 	ussr = Player.GetPlayer("USSR")
 	badguy = Player.GetPlayer("BadGuy")
 
-	Trigger.OnObjectiveAdded(greece, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "New " .. string.lower(p.GetObjectiveType(id)) .. " objective")
-	end)
+	InitObjectives(greece)
 
-	objDestroyAllTrucks = greece.AddPrimaryObjective("Prevent Soviet convoy trucks from escaping.")
-	objKillAll = greece.AddPrimaryObjective("Clear the sector of all Soviet presence.")
-	objRadarSpy = greece.AddSecondaryObjective("Infiltrate the Soviet Radar Dome to reveal truck \necape routes.")
-	ussrObj = ussr.AddPrimaryObjective("Deny the Allies.")
-
-	Trigger.OnObjectiveCompleted(greece, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "Objective completed")
-	end)
-	Trigger.OnObjectiveFailed(greece, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "Objective failed")
-	end)
-
-	Trigger.OnPlayerLost(greece, function()
-		Media.PlaySpeechNotification(player, "Lose")
-	end)
-	Trigger.OnPlayerWon(greece, function()
-		Media.PlaySpeechNotification(player, "Win")
-	end)
+	objDestroyAllTrucks = greece.AddObjective("Prevent Soviet convoy trucks from escaping.")
+	objKillAll = greece.AddObjective("Clear the sector of all Soviet presence.")
+	objRadarSpy = greece.AddObjective("Infiltrate the Soviet Radar Dome to reveal truck \necape routes.", "Secondary", false)
+	ussrObj = ussr.AddObjective("Deny the Allies.")
 
 	ActivateAI()
 	SetupTriggers()

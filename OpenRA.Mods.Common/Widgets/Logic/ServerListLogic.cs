@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -12,12 +12,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
-using System.Text;
+using System.Threading.Tasks;
 using BeaconLib;
 using OpenRA.Network;
 using OpenRA.Primitives;
 using OpenRA.Server;
+using OpenRA.Support;
 using OpenRA.Traits;
 using OpenRA.Widgets;
 
@@ -25,6 +25,74 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 {
 	public class ServerListLogic : ChromeLogic
 	{
+		[TranslationReference]
+		static readonly string SearchStatusFailed = "search-status-failed";
+
+		[TranslationReference]
+		static readonly string SearchStatusNoGames = "search-status-no-games";
+
+		[TranslationReference("players")]
+		static readonly string PlayersOnline = "players-online";
+
+		[TranslationReference]
+		static readonly string NoServerSelected = "no-server-selected";
+		readonly string noServerSelected;
+
+		[TranslationReference]
+		static readonly string MapStatusSearching = "map-status-searching";
+		readonly string mapStatusSearching;
+
+		[TranslationReference]
+		static readonly string MapClassificationUnknown = "map-classification-unknown";
+		readonly string mapClassificationUnknown;
+
+		[TranslationReference("players")]
+		static readonly string PlayersLabel = "players-label";
+
+		[TranslationReference("bots")]
+		static readonly string BotsLabel = "bots-label";
+
+		[TranslationReference("spectators")]
+		static readonly string SpectatorsLabel = "spectators-label";
+
+		[TranslationReference]
+		static readonly string Players = "players";
+
+		[TranslationReference("team")]
+		static readonly string TeamNumber = "team-number";
+
+		[TranslationReference]
+		static readonly string NoTeam = "no-team";
+
+		[TranslationReference]
+		static readonly string Spectators = "spectators";
+
+		[TranslationReference("players")]
+		static readonly string OtherPlayers = "n-other-players";
+
+		[TranslationReference]
+		static readonly string Playing = "playing";
+		readonly string playing;
+
+		[TranslationReference]
+		static readonly string Waiting = "waiting";
+		readonly string waiting;
+
+		[TranslationReference("minutes")]
+		static readonly string InProgress = "in-progress-for";
+
+		[TranslationReference]
+		static readonly string PasswordProtected = "password-protected";
+
+		[TranslationReference]
+		static readonly string WaitingForPlayers = "waiting-for-players";
+
+		[TranslationReference]
+		static readonly string ServerShuttingDown = "server-shutting-down";
+
+		[TranslationReference]
+		static readonly string UnknownServerState = "unknown-server-state";
+
 		readonly Color incompatibleVersionColor;
 		readonly Color incompatibleProtectedGameColor;
 		readonly Color protectedGameColor;
@@ -59,15 +127,25 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 		SearchStatus searchStatus = SearchStatus.Fetching;
 
-		Download currentQuery;
+		bool activeQuery;
 		IEnumerable<BeaconLocation> lanGameLocations;
+
+		readonly CachedTransform<int, string> players;
+		readonly CachedTransform<int, string> bots;
+		readonly CachedTransform<int, string> spectators;
+
+		readonly CachedTransform<double, string> minutes;
+		readonly string passwordProtected;
+		readonly string waitingForPlayers;
+		readonly string serverShuttingDown;
+		readonly string unknownServerState;
 
 		public string ProgressLabelText()
 		{
 			switch (searchStatus)
 			{
-				case SearchStatus.Failed: return "Failed to query server list.";
-				case SearchStatus.NoGames: return "No games found. Try changing filters.";
+				case SearchStatus.Failed: return modData.Translation.GetString(SearchStatusFailed);
+				case SearchStatus.NoGames: return modData.Translation.GetString(SearchStatusNoGames);
 				default: return "";
 			}
 		}
@@ -77,6 +155,23 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		{
 			this.modData = modData;
 			this.onJoin = onJoin;
+
+			playing = modData.Translation.GetString(Playing);
+			waiting = modData.Translation.GetString(Waiting);
+
+			noServerSelected = modData.Translation.GetString(NoServerSelected);
+			mapStatusSearching = modData.Translation.GetString(MapStatusSearching);
+			mapClassificationUnknown = modData.Translation.GetString(MapClassificationUnknown);
+
+			players = new CachedTransform<int, string>(i => modData.Translation.GetString(PlayersLabel, Translation.Arguments("players", i)));
+			bots = new CachedTransform<int, string>(i => modData.Translation.GetString(BotsLabel, Translation.Arguments("bots", i)));
+			spectators = new CachedTransform<int, string>(i => modData.Translation.GetString(SpectatorsLabel, Translation.Arguments("spectators", i)));
+
+			minutes = new CachedTransform<double, string>(i => modData.Translation.GetString(InProgress, Translation.Arguments("minutes", i)));
+			passwordProtected = modData.Translation.GetString(PasswordProtected);
+			waitingForPlayers = modData.Translation.GetString(WaitingForPlayers);
+			serverShuttingDown = modData.Translation.GetString(ServerShuttingDown);
+			unknownServerState = modData.Translation.GetString(UnknownServerState);
 
 			services = modData.Manifest.Get<WebServices>();
 
@@ -222,7 +317,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			var playersLabel = widget.GetOrNull<LabelWidget>("PLAYER_COUNT");
 			if (playersLabel != null)
 			{
-				var playersText = new CachedTransform<int, string>(c => c == 1 ? "1 Player Online" : c.ToString() + " Players Online");
+				var playersText = new CachedTransform<int, string>(p => modData.Translation.GetString(PlayersOnline, Translation.Arguments("players", p)));
 				playersLabel.IsVisible = () => playerCount != 0;
 				playersLabel.GetText = () => playersText.Update(playerCount);
 			}
@@ -231,23 +326,32 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			if (mapPreview != null)
 				mapPreview.Preview = () => currentMap;
 
-			var mapTitle = widget.GetOrNull<LabelWidget>("SELECTED_MAP");
+			var mapTitle = widget.GetOrNull<LabelWithTooltipWidget>("SELECTED_MAP");
 			if (mapTitle != null)
 			{
 				var font = Game.Renderer.Fonts[mapTitle.Font];
 				var title = new CachedTransform<MapPreview, string>(m =>
-					WidgetUtils.TruncateText(m.Title, mapTitle.Bounds.Width, font));
+				{
+					var truncated = WidgetUtils.TruncateText(m.Title, mapTitle.Bounds.Width, font);
+
+					if (m.Title != truncated)
+						mapTitle.GetTooltipText = () => m.Title;
+					else
+						mapTitle.GetTooltipText = null;
+
+					return truncated;
+				});
 
 				mapTitle.GetText = () =>
 				{
 					if (currentMap == null)
-						return "No Server Selected";
+						return noServerSelected;
 
 					if (currentMap.Status == MapStatus.Searching)
-						return "Searching...";
+						return mapStatusSearching;
 
 					if (currentMap.Class == MapClassification.Unknown)
-						return "Unknown Map";
+						return mapClassificationUnknown;
 
 					return title.Update(currentMap);
 				};
@@ -279,18 +383,18 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				modVersion.GetText = () => version.Update(currentServer);
 			}
 
-			var players = widget.GetOrNull<LabelWidget>("SELECTED_PLAYERS");
-			if (players != null)
+			var selectedPlayers = widget.GetOrNull<LabelWidget>("SELECTED_PLAYERS");
+			if (selectedPlayers != null)
 			{
-				players.IsVisible = () => currentServer != null && (clientContainer == null || !currentServer.Clients.Any());
-				players.GetText = () => PlayersLabel(currentServer);
+				selectedPlayers.IsVisible = () => currentServer != null && (clientContainer == null || currentServer.Clients.Length == 0);
+				selectedPlayers.GetText = () => PlayerLabel(currentServer);
 			}
 
 			clientContainer = widget.GetOrNull("CLIENT_LIST_CONTAINER");
 			if (clientContainer != null)
 			{
 				clientList = Ui.LoadWidget("MULTIPLAYER_CLIENT_LIST", clientContainer, new WidgetArgs()) as ScrollPanelWidget;
-				clientList.IsVisible = () => currentServer != null && currentServer.Clients.Any();
+				clientList.IsVisible = () => currentServer != null && currentServer.Clients.Length > 0;
 				clientHeader = clientList.Get<ScrollItemWidget>("HEADER");
 				clientTemplate = clientList.Get<ScrollItemWidget>("TEMPLATE");
 				clientList.RemoveChildren();
@@ -311,52 +415,66 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			RefreshServerList();
 		}
 
-		string PlayersLabel(GameServer game)
+		string PlayerLabel(GameServer game)
 		{
-			return "{0}{1}{2}".F(
-				"{0} Player{1}".F(game.Players > 0 ? game.Players.ToString() : "No", game.Players != 1 ? "s" : ""),
-				game.Bots > 0 ? ", {0} Bot{1}".F(game.Bots, game.Bots != 1 ? "s" : "") : "",
-				game.Spectators > 0 ? ", {0} Spectator{1}".F(game.Spectators, game.Spectators != 1 ? "s" : "") : "");
+			var label = players.Update(game.Players);
+
+			if (game.Bots > 0)
+				label += " " + bots.Update(game.Bots);
+
+			if (game.Spectators > 0)
+				label += " " + spectators.Update(game.Spectators);
+
+			return label;
 		}
 
 		public void RefreshServerList()
 		{
 			// Query in progress
-			if (currentQuery != null)
+			if (activeQuery)
 				return;
 
 			searchStatus = SearchStatus.Fetching;
 
-			Action<DownloadDataCompletedEventArgs> onComplete = i =>
+			var queryURL = new HttpQueryBuilder(services.ServerList)
 			{
-				currentQuery = null;
+				{ "protocol", GameServer.ProtocolVersion },
+				{ "engine", Game.EngineVersion },
+				{ "mod", Game.ModData.Manifest.Id },
+				{ "version", Game.ModData.Manifest.Metadata.Version }
+			}.ToString();
 
+			Task.Run(async () =>
+			{
 				List<GameServer> games = null;
-				if (i.Error == null)
+				activeQuery = true;
+
+				try
 				{
+					var client = HttpClientFactory.Create();
+					var httpResponseMessage = await client.GetAsync(queryURL);
+					var result = await httpResponseMessage.Content.ReadAsStreamAsync();
+
+					var yaml = MiniYaml.FromStream(result);
 					games = new List<GameServer>();
-					try
+					foreach (var node in yaml)
 					{
-						var data = Encoding.UTF8.GetString(i.Result);
-						var yaml = MiniYaml.FromString(data);
-						foreach (var node in yaml)
+						try
 						{
-							try
-							{
-								var gs = new GameServer(node.Value);
-								if (gs.Address != null)
-									games.Add(gs);
-							}
-							catch
-							{
-								// Ignore any invalid games advertised.
-							}
+							var gs = new GameServer(node.Value);
+							if (gs.Address != null)
+								games.Add(gs);
+						}
+						catch
+						{
+							// Ignore any invalid games advertised.
 						}
 					}
-					catch
-					{
-						searchStatus = SearchStatus.Failed;
-					}
+				}
+				catch (Exception e)
+				{
+					searchStatus = SearchStatus.Failed;
+					Log.Write("debug", $"Failed to query server list with exception: {e}");
 				}
 
 				var lanGames = new List<GameServer>();
@@ -398,15 +516,9 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					games = groupedLanGames.ToList();
 
 				Game.RunAfterTick(() => RefreshServerListInner(games));
-			};
 
-			var queryURL = services.ServerList + "?protocol={0}&engine={1}&mod={2}&version={3}".F(
-				GameServer.ProtocolVersion,
-				Uri.EscapeUriString(Game.EngineVersion),
-				Uri.EscapeUriString(Game.ModData.Manifest.Id),
-				Uri.EscapeUriString(Game.ModData.Manifest.Metadata.Version));
-
-			currentQuery = new Download(queryURL, _ => { }, onComplete);
+				activeQuery = false;
+			});
 		}
 
 		int GroupSortOrder(GameServer testEntry)
@@ -440,7 +552,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				mapPreview.DisabledSpawnPoints = () => server.DisabledSpawnPoints;
 			}
 
-			if (server == null || !server.Clients.Any())
+			if (server == null || server.Clients.Length == 0)
 			{
 				if (joinButton != null)
 					joinButton.Bounds.Y = joinButtonY;
@@ -465,20 +577,22 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			var noTeams = players.Count() == 1;
 			foreach (var p in players)
 			{
-				var label = noTeams ? "Players" : p.Key == 0 ? "No Team" : "Team {0}".F(p.Key);
+				var label = noTeams ? modData.Translation.GetString(Players) : p.Key > 0
+					? modData.Translation.GetString(TeamNumber, Translation.Arguments("team", p.Key))
+					: modData.Translation.GetString(NoTeam);
 				teams.Add(label, p);
 			}
 
 			if (server.Clients.Any(c => c.IsSpectator))
-				teams.Add("Spectators", server.Clients.Where(c => c.IsSpectator));
+				teams.Add(modData.Translation.GetString(Spectators), server.Clients.Where(c => c.IsSpectator));
 
-			var factionInfo = modData.DefaultRules.Actors["world"].TraitInfos<FactionInfo>();
+			var factionInfo = modData.DefaultRules.Actors[SystemActors.World].TraitInfos<FactionInfo>();
 			foreach (var kv in teams)
 			{
 				var group = kv.Key;
 				if (group.Length > 0)
 				{
-					var header = ScrollItemWidget.Setup(clientHeader, () => true, () => { });
+					var header = ScrollItemWidget.Setup(clientHeader, () => false, () => { });
 					header.Get<LabelWidget>("LABEL").GetText = () => group;
 					clientList.AddChild(header);
 				}
@@ -537,7 +651,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					return;
 				}
 
-				if (!rows.Any())
+				if (rows.Count == 0)
 				{
 					searchStatus = SearchStatus.NoGames;
 					return;
@@ -571,7 +685,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				if (modGames.All(Filtered))
 					continue;
 
-				var header = ScrollItemWidget.Setup(headerTemplate, () => true, () => { });
+				var header = ScrollItemWidget.Setup(headerTemplate, () => false, () => { });
 
 				var headerTitle = modGames.First().ModLabel;
 				header.Get<LabelWidget>("LABEL").GetText = () => headerTitle;
@@ -633,20 +747,20 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 						var players = item.GetOrNull<LabelWithTooltipWidget>("PLAYERS");
 						if (players != null)
 						{
-							var label = "{0} / {1}".F(game.Players + game.Bots, game.MaxPlayers + game.Bots)
-								+ (game.Spectators > 0 ? " + {0}".F(game.Spectators) : "");
+							var label = $"{game.Players + game.Bots} / {game.MaxPlayers + game.Bots}"
+							            + (game.Spectators > 0 ? $" + {game.Spectators}" : "");
 
 							var color = canJoin ? players.TextColor : incompatibleGameColor;
 							players.GetText = () => label;
 							players.GetColor = () => color;
 
-							if (game.Clients.Any())
+							if (game.Clients.Length > 0)
 							{
 								var displayClients = game.Clients.Select(c => c.Name);
 								if (game.Clients.Length > 10)
 									displayClients = displayClients
 										.Take(9)
-										.Append("+ {0} other players".F(game.Clients.Length - 9));
+										.Append(modData.Translation.GetString(OtherPlayers, Translation.Arguments("players", game.Clients.Length - 9)));
 
 								var tooltip = displayClients.JoinWith("\n");
 								players.GetTooltipText = () => tooltip;
@@ -658,8 +772,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 						var state = item.GetOrNull<LabelWidget>("STATUS");
 						if (state != null)
 						{
-							var label = game.State >= (int)ServerState.GameStarted ?
-								"Playing" : "Waiting";
+							var label = game.State >= (int)ServerState.GameStarted ? playing : waiting;
 							state.GetText = () => label;
 
 							var color = GetStateColor(game, state, !canJoin);
@@ -686,31 +799,24 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			return rows;
 		}
 
-		static string GetStateLabel(GameServer game)
+		string GetStateLabel(GameServer game)
 		{
 			if (game == null)
-				return "";
+				return string.Empty;
 
 			if (game.State == (int)ServerState.GameStarted)
 			{
-				var label = "In progress";
-
-				if (game.PlayTime > 0)
-				{
-					var totalMinutes = Math.Ceiling(game.PlayTime / 60.0);
-					label += " for {0} minute{1}".F(totalMinutes, totalMinutes > 1 ? "s" : "");
-				}
-
-				return label;
+				var totalMinutes = Math.Ceiling(game.PlayTime / 60.0);
+				return minutes.Update(totalMinutes);
 			}
 
 			if (game.State == (int)ServerState.WaitingPlayers)
-				return game.Protected ? "Password protected" : "Waiting for players";
+				return game.Protected ? passwordProtected : waitingForPlayers;
 
 			if (game.State == (int)ServerState.ShuttingDown)
-				return "Server shutting down";
+				return serverShuttingDown;
 
-			return "Unknown server state";
+			return unknownServerState;
 		}
 
 		Color GetStateColor(GameServer game, LabelWidget label, bool darkened = false)

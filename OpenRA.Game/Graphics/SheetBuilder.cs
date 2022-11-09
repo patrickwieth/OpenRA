@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -52,9 +52,16 @@ namespace OpenRA.Graphics
 		{
 			switch (t)
 			{
-				case SpriteFrameType.Indexed: return SheetType.Indexed;
-				case SpriteFrameType.BGRA: return SheetType.BGRA;
-				default: throw new NotImplementedException("Unknown SpriteFrameType {0}".F(t));
+				case SpriteFrameType.Indexed8:
+					return SheetType.Indexed;
+
+				// Util.FastCopyIntoChannel will automatically convert these to BGRA
+				case SpriteFrameType.Bgra32:
+				case SpriteFrameType.Bgr24:
+				case SpriteFrameType.Rgba32:
+				case SpriteFrameType.Rgb24:
+					return SheetType.BGRA;
+				default: throw new NotImplementedException($"Unknown SpriteFrameType {t}");
 			}
 		}
 
@@ -74,16 +81,16 @@ namespace OpenRA.Graphics
 			this.margin = margin;
 		}
 
-		public Sprite Add(ISpriteFrame frame) { return Add(frame.Data, frame.Size, 0, frame.Offset); }
-		public Sprite Add(byte[] src, Size size) { return Add(src, size, 0, float3.Zero); }
-		public Sprite Add(byte[] src, Size size, float zRamp, in float3 spriteOffset)
+		public Sprite Add(ISpriteFrame frame) { return Add(frame.Data, frame.Type, frame.Size, 0, frame.Offset); }
+		public Sprite Add(byte[] src, SpriteFrameType type, Size size) { return Add(src, type, size, 0, float3.Zero); }
+		public Sprite Add(byte[] src, SpriteFrameType type, Size size, float zRamp, in float3 spriteOffset)
 		{
 			// Don't bother allocating empty sprites
 			if (size.Width == 0 || size.Height == 0)
 				return new Sprite(current, Rectangle.Empty, 0, spriteOffset, channel, BlendMode.Alpha);
 
 			var rect = Allocate(size, zRamp, spriteOffset);
-			Util.FastCopyIntoChannel(rect, src);
+			Util.FastCopyIntoChannel(rect, src, type);
 			current.CommitBufferedData();
 			return rect;
 		}
@@ -94,15 +101,6 @@ namespace OpenRA.Graphics
 			Util.FastCopyIntoSprite(rect, src);
 			current.CommitBufferedData();
 			return rect;
-		}
-
-		public Sprite Add(Size size, byte paletteIndex)
-		{
-			var data = new byte[size.Width * size.Height];
-			for (var i = 0; i < data.Length; i++)
-				data[i] = paletteIndex;
-
-			return Add(data, size);
 		}
 
 		TextureChannel? NextChannel(TextureChannel t)
@@ -149,9 +147,9 @@ namespace OpenRA.Graphics
 			return rect;
 		}
 
-		public Sheet Current { get { return current; } }
-		public TextureChannel CurrentChannel { get { return channel; } }
-		public IEnumerable<Sheet> AllSheets { get { return sheets; } }
+		public Sheet Current => current;
+		public TextureChannel CurrentChannel => channel;
+		public IEnumerable<Sheet> AllSheets => sheets;
 
 		public void Dispose()
 		{

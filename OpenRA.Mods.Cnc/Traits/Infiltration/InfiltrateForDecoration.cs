@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -22,7 +22,7 @@ namespace OpenRA.Mods.Cnc.Traits
 	class InfiltrateForDecorationInfo : WithDecorationInfo
 	{
 		[Desc("The `TargetTypes` from `Targetable` that are allowed to enter.")]
-		public readonly BitSet<TargetableType> Types = default(BitSet<TargetableType>);
+		public readonly BitSet<TargetableType> Types = default;
 
 		public override object Create(ActorInitializer init) { return new InfiltrateForDecoration(init.Self, this); }
 	}
@@ -48,7 +48,7 @@ namespace OpenRA.Mods.Cnc.Traits
 
 		protected override bool ShouldRender(Actor self)
 		{
-			return infiltrators.Any(i => Info.ValidRelationships.HasStance(i.RelationshipWith(self.World.RenderPlayer)));
+			return infiltrators.Any(i => Info.ValidRelationships.HasRelationship(i.RelationshipWith(self.World.RenderPlayer)));
 		}
 	}
 }

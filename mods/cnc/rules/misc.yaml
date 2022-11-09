@@ -5,7 +5,7 @@ CRATE.plain:
 CRATE:
 	Inherits: ^Crate
 	Crate:
-		Lifetime: 240
+		Duration: 6000
 	GiveCashCrateAction:
 		Amount: 1000
 		SelectionShares: 20
@@ -39,6 +39,8 @@ WCRATE:
 	Inherits: ^Crate
 	Tooltip:
 		Name: Wooden Crate
+	RenderSprites:
+		Image: wcrate
 
 SCRATE:
 	Inherits: ^Crate
@@ -79,6 +81,7 @@ fact.colorpicker:
 	Inherits: FACT
 	-Buildable:
 	-MapEditorData:
+	-BaseBuilding:
 	RenderSprites:
 		Image: fact
 		Palette: colorpicker

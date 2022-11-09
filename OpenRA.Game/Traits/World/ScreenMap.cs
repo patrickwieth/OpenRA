@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -18,7 +18,7 @@ using OpenRA.Primitives;
 
 namespace OpenRA.Traits
 {
-	public struct ActorBoundsPair
+	public readonly struct ActorBoundsPair
 	{
 		public readonly Actor Actor;
 		public readonly Polygon Bounds;
@@ -27,9 +27,10 @@ namespace OpenRA.Traits
 
 		public override int GetHashCode() { return Actor.GetHashCode() ^ Bounds.GetHashCode(); }
 
-		public override string ToString() { return "{0}->{1}".F(Actor.Info.Name, Bounds.GetType().Name); }
+		public override string ToString() { return $"{Actor.Info.Name}->{Bounds.GetType().Name}"; }
 	}
 
+	[TraitLocation(SystemActors.World | SystemActors.EditorWorld)]
 	public class ScreenMapInfo : TraitInfo
 	{
 		[Desc("Size of partition bins (world pixels)")]
@@ -40,7 +41,7 @@ namespace OpenRA.Traits
 
 	public class ScreenMap : IWorldLoaded
 	{
-		static readonly IEnumerable<FrozenActor> NoFrozenActors = new FrozenActor[0];
+		static readonly IEnumerable<FrozenActor> NoFrozenActors = Array.Empty<FrozenActor>();
 		readonly Func<FrozenActor, bool> frozenActorIsValid = fa => fa.IsValid;
 		readonly Func<Actor, bool> actorIsInWorld = a => a.IsInWorld;
 		readonly Func<Actor, ActorBoundsPair> selectActorAndBounds;

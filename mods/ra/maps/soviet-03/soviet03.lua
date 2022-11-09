@@ -1,16 +1,16 @@
 --[[
-   Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+   Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
    This file is part of OpenRA, which is free software. It is made
    available to you under the terms of the GNU General Public License
    as published by the Free Software Foundation, either version 3 of
    the License, or (at your option) any later version. For more
    information, see COPYING.
 ]]
-if Map.LobbyOption("difficulty") == "easy" then
+if Difficulty == "easy" then
 	remainingTime = DateTime.Minutes(7)
-elseif Map.LobbyOption("difficulty") == "normal" then
+elseif Difficulty == "normal" then
 	remainingTime = DateTime.Minutes(6)
-elseif Map.LobbyOption("difficulty") == "hard" then
+elseif Difficulty == "hard" then
 	remainingTime = DateTime.Minutes(5)
 end
 
@@ -264,7 +264,7 @@ end)
 Trigger.OnEnteredFootprint(SpyHideout3Trigger, function(a, id)
 	if not spyHideout3Trigger and a.Owner == player then
 		spyHideout3Trigger = true
-		if Map.LobbyOption("difficulty") ~= "hard" then
+		if Difficulty ~= "hard" then
 			Reinforcements.Reinforce(player, USSRReinforcements2, { ReinforcementSpawn.Location, CameraSpyHideout33.Location }, 0)
 			Media.PlaySpeechNotification(player, "ReinforcementsArrived")
 		end
@@ -335,27 +335,15 @@ WorldLoaded = function()
 	player = Player.GetPlayer("USSR")
 	enemy = Player.GetPlayer("England")
 	greece = Player.GetPlayer("Greece")
+
 	Camera.Position = Playerbase.CenterPosition
 	IntroSequence()
-	Trigger.OnObjectiveAdded(player, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "New " .. string.lower(p.GetObjectiveType(id)) .. " objective")
-	end)
-	Trigger.OnObjectiveCompleted(player, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "Objective completed")
-	end)
-	Trigger.OnObjectiveFailed(player, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "Objective failed")
-	end)
-	Trigger.OnPlayerWon(player, function()
-		Media.PlaySpeechNotification(player, "Win")
-	end)
-	Trigger.OnPlayerLost(player, function()
-		Media.PlaySpeechNotification(player, "Lose")
-	end)
-	alliedObjective = enemy.AddPrimaryObjective("Destroy all Soviet troops.")
-	sovietObjective1 = player.AddPrimaryObjective("Kill the enemy spy.")
-	sovietObjective2 = player.AddSecondaryObjective("Clear the nearby farm for reinforcements.")
-	sovietObjective3 = player.AddSecondaryObjective("Scavenge the civilian buildings for supplies.")
+
+	InitObjectives(player)
+	alliedObjective = enemy.AddObjective("Destroy all Soviet troops.")
+	sovietObjective1 = player.AddObjective("Kill the enemy spy.")
+	sovietObjective2 = player.AddObjective("Clear the nearby farm for reinforcements.", "Secondary", false)
+	sovietObjective3 = player.AddObjective("Scavenge the civilian buildings for supplies.", "Secondary", false)
 end
 
 Trigger.OnKilled(TheSpy, function()
@@ -371,7 +359,7 @@ Tick = function()
 	if not SpyHideout4.IsDead and SpyHideout4.HasPassengers then
 		spyReachedHideout4 = true
 	end
-	if remainingTime == DateTime.Minutes(5) and Map.LobbyOption("difficulty") ~= "hard" then
+	if remainingTime == DateTime.Minutes(5) and Difficulty ~= "hard" then
 		Media.PlaySpeechNotification(player, "WarningFiveMinutesRemaining")
 	elseif remainingTime == DateTime.Minutes(4) then
 		Media.PlaySpeechNotification(player, "WarningFourMinutesRemaining")

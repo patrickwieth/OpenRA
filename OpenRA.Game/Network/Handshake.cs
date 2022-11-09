@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -29,8 +29,7 @@ namespace OpenRA.Network
 
 		public string Serialize()
 		{
-			var data = new List<MiniYamlNode>();
-			data.Add(new MiniYamlNode("Handshake", FieldSaver.Save(this)));
+			var data = new List<MiniYamlNode> { new MiniYamlNode("Handshake", FieldSaver.Save(this)) };
 			return data.WriteToString();
 		}
 	}
@@ -54,8 +53,10 @@ namespace OpenRA.Network
 
 		public static HandshakeResponse Deserialize(string data)
 		{
-			var handshake = new HandshakeResponse();
-			handshake.Client = new Session.Client();
+			var handshake = new HandshakeResponse
+			{
+				Client = new Session.Client()
+			};
 
 			var ys = MiniYaml.FromString(data);
 			foreach (var y in ys)
@@ -76,10 +77,12 @@ namespace OpenRA.Network
 
 		public string Serialize()
 		{
-			var data = new List<MiniYamlNode>();
-			data.Add(new MiniYamlNode("Handshake", null,
-				new[] { "Mod", "Version", "Password", "Fingerprint", "AuthSignature", "OrdersProtocol" }.Select(p => FieldSaver.SaveField(this, p)).ToList()));
-			data.Add(new MiniYamlNode("Client", FieldSaver.Save(Client)));
+			var data = new List<MiniYamlNode>
+			{
+				new MiniYamlNode("Handshake", null,
+					new[] { "Mod", "Version", "Password", "Fingerprint", "AuthSignature", "OrdersProtocol" }.Select(p => FieldSaver.SaveField(this, p)).ToList()),
+				new MiniYamlNode("Client", FieldSaver.Save(Client))
+			};
 
 			return data.WriteToString();
 		}

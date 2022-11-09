@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -10,7 +10,6 @@
 #endregion
 
 using System;
-using System.Linq;
 using OpenRA.Primitives;
 using OpenRA.Support;
 
@@ -18,10 +17,9 @@ namespace OpenRA.Graphics
 {
 	public sealed class SpriteFont : IDisposable
 	{
-		public int TopOffset { get; private set; }
+		public int TopOffset { get; }
 		readonly int size;
 		readonly SheetBuilder builder;
-		readonly Func<string, float> lineWidth;
 		readonly IFont font;
 		readonly Cache<char, GlyphInfo> glyphs;
 		readonly Cache<(char C, int Radius), Sprite> contrastGlyphs;
@@ -32,7 +30,7 @@ namespace OpenRA.Graphics
 		public SpriteFont(string name, byte[] data, int size, int ascender, float scale, SheetBuilder builder)
 		{
 			if (builder.Type != SheetType.BGRA)
-				throw new ArgumentException("The sheet builder must create BGRA sheets.", "builder");
+				throw new ArgumentException("The sheet builder must create BGRA sheets.", nameof(builder));
 
 			deviceScale = scale;
 			this.size = size;
@@ -43,13 +41,9 @@ namespace OpenRA.Graphics
 			contrastGlyphs = new Cache<(char, int), Sprite>(CreateContrastGlyph);
 			dilationElements = new Cache<int, float[]>(CreateCircularWeightMap);
 
-			// PERF: Cache these delegates for Measure calls.
-			Func<char, float> characterWidth = character => glyphs[character].Advance;
-			lineWidth = line => line.Sum(characterWidth) / deviceScale;
-
 			// Pre-cache small font sizes so glyphs are immediately available when we need them
 			if (size <= 24)
-				using (new PerfTimer("Precache {0} {1}px".F(name, size)))
+				using (new PerfTimer($"Precache {name} {size}px"))
 					for (var n = (char)0x20; n < (char)0x7f; n++)
 						if (glyphs[n] == null)
 							throw new InvalidOperationException();
@@ -89,10 +83,10 @@ namespace OpenRA.Graphics
 				if (g.Sprite != null)
 				{
 					var contrastSprite = contrastGlyphs[(s, screenContrast)];
-					Game.Renderer.RgbaSpriteRenderer.DrawSpriteWithTint(contrastSprite,
+					Game.Renderer.RgbaSpriteRenderer.DrawSprite(contrastSprite,
 						(screen + g.Offset - contrastVector) / deviceScale,
-						contrastSprite.Size / deviceScale,
-						tint);
+						1f / deviceScale,
+						tint, 1f);
 				}
 
 				screen += new int2((int)(g.Advance + 0.5f), 0);
@@ -120,10 +114,10 @@ namespace OpenRA.Graphics
 
 				// Convert screen coordinates back to UI coordinates for drawing
 				if (g.Sprite != null)
-					Game.Renderer.RgbaSpriteRenderer.DrawSpriteWithTint(g.Sprite,
+					Game.Renderer.RgbaSpriteRenderer.DrawSprite(g.Sprite,
 					(screen + g.Offset).ToFloat2() / deviceScale,
-					g.Sprite.Size / deviceScale,
-					tint);
+					1f / deviceScale,
+					tint, 1f);
 
 				screen += new int2((int)(g.Advance + 0.5f), 0);
 			}
@@ -172,12 +166,12 @@ namespace OpenRA.Graphics
 
 					// Offset rotated glyph to align the top-left corner with the screen pixel grid
 					var screenOffset = new float2((int)(ra.X * deviceScale + 0.5f), (int)(ra.Y * deviceScale + 0.5f)) / deviceScale - ra;
-					Game.Renderer.RgbaSpriteRenderer.DrawSpriteWithTint(g.Sprite,
+					Game.Renderer.RgbaSpriteRenderer.DrawSprite(g.Sprite,
 						ra + screenOffset,
 						rb + screenOffset,
 						rc + screenOffset,
 						rd + screenOffset,
-						tint);
+						tint, 1f);
 				}
 
 				p += new float2(g.Advance / deviceScale, 0);
@@ -238,16 +232,26 @@ namespace OpenRA.Graphics
 			if (string.IsNullOrEmpty(text))
 				return new int2(0, size);
 
-			var lines = text.Split('\n');
-			return new int2((int)Math.Ceiling(MaxLineWidth(lines, lineWidth)), lines.Length * size);
+			var lines = text.SplitLines('\n');
+
+			var maxWidth = 0f;
+			var rows = 0;
+			foreach (var line in lines)
+			{
+				rows++;
+				maxWidth = Math.Max(maxWidth, LineWidth(line));
+			}
+
+			return new int2((int)Math.Ceiling(maxWidth), rows * size);
 		}
 
-		static float MaxLineWidth(string[] lines, Func<string, float> lineWidth)
+		float LineWidth(ReadOnlySpan<char> line)
 		{
-			var maxWidth = 0f;
-			foreach (var line in lines)
-				maxWidth = Math.Max(maxWidth, lineWidth(line));
-			return maxWidth;
+			var result = 0f;
+			foreach (var c in line)
+				result += glyphs[c].Advance;
+
+			return result / deviceScale;
 		}
 
 		GlyphInfo CreateGlyph(char c)

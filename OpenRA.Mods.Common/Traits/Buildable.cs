@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -9,6 +9,7 @@
  */
 #endregion
 
+using System;
 using System.Collections.Generic;
 using OpenRA.Traits;
 
@@ -20,7 +21,7 @@ namespace OpenRA.Mods.Common.Traits
 			"This can be prefixed with ! to invert the prerequisite (disabling production if the prerequisite is available)",
 			"and/or ~ to hide the actor from the production palette if the prerequisite is not available.",
 			"Prerequisites are granted by actors with the ProvidesPrerequisite trait.")]
-		public readonly string[] Prerequisites = { };
+		public readonly string[] Prerequisites = Array.Empty<string>();
 
 		[Desc("Production queue(s) that can produce this.")]
 		public readonly HashSet<string> Queue = new HashSet<string>();
@@ -54,14 +55,12 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Sort order for the production palette. Smaller numbers are presented earlier.")]
 		public readonly int BuildPaletteOrder = 9999;
 
-		[Translate]
 		[Desc("Text shown in the production tooltip.")]
 		public readonly string Description = "";
 
 		public static string GetInitialFaction(ActorInfo ai, string defaultFaction)
 		{
-			var bi = ai.TraitInfoOrDefault<BuildableInfo>();
-			return bi != null ? bi.ForceFaction ?? defaultFaction : defaultFaction;
+			return ai.TraitInfoOrDefault<BuildableInfo>()?.ForceFaction ?? defaultFaction;
 		}
 	}
 

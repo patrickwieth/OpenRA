@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -26,7 +26,7 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Fudge the coordinate system angles to simulate non-top-down perspective in mods with square cells.")]
 		public readonly bool UseClassicPerspectiveFudge = true;
 
-		public WVec LocalToWorld(WVec vec)
+		public WVec LocalToWorld(in WVec vec)
 		{
 			// Rotate by 90 degrees
 			if (!UseClassicPerspectiveFudge)
@@ -64,7 +64,7 @@ namespace OpenRA.Mods.Common.Traits
 		readonly Lazy<int> quantizedFacings;
 
 		[Sync]
-		public int QuantizedFacings { get { return quantizedFacings.Value; } }
+		public int QuantizedFacings => quantizedFacings.Value;
 
 		public BodyOrientation(ActorInitializer init, BodyOrientationInfo info)
 		{
@@ -94,14 +94,14 @@ namespace OpenRA.Mods.Common.Traits
 			});
 		}
 
-		public WAngle CameraPitch { get { return info.CameraPitch; } }
+		public WAngle CameraPitch => info.CameraPitch;
 
-		public WVec LocalToWorld(WVec vec)
+		public WVec LocalToWorld(in WVec vec)
 		{
 			return info.LocalToWorld(vec);
 		}
 
-		public WRot QuantizeOrientation(Actor self, in WRot orientation)
+		public WRot QuantizeOrientation(in WRot orientation)
 		{
 			return info.QuantizeOrientation(orientation, quantizedFacings.Value);
 		}

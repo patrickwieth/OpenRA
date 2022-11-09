@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -61,7 +61,7 @@ namespace OpenRA
 			}
 			catch (YamlException e)
 			{
-				throw new YamlException("Actor type {0}: {1}".F(name, e.Message));
+				throw new YamlException($"Actor type {name}: {e.Message}");
 			}
 		}
 
@@ -76,8 +76,7 @@ namespace OpenRA
 		static TraitInfo LoadTraitInfo(ObjectCreator creator, string traitName, MiniYaml my)
 		{
 			if (!string.IsNullOrEmpty(my.Value))
-				throw new YamlException("Junk value `{0}` on trait node {1}"
-				.F(my.Value, traitName));
+				throw new YamlException($"Junk value `{my.Value}` on trait node {traitName}");
 
 			// HACK: The linter does not want to crash when a trait doesn't exist but only print an error instead
 			// ObjectCreator will only return null to signal us to abort here if the linter is running
@@ -89,7 +88,7 @@ namespace OpenRA
 			try
 			{
 				if (traitInstance.Length > 1)
-					info.GetType().GetField("InstanceName").SetValue(info, traitInstance[1]);
+					info.GetType().GetField(nameof(info.InstanceName)).SetValue(info, traitInstance[1]);
 
 				FieldLoader.Load(info, my);
 			}
@@ -111,10 +110,11 @@ namespace OpenRA
 			{
 				Trait = i,
 				Type = i.GetType(),
-				Dependencies = PrerequisitesOf(i).ToList()
+				Dependencies = PrerequisitesOf(i).ToList(),
+				OptionalDependencies = OptionalPrerequisitesOf(i).ToList()
 			}).ToList();
 
-			var resolved = source.Where(s => !s.Dependencies.Any()).ToList();
+			var resolved = source.Where(s => s.Dependencies.Count == 0 && s.OptionalDependencies.Count == 0).ToList();
 			var unresolved = source.Except(resolved);
 
 			var testResolve = new Func<Type, Type, bool>((a, b) => a == b || a.IsAssignableFrom(b));
@@ -123,7 +123,9 @@ namespace OpenRA
 			var more = unresolved.Where(u =>
 				u.Dependencies.All(d => // To be resolvable, all dependencies must be satisfied according to the following conditions:
 					resolved.Exists(r => testResolve(d, r.Type)) && // There must exist a resolved trait that meets the dependency.
-					!unresolved.Any(u1 => testResolve(d, u1.Type)))); // All matching traits that meet this dependency must be resolved first.
+					!unresolved.Any(u1 => testResolve(d, u1.Type))) && // All matching traits that meet this dependency must be resolved first.
+				u.OptionalDependencies.All(d => // To be resolvable, all optional dependencies must be satisfied according to the following condition:
+					!unresolved.Any(u1 => testResolve(d, u1.Type)))); // All matching traits that meet this optional dependencies must be resolved first.
 
 			// Continue resolving traits as long as possible.
 			// Each time we resolve some traits, this means dependencies for other traits may then be possible to satisfy in the next pass.
@@ -143,7 +145,9 @@ namespace OpenRA
 				foreach (var u in unresolved)
 				{
 					var deps = u.Dependencies.Where(d => !resolved.Exists(r => r.Type == d));
-					exceptionString += u.Type + ": { " + string.Join(", ", deps) + " }\r\n";
+					var optDeps = u.OptionalDependencies.Where(d => !resolved.Exists(r => r.Type == d));
+					var allDeps = string.Join(", ", deps.Select(o => o.ToString()).Concat(optDeps.Select(o => $"[{o}]")));
+					exceptionString += $"{u.Type}: {{ {allDeps} }}\r\n";
 				}
 
 				throw new YamlException(exceptionString);
@@ -159,6 +163,15 @@ namespace OpenRA
 				.GetType()
 				.GetInterfaces()
 				.Where(t => t.IsGenericType && t.GetGenericTypeDefinition() == typeof(Requires<>))
+				.Select(t => t.GetGenericArguments()[0]);
+		}
+
+		public static IEnumerable<Type> OptionalPrerequisitesOf(TraitInfo info)
+		{
+			return info
+				.GetType()
+				.GetInterfaces()
+				.Where(t => t.IsGenericType && t.GetGenericTypeDefinition() == typeof(NotBefore<>))
 				.Select(t => t.GetGenericArguments()[0]);
 		}
 

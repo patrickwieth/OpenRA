@@ -4,13 +4,13 @@ World:
 		Maximum: 4
 		SpawnInterval: 1000
 		CrateActors: fortcrate
-	MPStartUnits@mcvonly:
+	StartingUnits@mcvonly:
 		BaseActor: tent
 	WeatherOverlay:
 		WindTick: 150, 550
 		UseSquares: false
 		ScatterDirection: 0, 0
-		Gravity: 8.00, 12.00
+		Gravity: 15, 25
 		SwingOffset: 0, 0
 		SwingSpeed: 0, 0
 		SwingAmplitude: 0, 0
@@ -27,11 +27,11 @@ World:
 	FlashPaletteEffect@LIGHTNINGSTRIKE:
 		Type: LightningStrike
 	LuaScript:
-		Scripts: fort-lonestar.lua, fort-lonestar-AI.lua
+		Scripts: campaign.lua, fort-lonestar.lua, fort-lonestar-AI.lua
 	MapBuildRadius:
 		AllyBuildRadiusCheckboxVisible: False
 		BuildRadiusCheckboxVisible: False
-	SpawnMPUnits:
+	SpawnStartingUnits:
 		DropdownVisible: False
 	MapOptions:
 		TechLevelDropdownLocked: True
@@ -43,7 +43,7 @@ World:
 	ScriptLobbyDropdown@difficulty:
 		ID: difficulty
 		Label: Difficulty
-		Description: Change the difficulty of the mission
+		Description: The difficulty of the mission
 		Values:
 			hard: Hard (4P)
 			normal: Normal (3P)
@@ -53,7 +53,7 @@ World:
 			endless: Endless mode
 		Default: hard
 		DisplayOrder: 5
-	MPStartLocations:
+	MapStartingLocations:
 		SeparateTeamSpawnsCheckboxEnabled: False
 		SeparateTeamSpawnsCheckboxLocked: True
 		SeparateTeamSpawnsCheckboxVisible: False
@@ -144,7 +144,7 @@ MOBILETENT:
 	Tooltip:
 		Name: Mobile Tent
 	Selectable:
-		DecorationBounds: 21,21
+		DecorationBounds: 896, 896
 	SelectionDecorations:
 	Health:
 		HP: 60000
@@ -164,6 +164,7 @@ MOBILETENT:
 		Facing: 384
 		TransformSounds: placbldg.aud, build5.aud
 		NoTransformNotification: BuildingCannotPlaceAudio
+		NoTransformTextNotification: Cannot deploy here.
 	RenderSprites:
 		Image: TRUK
 
@@ -344,7 +345,7 @@ V2RL:
 
 powerproxy.parabombs:
 	AirstrikePower:
-		LongDesc: A MiG bomber drops a load of parachuted bombs on your target.
+		Description: A MiG bomber drops a load of parachuted bombs on your target.
 		CameraRemoveDelay: 50
 
 BADR.Bomber:

@@ -1,6 +1,6 @@
 World:
 	LuaScript:
-		Scripts: campaign-global.lua, cnc64gdi01.lua
+		Scripts: campaign.lua, utils.lua, cnc64gdi01.lua
 	MusicPlaylist:
 		StartingMusic: aoi
 	MissionData:
@@ -36,12 +36,3 @@ TRAN:
 RMBO:
 	Buildable:
 		Prerequisites: ~disabled
-
-OLDLST:
-	Inherits: LST
-	-WithRoof:
-	-Selectable:
-	RejectsOrders:
-	Cargo:
-		Types: disabled
-	Interactable:

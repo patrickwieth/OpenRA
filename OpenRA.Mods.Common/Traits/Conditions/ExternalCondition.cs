@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -35,12 +35,12 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("If > 0, restrict the number of times that this condition can be granted by any source.")]
 		public readonly int TotalCap = 0;
 
-		public override object Create(ActorInitializer init) { return new ExternalCondition(init.Self, this); }
+		public override object Create(ActorInitializer init) { return new ExternalCondition(this); }
 	}
 
 	public class ExternalCondition : ITick, INotifyCreated
 	{
-		struct TimedToken
+		readonly struct TimedToken
 		{
 			public readonly int Expires;
 			public readonly int Token;
@@ -63,12 +63,12 @@ namespace OpenRA.Mods.Common.Traits
 		int duration;
 		int expires;
 
-		public ExternalCondition(Actor self, ExternalConditionInfo info)
+		public ExternalCondition(ExternalConditionInfo info)
 		{
 			Info = info;
 		}
 
-		public bool CanGrantCondition(Actor self, object source)
+		public bool CanGrantCondition(object source)
 		{
 			if (source == null)
 				return false;
@@ -87,7 +87,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		public int GrantCondition(Actor self, object source, int duration = 0, int remaining = 0)
 		{
-			if (!CanGrantCondition(self, source))
+			if (!CanGrantCondition(source))
 				return Actor.InvalidConditionToken;
 
 			var token = self.GrantCondition(Info.Condition);
@@ -104,7 +104,7 @@ namespace OpenRA.Mods.Common.Traits
 				if (Info.SourceCap > 0)
 				{
 					var timedCount = timedTokens.Count(t => t.Source == source);
-					if ((permanent != null ? permanent.Count + timedCount : timedCount) >= Info.SourceCap)
+					if ((permanent?.Count ?? 0) + timedCount >= Info.SourceCap)
 					{
 						// Get timed token from the same source with closest expiration.
 						var expireIndex = timedTokens.FindIndex(t => t.Source == source);
@@ -121,17 +121,13 @@ namespace OpenRA.Mods.Common.Traits
 				if (Info.TotalCap > 0)
 				{
 					var totalCount = permanentTokens.Values.Sum(t => t.Count) + timedTokens.Count;
-					if (totalCount >= Info.TotalCap)
+					if (totalCount >= Info.TotalCap && timedTokens.Count > 0)
 					{
-						// Prefer tokens from the same source
-						if (timedTokens.Count > 0)
-						{
-							var expire = timedTokens[0].Token;
-							if (self.TokenValid(expire))
-								self.RevokeCondition(expire);
+						var expire = timedTokens[0].Token;
+						if (self.TokenValid(expire))
+							self.RevokeCondition(expire);
 
-							timedTokens.RemoveAt(0);
-						}
+						timedTokens.RemoveAt(0);
 					}
 				}
 

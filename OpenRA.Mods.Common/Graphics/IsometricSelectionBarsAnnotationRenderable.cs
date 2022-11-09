@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -15,7 +15,7 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Graphics
 {
-	public struct IsometricSelectionBarsAnnotationRenderable : IRenderable, IFinalizedRenderable
+	public class IsometricSelectionBarsAnnotationRenderable : IRenderable, IFinalizedRenderable
 	{
 		const int BarWidth = 3;
 		const int BarHeight = 4;
@@ -40,24 +40,21 @@ namespace OpenRA.Mods.Common.Graphics
 		}
 
 		public IsometricSelectionBarsAnnotationRenderable(WPos pos, Actor actor, Polygon bounds)
-			: this()
 		{
 			this.pos = pos;
 			this.actor = actor;
 			this.bounds = bounds;
 		}
 
-		public WPos Pos { get { return pos; } }
-		public bool DisplayHealth { get { return displayHealth; } }
-		public bool DisplayExtra { get { return displayExtra; } }
+		public WPos Pos => pos;
+		public bool DisplayHealth => displayHealth;
+		public bool DisplayExtra => displayExtra;
 
-		public PaletteReference Palette { get { return null; } }
-		public int ZOffset { get { return 0; } }
-		public bool IsDecoration { get { return true; } }
+		public int ZOffset => 0;
+		public bool IsDecoration => true;
 
-		public IRenderable WithPalette(PaletteReference newPalette) { return this; }
 		public IRenderable WithZOffset(int newOffset) { return this; }
-		public IRenderable OffsetBy(WVec vec) { return new IsometricSelectionBarsAnnotationRenderable(pos + vec, actor, bounds); }
+		public IRenderable OffsetBy(in WVec vec) { return new IsometricSelectionBarsAnnotationRenderable(pos + vec, actor, bounds); }
 		public IRenderable AsDecoration() { return this; }
 
 		void DrawExtraBars(WorldRenderer wr)
@@ -134,7 +131,7 @@ namespace OpenRA.Mods.Common.Graphics
 		Color GetHealthColor(IHealth health)
 		{
 			if (Game.Settings.Game.UsePlayerStanceColors)
-				return actor.Owner.PlayerStanceColor(actor);
+				return actor.Owner.PlayerRelationshipColor(actor);
 
 			return health.DamageState == DamageState.Critical ? Color.Red :
 				health.DamageState == DamageState.Heavy ? Color.Yellow : Color.LimeGreen;

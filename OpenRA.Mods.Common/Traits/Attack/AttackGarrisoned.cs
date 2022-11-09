@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -77,13 +77,13 @@ namespace OpenRA.Mods.Common.Traits
 
 	public class AttackGarrisoned : AttackFollow, INotifyPassengerEntered, INotifyPassengerExited, IRender
 	{
-		public readonly new AttackGarrisonedInfo Info;
-		Lazy<BodyOrientation> coords;
-		List<Armament> armaments;
-		List<AnimationWithOffset> muzzles;
-		Dictionary<Actor, IFacing> paxFacing;
-		Dictionary<Actor, IPositionable> paxPos;
-		Dictionary<Actor, RenderSprites> paxRender;
+		public new readonly AttackGarrisonedInfo Info;
+		readonly Lazy<BodyOrientation> coords;
+		readonly List<Armament> armaments;
+		readonly List<AnimationWithOffset> muzzles;
+		readonly Dictionary<Actor, IFacing> paxFacing;
+		readonly Dictionary<Actor, IPositionable> paxPos;
+		readonly Dictionary<Actor, RenderSprites> paxRender;
 
 		public AttackGarrisoned(Actor self, AttackGarrisonedInfo info)
 			: base(self, info)
@@ -139,7 +139,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		WVec PortOffset(Actor self, FirePort p)
 		{
-			var bodyOrientation = coords.Value.QuantizeOrientation(self, self.Orientation);
+			var bodyOrientation = coords.Value.QuantizeOrientation(self.Orientation);
 			return coords.Value.LocalToWorld(p.Offset.Rotate(bodyOrientation));
 		}
 
@@ -162,7 +162,7 @@ namespace OpenRA.Mods.Common.Traits
 					return;
 
 				paxFacing[a.Actor].Facing = targetYaw;
-				paxPos[a.Actor].SetVisualPosition(a.Actor, pos + PortOffset(self, port));
+				paxPos[a.Actor].SetCenterPosition(a.Actor, pos + PortOffset(self, port));
 
 				var barrel = a.CheckFire(a.Actor, facing, target);
 				if (barrel == null)
@@ -193,7 +193,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			// Display muzzle flashes
 			foreach (var m in muzzles)
-				foreach (var r in m.Render(self, wr, pal, 1f))
+				foreach (var r in m.Render(self, pal))
 					yield return r;
 		}
 

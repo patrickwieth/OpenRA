@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -42,7 +42,7 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly int DamageThreshold = 0;
 
 		[Desc("DeathType(s) that trigger the explosion. Leave empty to always trigger an explosion.")]
-		public readonly BitSet<DamageType> DeathTypes = default(BitSet<DamageType>);
+		public readonly BitSet<DamageType> DeathTypes = default;
 
 		[Desc("Who is counted as source of damage for explosion.",
 			"Possible values are Self and Killer.")]
@@ -65,7 +65,7 @@ namespace OpenRA.Mods.Common.Traits
 			{
 				var weaponToLower = Weapon.ToLowerInvariant();
 				if (!rules.Weapons.TryGetValue(weaponToLower, out var weapon))
-					throw new YamlException("Weapons Ruleset does not contain an entry '{0}'".F(weaponToLower));
+					throw new YamlException($"Weapons Ruleset does not contain an entry '{weaponToLower}'");
 				WeaponInfo = weapon;
 			}
 
@@ -73,7 +73,7 @@ namespace OpenRA.Mods.Common.Traits
 			{
 				var emptyWeaponToLower = EmptyWeapon.ToLowerInvariant();
 				if (!rules.Weapons.TryGetValue(emptyWeaponToLower, out var emptyWeapon))
-					throw new YamlException("Weapons Ruleset does not contain an entry '{0}'".F(emptyWeaponToLower));
+					throw new YamlException($"Weapons Ruleset does not contain an entry '{emptyWeaponToLower}'");
 				EmptyWeaponInfo = emptyWeapon;
 			}
 
@@ -117,7 +117,7 @@ namespace OpenRA.Mods.Common.Traits
 				return;
 
 			var source = Info.DamageSource == DamageSource.Self ? self : e.Attacker;
-			if (weapon.Report != null && weapon.Report.Any())
+			if (weapon.Report != null && weapon.Report.Length > 0)
 				Game.Sound.Play(SoundType.World, weapon.Report, self.World, self.CenterPosition);
 
 			if (Info.Type == ExplosionType.Footprint && buildingInfo != null)

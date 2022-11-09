@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -35,17 +35,29 @@ namespace OpenRA.Mods.Common.Traits.Render
 		[Desc("Forces sprite body to be rendered on ground regardless of actor altitude (for example for custom shadow sprites).")]
 		public readonly bool ForceToGround = false;
 
+		[PaletteReference(nameof(IsPlayerPalette))]
+		[Desc("Custom palette name.")]
+		public readonly string Palette = null;
+
+		[Desc("Palette is a player palette BaseName.")]
+		public readonly bool IsPlayerPalette = false;
+
 		public override object Create(ActorInitializer init) { return new WithSpriteBody(init, this); }
 
-		public virtual IEnumerable<IActorPreview> RenderPreviewSprites(ActorPreviewInitializer init, RenderSpritesInfo rs, string image, int facings, PaletteReference p)
+		public virtual IEnumerable<IActorPreview> RenderPreviewSprites(ActorPreviewInitializer init, string image, int facings, PaletteReference p)
 		{
 			if (!EnabledByDefault)
 				yield break;
 
+			if (IsPlayerPalette)
+				p = init.WorldRenderer.Palette(Palette + init.Get<OwnerInit>().InternalName);
+			else if (Palette != null)
+				p = init.WorldRenderer.Palette(Palette);
+
 			var anim = new Animation(init.World, image);
 			anim.PlayRepeating(RenderSprites.NormalizeSequence(anim, init.GetDamageState(), Sequence));
 
-			yield return new SpriteActorPreview(anim, () => WVec.Zero, () => 0, p, rs.Scale);
+			yield return new SpriteActorPreview(anim, () => WVec.Zero, () => 0, p);
 		}
 	}
 
@@ -71,7 +83,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 				subtractDAT = () => new WVec(0, 0, -init.Self.World.Map.DistanceAboveTerrain(init.Self.CenterPosition).Length);
 
 			DefaultAnimation = new Animation(init.World, rs.GetImage(init.Self), baseFacing, paused);
-			rs.Add(new AnimationWithOffset(DefaultAnimation, subtractDAT, () => IsTraitDisabled));
+			rs.Add(new AnimationWithOffset(DefaultAnimation, subtractDAT, () => IsTraitDisabled), info.Palette, info.IsPlayerPalette);
 
 			// Cache the bounds from the default sequence to avoid flickering when the animation changes
 			boundsAnimation = new Animation(init.World, rs.GetImage(init.Self), baseFacing, paused);
@@ -133,7 +145,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 
 		Rectangle IAutoMouseBounds.AutoMouseoverBounds(Actor self, WorldRenderer wr)
 		{
-			return boundsAnimation.ScreenBounds(wr, self.CenterPosition, WVec.Zero, rs.Info.Scale);
+			return boundsAnimation.ScreenBounds(wr, self.CenterPosition, WVec.Zero);
 		}
 	}
 }

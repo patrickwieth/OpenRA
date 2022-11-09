@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -48,27 +48,25 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			var requiresFormat = requiresLabel.Text;
 
 			ActorInfo lastActor = null;
-			Hotkey lastHotkey = Hotkey.Invalid;
-			var lastPowerState = pm == null ? PowerState.Normal : pm.PowerState;
+			var lastHotkey = Hotkey.Invalid;
+			var lastPowerState = pm?.PowerState ?? PowerState.Normal;
 			var descLabelY = descLabel.Bounds.Y;
 			var descLabelPadding = descLabel.Bounds.Height;
 
 			tooltipContainer.BeforeRender = () =>
 			{
 				var tooltipIcon = getTooltipIcon();
-				if (tooltipIcon == null)
-					return;
 
-				var actor = tooltipIcon.Actor;
+				var actor = tooltipIcon?.Actor;
 				if (actor == null)
 					return;
 
-				var hotkey = tooltipIcon.Hotkey != null ? tooltipIcon.Hotkey.GetValue() : Hotkey.Invalid;
+				var hotkey = tooltipIcon.Hotkey?.GetValue() ?? Hotkey.Invalid;
 				if (actor == lastActor && hotkey == lastHotkey && (pm == null || pm.PowerState == lastPowerState))
 					return;
 
 				var tooltip = actor.TraitInfos<TooltipInfo>().FirstOrDefault(info => info.EnabledByDefault);
-				var name = tooltip != null ? tooltip.Name : actor.Name;
+				var name = tooltip?.Name ?? actor.Name;
 				var buildable = actor.TraitInfo<BuildableInfo>();
 
 				var cost = 0;
@@ -89,7 +87,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 				if (hotkeyLabel.Visible)
 				{
-					var hotkeyText = "({0})".F(hotkey.DisplayString());
+					var hotkeyText = $"({hotkey.DisplayString()})";
 
 					hotkeyWidth = font.Measure(hotkeyText).X + 2 * nameLabel.Bounds.X;
 					hotkeyLabel.Text = hotkeyText;
@@ -125,7 +123,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					powerSize = font.Measure(powerLabel.Text);
 				}
 
-				var buildTime = tooltipIcon.ProductionQueue == null ? 0 : tooltipIcon.ProductionQueue.GetBuildTime(actor, buildable);
+				var buildTime = tooltipIcon.ProductionQueue?.GetBuildTime(actor, buildable) ?? 0;
 				var timeModifier = pm != null && pm.PowerState != PowerState.Normal ? tooltipIcon.ProductionQueue.Info.LowPowerModifier : 100;
 
 				timeLabel.Text = formatBuildTime.Update((buildTime * timeModifier) / 100);

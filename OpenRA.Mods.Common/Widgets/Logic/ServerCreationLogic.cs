@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -19,7 +19,41 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 {
 	public class ServerCreationLogic : ChromeLogic
 	{
+		[TranslationReference]
+		static readonly string InternetServerNatA = "internet-server-nat-A";
+
+		[TranslationReference]
+		static readonly string InternetServerNatBenabled = "internet-server-nat-B-enabled";
+
+		[TranslationReference]
+		static readonly string InternetServerNatBnotSupported = "internet-server-nat-B-not-supported";
+
+		[TranslationReference]
+		static readonly string InternetServerNatBdisabled = "internet-server-nat-B-disabled";
+
+		[TranslationReference]
+		static readonly string InternetServerNatC = "internet-server-nat-C";
+
+		[TranslationReference]
+		static readonly string LocalServer = "local-server";
+
+		[TranslationReference("port")]
+		static readonly string ServerCreationFailedPrompt = "server-creation-failed-prompt";
+
+		[TranslationReference]
+		static readonly string ServerCreationFailedPortUsed = "server-creation-failed-port-used";
+
+		[TranslationReference("message", "code")]
+		static readonly string ServerCreationFailedError = "server-creation-failed-error";
+
+		[TranslationReference]
+		static readonly string ServerCreationFailedTitle = "server-creation-failed-title";
+
+		[TranslationReference]
+		static readonly string ServerCreationFailedCancel = "server-creation-failed-cancel";
+
 		readonly Widget panel;
+		readonly ModData modData;
 		readonly LabelWidget noticesLabelA, noticesLabelB, noticesLabelC;
 		readonly Action onCreate;
 		readonly Action onExit;
@@ -30,11 +64,12 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		public ServerCreationLogic(Widget widget, ModData modData, Action onExit, Action openLobby)
 		{
 			panel = widget;
+			this.modData = modData;
 			onCreate = openLobby;
 			this.onExit = onExit;
 
 			var settings = Game.Settings;
-			preview = modData.MapCache[modData.MapCache.ChooseInitialMap(Game.Settings.Server.Map, Game.CosmeticRandom)];
+			preview = modData.MapCache[modData.MapCache.ChooseInitialMap(modData.MapCache.PickLastModifiedMap(MapVisibility.Lobby) ?? Game.Settings.Server.Map, Game.CosmeticRandom)];
 
 			panel.Get<ButtonWidget>("BACK_BUTTON").OnClick = () => { Ui.CloseWindow(); onExit(); };
 			panel.Get<ButtonWidget>("CREATE_BUTTON").OnClick = CreateAndJoin;
@@ -61,9 +96,18 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				if (titleLabel != null)
 				{
 					var font = Game.Renderer.Fonts[titleLabel.Font];
-					var title = new CachedTransform<MapPreview, string>(m => WidgetUtils.TruncateText(m.Title, titleLabel.Bounds.Width, font));
+					var title = new CachedTransform<MapPreview, string>(m =>
+					{
+						var truncated = WidgetUtils.TruncateText(m.Title, titleLabel.Bounds.Width, font);
+
+						if (m.Title != truncated)
+							titleLabel.GetTooltipText = () => m.Title;
+						else
+							titleLabel.GetTooltipText = null;
+
+						return truncated;
+					});
 					titleLabel.GetText = () => title.Update(preview);
-					titleLabel.GetTooltipText = () => preview.Title;
 				}
 
 				var typeLabel = panel.GetOrNull<LabelWidget>("MAP_TYPE");
@@ -78,17 +122,17 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				{
 					var font = Game.Renderer.Fonts[authorLabel.Font];
 					var author = new CachedTransform<MapPreview, string>(
-						m => WidgetUtils.TruncateText("Created by {0}".F(m.Author), authorLabel.Bounds.Width, font));
+						m => WidgetUtils.TruncateText($"Created by {m.Author}", authorLabel.Bounds.Width, font));
 					authorLabel.GetText = () => author.Update(preview);
 				}
 			}
 
 			var serverName = panel.Get<TextFieldWidget>("SERVER_NAME");
-			serverName.Text = Settings.SanitizedServerName(settings.Server.Name);
-			serverName.OnEnterKey = () => { serverName.YieldKeyboardFocus(); return true; };
+			serverName.Text = Game.Settings.SanitizedServerName(settings.Server.Name);
+			serverName.OnEnterKey = _ => { serverName.YieldKeyboardFocus(); return true; };
 			serverName.OnLoseFocus = () =>
 			{
-				serverName.Text = Settings.SanitizedServerName(serverName.Text);
+				serverName.Text = Game.Settings.SanitizedServerName(serverName.Text);
 				settings.Server.Name = serverName.Text;
 			};
 
@@ -116,20 +160,20 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			if (noticesNoUPnP != null)
 			{
 				noticesNoUPnP.IsVisible = () => advertiseOnline &&
-					(UPnP.Status == UPnPStatus.NotSupported || UPnP.Status == UPnPStatus.Disabled);
+					(Nat.Status == NatStatus.NotSupported || Nat.Status == NatStatus.Disabled);
 
 				var settingsA = noticesNoUPnP.GetOrNull("SETTINGS_A");
 				if (settingsA != null)
-					settingsA.IsVisible = () => UPnP.Status == UPnPStatus.Disabled;
+					settingsA.IsVisible = () => Nat.Status == NatStatus.Disabled;
 
 				var settingsB = noticesNoUPnP.GetOrNull("SETTINGS_B");
 				if (settingsB != null)
-					settingsB.IsVisible = () => UPnP.Status == UPnPStatus.Disabled;
+					settingsB.IsVisible = () => Nat.Status == NatStatus.Disabled;
 			}
 
 			var noticesUPnP = panel.GetOrNull("NOTICES_UPNP");
 			if (noticesUPnP != null)
-				noticesUPnP.IsVisible = () => advertiseOnline && UPnP.Status == UPnPStatus.Enabled;
+				noticesUPnP.IsVisible = () => advertiseOnline && Nat.Status == NatStatus.Enabled;
 
 			var noticesLAN = panel.GetOrNull("NOTICES_LAN");
 			if (noticesLAN != null)
@@ -145,16 +189,16 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 			if (advertiseOnline)
 			{
-				noticesLabelA.Text = "Internet Server (UPnP ";
+				noticesLabelA.Text = modData.Translation.GetString(InternetServerNatA) + " ";
 				var aWidth = Game.Renderer.Fonts[noticesLabelA.Font].Measure(noticesLabelA.Text).X;
 				noticesLabelA.Bounds.Width = aWidth;
 
-				var status = UPnP.Status;
-				noticesLabelB.Text = status == UPnPStatus.Enabled ? "Enabled" :
-					status == UPnPStatus.NotSupported ? "Not Supported" : "Disabled";
+				noticesLabelB.Text = Nat.Status == NatStatus.Enabled ? modData.Translation.GetString(InternetServerNatBenabled) :
+					Nat.Status == NatStatus.NotSupported ? modData.Translation.GetString(InternetServerNatBnotSupported)
+						: modData.Translation.GetString(InternetServerNatBdisabled);
 
-				noticesLabelB.TextColor = status == UPnPStatus.Enabled ? ChromeMetrics.Get<Color>("NoticeSuccessColor") :
-					status == UPnPStatus.NotSupported ? ChromeMetrics.Get<Color>("NoticeErrorColor") :
+				noticesLabelB.TextColor = Nat.Status == NatStatus.Enabled ? ChromeMetrics.Get<Color>("NoticeSuccessColor") :
+					Nat.Status == NatStatus.NotSupported ? ChromeMetrics.Get<Color>("NoticeErrorColor") :
 					ChromeMetrics.Get<Color>("NoticeInfoColor");
 
 				var bWidth = Game.Renderer.Fonts[noticesLabelB.Font].Measure(noticesLabelB.Text).X;
@@ -162,13 +206,13 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				noticesLabelB.Bounds.Width = bWidth;
 				noticesLabelB.Visible = true;
 
-				noticesLabelC.Text = "):";
+				noticesLabelC.Text = modData.Translation.GetString(InternetServerNatC);
 				noticesLabelC.Bounds.X = noticesLabelB.Bounds.Right;
 				noticesLabelC.Visible = true;
 			}
 			else
 			{
-				noticesLabelA.Text = "Local Server:";
+				noticesLabelA.Text = modData.Translation.GetString(LocalServer);
 				noticesLabelB.Visible = false;
 				noticesLabelC.Visible = false;
 			}
@@ -176,7 +220,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 		void CreateAndJoin()
 		{
-			var name = Settings.SanitizedServerName(panel.Get<TextFieldWidget>("SERVER_NAME").Text);
+			var name = Game.Settings.SanitizedServerName(panel.Get<TextFieldWidget>("SERVER_NAME").Text);
 			if (!Exts.TryParseIntegerInvariant(panel.Get<TextFieldWidget>("LISTEN_PORT").Text, out var listenPort))
 				listenPort = 1234;
 
@@ -204,15 +248,17 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			}
 			catch (System.Net.Sockets.SocketException e)
 			{
-				var message = "Could not listen on port {0}.".F(Game.Settings.Server.ListenPort);
+				var message = modData.Translation.GetString(ServerCreationFailedPrompt, Translation.Arguments("port", Game.Settings.Server.ListenPort));
 
 				// AddressAlreadyInUse (WSAEADDRINUSE)
 				if (e.ErrorCode == 10048)
-					message += "\nCheck if the port is already being used.";
+					message += "\n" + modData.Translation.GetString(ServerCreationFailedPortUsed);
 				else
-					message += "\nError is: \"{0}\" ({1})".F(e.Message, e.ErrorCode);
+					message += $"\n" + modData.Translation.GetString(ServerCreationFailedError,
+						Translation.Arguments("message", e.Message, "code", e.ErrorCode));
 
-				ConfirmationDialogs.ButtonPrompt("Server Creation Failed", message, onCancel: () => { }, cancelText: "Back");
+				ConfirmationDialogs.ButtonPrompt(modData, ServerCreationFailedTitle, message,
+					onCancel: () => { }, cancelText: ServerCreationFailedCancel);
 			}
 		}
 	}

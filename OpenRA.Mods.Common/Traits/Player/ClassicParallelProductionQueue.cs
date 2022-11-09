@@ -1,6 +1,6 @@
 ﻿#region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -21,6 +21,7 @@ namespace OpenRA.Mods.Common.Traits
 		"Will only work together with the Production: trait on the actor that actually does the production.",
 		"You will also want to add PrimaryBuildings: to let the user choose where new units should exit.",
 		"The production speed depends on the number of production buildings and units queued at the same time.")]
+	[TraitLocation(SystemActors.Player)]
 	public class ClassicParallelProductionQueueInfo : ProductionQueueInfo, Requires<TechTreeInfo>, Requires<PlayerResourcesInfo>
 	{
 		[Desc("If you build more actors of the same type,", "the same queue will get its build time lowered for every actor produced there.")]
@@ -29,7 +30,7 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Every time another production building of the same queue is",
 			"constructed, the build times of all actors in the queue",
 			"modified by a percentage of the original time.")]
-		public readonly int[] BuildingCountBuildTimeMultipliers = { 100, 85, 75, 65, 60, 55, 50 };
+		public readonly int[] BuildingCountBuildTimeMultipliers = { 100, 86, 75, 67, 60, 55, 50 };
 
 		[Desc("Build time modifier multiplied by the number of parallel production for producing different actors at the same time.")]
 		public readonly int[] ParallelPenaltyBuildTimeMultipliers = { 100, 116, 133, 150, 166, 183, 200, 216, 233, 250 };
@@ -39,7 +40,7 @@ namespace OpenRA.Mods.Common.Traits
 
 	public class ClassicParallelProductionQueue : ProductionQueue
 	{
-		static readonly ActorInfo[] NoItems = { };
+		static readonly ActorInfo[] NoItems = Array.Empty<ActorInfo>();
 
 		readonly Actor self;
 		readonly ClassicParallelProductionQueueInfo info;
@@ -47,7 +48,7 @@ namespace OpenRA.Mods.Common.Traits
 		int penalty;
 
 		public ClassicParallelProductionQueue(ActorInitializer init, ClassicParallelProductionQueueInfo info)
-			: base(init, init.Self, info)
+			: base(init, info)
 		{
 			self = init.Self;
 			this.info = info;

@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -17,10 +17,10 @@ namespace OpenRA.Mods.Cnc.Traits
 {
 	class MineInfo : TraitInfo
 	{
-		public readonly BitSet<CrushClass> CrushClasses = default(BitSet<CrushClass>);
+		public readonly BitSet<CrushClass> CrushClasses = default;
 		public readonly bool AvoidFriendly = true;
 		public readonly bool BlockFriendly = true;
-		public readonly BitSet<CrushClass> DetonateClasses = default(BitSet<CrushClass>);
+		public readonly BitSet<CrushClass> DetonateClasses = default;
 
 		public override object Create(ActorInitializer init) { return new Mine(this); }
 	}
@@ -48,7 +48,7 @@ namespace OpenRA.Mods.Cnc.Traits
 			if (mobile != null && !info.DetonateClasses.Overlaps(mobile.Info.LocomotorInfo.Crushes))
 				return;
 
-			self.Kill(crusher, mobile != null ? mobile.Info.LocomotorInfo.CrushDamageTypes : default(BitSet<DamageType>));
+			self.Kill(crusher, mobile != null ? mobile.Info.LocomotorInfo.CrushDamageTypes : default);
 		}
 
 		bool ICrushable.CrushableBy(Actor self, Actor crusher, BitSet<CrushClass> crushClasses)
@@ -65,7 +65,7 @@ namespace OpenRA.Mods.Cnc.Traits
 				return self.World.NoPlayersMask;
 
 			// Friendly units should move around!
-			return info.BlockFriendly ? ~self.Owner.AlliedPlayersMask : self.World.AllPlayersMask;
+			return info.BlockFriendly ? self.World.AllPlayersMask.Except(self.Owner.AlliedPlayersMask) : self.World.AllPlayersMask;
 		}
 	}
 

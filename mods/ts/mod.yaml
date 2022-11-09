@@ -3,6 +3,7 @@ Metadata:
 	Version: 826c958
 	Website: https://www.openra.net
 	WebIcon32: https://www.openra.net/images/icons/ts_32x32.png
+	WindowTitle: OpenRA - Tiberian Sun
 
 PackageFormats: Mix
 
@@ -114,7 +115,7 @@ MapGrid:
 	EnableDepthBuffer: True
 	Type: RectangularIsometric
 	MaximumTerrainHeight: 16
-	SubCellOffsets: 0,0,0, -362,181,0, 0,-128,0, 362,181,0
+	SubCellOffsets: 0,0,0, -362,0,0, 0,362,0, 362,0,0
 	DefaultSubCell: 2
 
 Cursors:
@@ -130,13 +131,15 @@ Assemblies:
 ChromeLayout:
 	common|chrome/ingame.yaml
 	common|chrome/ingame-chat.yaml
+	ts|chrome/ingame-transients.yaml
 	common|chrome/ingame-fmvplayer.yaml
 	common|chrome/ingame-menu.yaml
-	ts|chrome/ingame-info.yaml
+	common|chrome/ingame-info.yaml
 	common|chrome/ingame-infoscripterror.yaml
 	common|chrome/ingame-infobriefing.yaml
 	common|chrome/ingame-infoobjectives.yaml
 	common|chrome/ingame-infostats.yaml
+	common|chrome/ingame-info-lobby-options.yaml
 	ts|chrome/ingame-observer.yaml
 	ts|chrome/ingame-player.yaml
 	common|chrome/ingame-perf.yaml
@@ -150,7 +153,7 @@ ChromeLayout:
 	common|chrome/settings-display.yaml
 	common|chrome/settings-audio.yaml
 	common|chrome/settings-input.yaml
-	common|chrome/settings-hotkeys.yaml
+	ts|chrome/settings-hotkeys.yaml
 	common|chrome/settings-advanced.yaml
 	common|chrome/credits.yaml
 	common|chrome/lobby.yaml
@@ -178,6 +181,10 @@ ChromeLayout:
 	common|chrome/missionbrowser.yaml
 	common|chrome/confirmation-dialogs.yaml
 	common|chrome/editor.yaml
+	common|chrome/text-notifications.yaml
+
+Translations:
+	common|languages/en.ftl
 
 Voices:
 	ts|audio/voices.yaml
@@ -190,15 +197,15 @@ Notifications:
 Music:
 	ts|audio/music.yaml
 
-Translations:
-	ts|languages/english.yaml
-
 Hotkeys:
 	common|hotkeys/game.yaml
 	common|hotkeys/observer.yaml
 	common|hotkeys/production-common.yaml
 	common|hotkeys/supportpowers.yaml
 	common|hotkeys/viewport.yaml
+	common|hotkeys/chat.yaml
+	common|hotkeys/editor.yaml
+	common|hotkeys/control-groups.yaml
 	ts|hotkeys.yaml
 
 LoadScreen: LogoStripeLoadScreen
@@ -249,11 +256,17 @@ Fonts:
 		Size: 32
 		Ascender: 24
 
+DefaultOrderGenerator: UnitOrderGenerator
+
 SupportsMapsFrom: ts
 
 SoundFormats: Aud, Wav
 
 SpriteFormats: ShpTS, TmpTS, ShpTD
+
+VideoFormats: Vqa
+
+TerrainFormat: DefaultTerrain
 
 SpriteSequenceFormat: TilesetSpecificSpriteSequence
 	TilesetExtensions:
@@ -266,36 +279,38 @@ SpriteSequenceFormat: TilesetSpecificSpriteSequence
 ModelSequenceFormat: VoxelModelSequence
 
 AssetBrowser:
-	SupportedExtensions: .shp, .tem, .sno, .vqa
+	SpriteExtensions: .shp, .tem, .sno
+	ModelExtensions: .vxl
+	AudioExtensions: .aud, .wav
+	VideoExtensions: .vqa
 
 GameSpeeds:
-	slowest:
-		Name: Slowest
-		Timestep: 80
-		OrderLatency: 2
-	slower:
-		Name: Slower
-		Timestep: 50
-		OrderLatency: 3
-	default:
-		Name: Normal
-		Timestep: 40
-		OrderLatency: 3
-	fast:
-		Name: Fast
-		Timestep: 35
-		OrderLatency: 4
-	faster:
-		Name: Faster
-		Timestep: 30
-		OrderLatency: 4
-	fastest:
-		Name: Fastest
-		Timestep: 20
-		OrderLatency: 6
-
-ColorValidator:
-	TeamColorPresets: f70606, ff7a22, f8d3b3, f8e947, 94b319, f335a0, a64d6c, ce08f9, f5b2db, 12b572, 4A1948, 1d06f7, 328dff, 78dbf8, cef6b1, 391d1d
+	DefaultSpeed: default
+	Speeds:
+		slowest:
+			Name: slowest
+			Timestep: 80
+			OrderLatency: 2
+		slower:
+			Name: slower
+			Timestep: 50
+			OrderLatency: 3
+		default:
+			Name: normal
+			Timestep: 40
+			OrderLatency: 3
+		fast:
+			Name: fast
+			Timestep: 35
+			OrderLatency: 4
+		faster:
+			Name: faster
+			Timestep: 30
+			OrderLatency: 4
+		fastest:
+			Name: fastest
+			Timestep: 20
+			OrderLatency: 6
 
 ModContent:
 	InstallPromptMessage: Tiberian Sun requires artwork and audio from the original game.\n\nQuick Install will automatically download this content (without music\nor videos) from a mirror of the 2012 Tiberian Sun freeware release.\n\nAdvanced Install includes options for copying the music, videos, and\nother content from an original game disc or digital installation.
@@ -310,14 +325,14 @@ ModContent:
 		tibsun-music: Base Game Music
 			TestFiles: ^SupportDir|Content/ts/scores.mix
 			Sources: tibsun, tibsun-linux, tfd, origin
-		fstorm: Expansion Freeware Content
+		fstorm: Firestorm Expansion Files
 			TestFiles: ^SupportDir|Content/ts/firestorm/e01sc01.mix, ^SupportDir|Content/ts/firestorm/e01sc02.mix, ^SupportDir|Content/ts/firestorm/e01vox01.mix, ^SupportDir|Content/ts/firestorm/e01vox02.mix
 			Sources: tfd, origin, fstorm
 			Required: true
 			Download: fstorm
-		fstorm-music: Expansion Freeware Music
+		fstorm-music: Firestorm Expansion Music
 			Sources: tfd, origin, fstorm
-			TestFiles: ^SupportDir|Content/ts/firestorm/linkup.aud, ^SupportDir|Content/ts/firestorm/hacker.aud
+			TestFiles: ^SupportDir|Content/ts/firestorm/scores01.mix
 	Downloads:
 		ts|installer/downloads.yaml
 	Sources:

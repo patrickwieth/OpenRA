@@ -67,8 +67,9 @@ HVR:
 	Mobile:
 		Speed: 99
 		Locomotor: hover
+		TerrainOrientationAdjustmentMargin: -1
 	Selectable:
-		Bounds: 40,24,0,-10
+		Bounds: 1206, 1448, 0, -603
 	Health:
 		HP: 23000
 	Armor:
@@ -123,6 +124,7 @@ SMECH:
 		TurnSpeed: 20
 		Speed: 99
 		AlwaysTurnInPlace: true
+		TerrainOrientationAdjustmentMargin: -1
 	Health:
 		HP: 17500
 	Armor:
@@ -134,6 +136,7 @@ SMECH:
 	AttackFrontal:
 		Voice: Attack
 		PauseOnCondition: empdisable
+		FacingTolerance: 0
 	Armament:
 		Weapon: AssaultCannon
 	Voiced:
@@ -142,13 +145,18 @@ SMECH:
 		Sequence: stand
 	WithFacingSpriteBody:
 		Sequence: stand
+		Palette: player-nomuzzle
+		IsPlayerPalette: True
 	WithAttackAnimation:
 		Sequence: shoot
+	WithAttackOverlay@muzzle:
+		Sequence: shoot-muzzle
+		Palette: muzzle
 	WithMoveAnimation:
 		MoveSequence: walk
 		ValidMovementTypes: Horizontal, Turn
 	Selectable:
-		Bounds: 20, 32, 0, -8
+		Bounds: 603, 1930, 0, -482
 	-DamagedByTerrain@VEINS:
 	-LeavesTrails@VEINS:
 
@@ -171,6 +179,7 @@ MMCH:
 		TurnSpeed: 20
 		Speed: 56
 		AlwaysTurnInPlace: true
+		TerrainOrientationAdjustmentMargin: -1
 	Health:
 		HP: 40000
 	Armor:
@@ -197,7 +206,6 @@ MMCH:
 	Armament:
 		Weapon: 120mm
 		MuzzleSequence: muzzle
-		MuzzlePalette: effect-ignore-lighting
 		Recoil: 128
 		RecoilRecovery: 32
 		LocalOffset: 1024,272,1216
@@ -210,7 +218,7 @@ MMCH:
 	WithVoxelBarrel:
 		LocalOffset: 0,51,256
 	Selectable:
-		Bounds: 30, 42, 0, -8
+		Bounds: 905, 2534, 0, -482
 	Carryable:
 		LocalOffset: 0,0,577
 
@@ -247,6 +255,7 @@ HMEC:
 	AttackFrontal:
 		Voice: Attack
 		PauseOnCondition: empdisable
+		FacingTolerance: 0
 	Armament@MISSILES:
 		Weapon: MammothTusk
 		LocalOffset: -243,-368,1208, -243,368,1208
@@ -257,7 +266,7 @@ HMEC:
 	WithVoxelWalkerBody:
 		TickRate: 1
 	Selectable:
-		Bounds: 40, 40, 0, -8
+		Bounds: 1206, 2413, 0, -482
 	Carryable:
 		LocalOffset: 0,0,509
 
@@ -337,6 +346,7 @@ JUGG:
 		AlwaysTurnInPlace: true
 		ImmovableCondition: !undeployed
 		RequireForceMoveCondition: !undeployed
+		TerrainOrientationAdjustmentMargin: -1
 	RevealsShroud:
 		RequiresCondition: !inside-tunnel
 		Range: 9c0
@@ -408,9 +418,8 @@ JUGG:
 		LocalOffset: 820,203,1386, 820,0,1386, 820,-203,1386
 		RequiresCondition: deployed
 		MuzzleSequence: muzzle
-		MuzzlePalette: effect-ignore-lighting
 	WithMuzzleOverlay:
 	RevealOnFire:
 		ArmamentNames: deployed
 	Selectable:
-		DecorationBounds: 48,40,0,-8
+		DecorationBounds: 1448, 2413, 0, -482

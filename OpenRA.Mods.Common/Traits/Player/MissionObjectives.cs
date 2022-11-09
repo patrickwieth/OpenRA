@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -35,6 +35,7 @@ namespace OpenRA.Mods.Common.Traits
 		}
 	}
 
+	[TraitLocation(SystemActors.Player)]
 	public class MissionObjectivesInfo : TraitInfo
 	{
 		[Desc("Set this to true if multiple cooperative players have a distinct set of " +
@@ -53,11 +54,17 @@ namespace OpenRA.Mods.Common.Traits
 		[NotificationReference("Speech")]
 		public readonly string WinNotification = null;
 
+		public readonly string WinTextNotification = null;
+
 		[NotificationReference("Speech")]
 		public readonly string LoseNotification = null;
 
+		public readonly string LoseTextNotification = null;
+
 		[NotificationReference("Speech")]
 		public readonly string LeaveNotification = null;
+
+		public readonly string LeaveTextNotification = null;
 
 		public override object Create(ActorInitializer init) { return new MissionObjectives(init.Self.Owner, this); }
 	}
@@ -67,7 +74,7 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly MissionObjectivesInfo Info;
 		readonly List<MissionObjective> objectives = new List<MissionObjective>();
 		readonly Player player;
-		public ReadOnlyList<MissionObjective> Objectives;
+		public IReadOnlyList<MissionObjective> Objectives => objectives;
 
 		Player[] enemies;
 		Player[] allies;
@@ -92,7 +99,6 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			Info = info;
 			this.player = player;
-			Objectives = new ReadOnlyList<MissionObjective>(objectives);
 		}
 
 		void IWorldLoaded.WorldLoaded(World w, WorldRenderer wr)
@@ -259,24 +265,26 @@ namespace OpenRA.Mods.Common.Traits
 		}
 	}
 
+	[TraitLocation(SystemActors.World)]
 	[Desc("Provides game mode progress information for players.",
 		"Goes on WorldActor - observers don't have a player it can live on.",
 		"Current options for PanelName are 'SKIRMISH_STATS' and 'MISSION_OBJECTIVES'.")]
 	public class ObjectivesPanelInfo : TraitInfo
 	{
-		public string PanelName = null;
+		public readonly string PanelName = null;
 
 		[Desc("in ms")]
-		public int ExitDelay = 1400;
+		public readonly int ExitDelay = 1400;
 
 		public override object Create(ActorInitializer init) { return new ObjectivesPanel(this); }
 	}
 
+	[TraitLocation(SystemActors.World)]
 	public class ObjectivesPanel : IObjectivesPanel
 	{
 		readonly ObjectivesPanelInfo info;
 		public ObjectivesPanel(ObjectivesPanelInfo info) { this.info = info; }
-		public string PanelName { get { return info.PanelName; } }
-		public int ExitDelay { get { return info.ExitDelay; } }
+		public string PanelName => info.PanelName;
+		public int ExitDelay => info.ExitDelay;
 	}
 }

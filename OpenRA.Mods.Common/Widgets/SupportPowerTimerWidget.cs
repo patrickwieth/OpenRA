@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -25,7 +25,6 @@ namespace OpenRA.Mods.Common.Widgets
 		public readonly TextAlign Align = TextAlign.Left;
 		public readonly TimerOrder Order = TimerOrder.Descending;
 
-		readonly int timestep;
 		readonly IEnumerable<SupportPowerInstance> powers;
 		readonly Color bgDark, bgLight;
 		(string Text, Color Color)[] texts;
@@ -36,12 +35,7 @@ namespace OpenRA.Mods.Common.Widgets
 			powers = world.ActorsWithTrait<SupportPowerManager>()
 				.Where(p => !p.Actor.IsDead && !p.Actor.Owner.NonCombatant)
 				.SelectMany(s => s.Trait.Powers.Values)
-				.Where(p => p.Instances.Any() && p.Info.DisplayTimerRelationships != PlayerRelationship.None && !p.Disabled);
-
-			// Timers in replays should be synced to the effective game time, not the playback time.
-			timestep = world.Timestep;
-			if (world.IsReplay)
-				timestep = world.WorldActor.Trait<MapOptions>().GameSpeed.Timestep;
+				.Where(p => p.Instances.Count > 0 && p.Info.DisplayTimerRelationships != PlayerRelationship.None && !p.Disabled);
 
 			bgDark = ChromeMetrics.Get<Color>("TextContrastColorDark");
 			bgLight = ChromeMetrics.Get<Color>("TextContrastColorLight");
@@ -53,18 +47,18 @@ namespace OpenRA.Mods.Common.Widgets
 			{
 				var owner = p.Instances[0].Self.Owner;
 				var viewer = owner.World.RenderPlayer ?? owner.World.LocalPlayer;
-				return viewer == null || p.Info.DisplayTimerRelationships.HasStance(owner.RelationshipWith(viewer));
+				return viewer == null || p.Info.DisplayTimerRelationships.HasRelationship(owner.RelationshipWith(viewer));
 			});
 
 			texts = displayedPowers.Select(p =>
 			{
-				var time = WidgetUtils.FormatTime(p.RemainingTicks, false, timestep);
-				var text = Format.F(p.Info.Description, time);
 				var self = p.Instances[0].Self;
+				var time = WidgetUtils.FormatTime(p.RemainingTicks, false, self.World.Timestep);
+				var text = Format.F(p.Info.Name, time);
 				var playerColor = self.Owner.Color;
 
 				if (Game.Settings.Game.UsePlayerStanceColors)
-					playerColor = self.Owner.PlayerStanceColor(self);
+					playerColor = self.Owner.PlayerRelationshipColor(self);
 
 				var color = !p.Ready || Game.LocalTick % 50 < 25 ? playerColor : Color.White;
 

@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -17,7 +17,7 @@ using OpenRA.Primitives;
 
 namespace OpenRA.Mods.Common.Graphics
 {
-	public struct UIModelRenderable : IRenderable
+	public class UIModelRenderable : IRenderable, IPalettedRenderable
 	{
 		readonly IEnumerable<ModelAnimation> models;
 		readonly WPos effectiveWorldPos;
@@ -51,12 +51,12 @@ namespace OpenRA.Mods.Common.Graphics
 			shadowPalette = shadow;
 		}
 
-		public WPos Pos { get { return effectiveWorldPos; } }
-		public PaletteReference Palette { get { return palette; } }
-		public int ZOffset { get { return zOffset; } }
-		public bool IsDecoration { get { return false; } }
+		public WPos Pos => effectiveWorldPos;
+		public PaletteReference Palette => palette;
+		public int ZOffset => zOffset;
+		public bool IsDecoration => false;
 
-		public IRenderable WithPalette(PaletteReference newPalette)
+		public IPalettedRenderable WithPalette(PaletteReference newPalette)
 		{
 			return new UIModelRenderable(
 				models, effectiveWorldPos, screenPos, zOffset, camera, scale,
@@ -65,16 +65,15 @@ namespace OpenRA.Mods.Common.Graphics
 		}
 
 		public IRenderable WithZOffset(int newOffset) { return this; }
-		public IRenderable OffsetBy(WVec vec) { return this; }
+		public IRenderable OffsetBy(in WVec vec) { return this; }
 		public IRenderable AsDecoration() { return this; }
 
-		static readonly float[] GroundNormal = { 0, 0, 1, 1 };
 		public IFinalizedRenderable PrepareRender(WorldRenderer wr)
 		{
 			return new FinalizedUIModelRenderable(wr, this);
 		}
 
-		struct FinalizedUIModelRenderable : IFinalizedRenderable
+		class FinalizedUIModelRenderable : IFinalizedRenderable
 		{
 			readonly UIModelRenderable model;
 			readonly ModelRenderProxy renderProxy;
@@ -85,7 +84,7 @@ namespace OpenRA.Mods.Common.Graphics
 				var draw = model.models.Where(v => v.IsVisible);
 
 				renderProxy = Game.Renderer.WorldModelRenderer.RenderAsync(
-					wr, draw, model.camera, model.scale, GroundNormal, model.lightSource,
+					wr, draw, model.camera, model.scale, WRot.None, model.lightSource,
 					model.lightAmbientColor, model.lightDiffuseColor,
 					model.palette, model.normalsPalette, model.shadowPalette);
 			}
@@ -98,7 +97,7 @@ namespace OpenRA.Mods.Common.Graphics
 				var sb = pxOrigin + psb[2];
 				var sc = pxOrigin + psb[1];
 				var sd = pxOrigin + psb[3];
-				Game.Renderer.RgbaSpriteRenderer.DrawSprite(renderProxy.ShadowSprite, sa, sb, sc, sd);
+				Game.Renderer.RgbaSpriteRenderer.DrawSprite(renderProxy.ShadowSprite, sa, sb, sc, sd, float3.Ones, 1f);
 				Game.Renderer.RgbaSpriteRenderer.DrawSprite(renderProxy.Sprite, pxOrigin - 0.5f * renderProxy.Sprite.Size);
 			}
 

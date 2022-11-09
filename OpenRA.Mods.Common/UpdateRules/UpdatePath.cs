@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -10,7 +10,6 @@
 #endregion
 
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using OpenRA.Mods.Common.UpdateRules.Rules;
 
@@ -30,15 +29,8 @@ namespace OpenRA.Mods.Common.UpdateRules
 		// can be merged back into bleed by replacing the forking-playtest-to-bleed path
 		// with the prep playtest-to-playtest-to-release paths and finally a new/modified
 		// release-to-bleed path.
-		[SuppressMessage("StyleCop.CSharp.ReadabilityRules", "SA1118:ParameterMustNotSpanMultipleLines",
-			Justification = "Extracting update lists to temporary variables obfuscates the definitions.")]
 		static readonly UpdatePath[] Paths =
 		{
-			new UpdatePath("release-20191117", "release-20200202", new UpdateRule[]
-			{
-				new ReplaceAttackTypeStrafe()
-			}),
-
 			new UpdatePath("release-20200202", "release-20200503", new UpdateRule[]
 			{
 				new RemoveYesNo(),
@@ -53,9 +45,8 @@ namespace OpenRA.Mods.Common.UpdateRules
 				new RenameRallyPointPath(),
 			}),
 
-			new UpdatePath("release-20200503", new UpdateRule[]
+			new UpdatePath("release-20200503", "release-20210321", new UpdateRule[]
 			{
-				// Bleed only changes here
 				new AddPipDecorationTraits(),
 				new ModernizeDecorationTraits(),
 				new RenameHealCrateAction(),
@@ -79,6 +70,33 @@ namespace OpenRA.Mods.Common.UpdateRules
 				new RenameCircleContrast(),
 				new SplitDamagedByTerrain(),
 				new RemoveLaysTerrain(),
+			}),
+
+			new UpdatePath("release-20210321", new UpdateRule[]
+			{
+				// Bleed only changes here
+				new RenameMPTraits(),
+				new RemovePlayerHighlightPalette(),
+				new ReplaceWithColoredOverlayPalette(),
+				new RemoveRenderSpritesScale(),
+				new RemovePlaceBuildingPalette(),
+				new ReplaceShadowPalette(),
+				new ReplaceResourceValueModifiers(),
+				new RemoveResourceType(),
+				new ConvertBoundsToWDist(),
+				new RemoveSmokeTrailWhenDamaged(),
+				new ReplaceCrateSecondsWithTicks(),
+				new UseMillisecondsForSounds(),
+				new UnhardcodeSquadManager(),
+				new RenameSupportPowerDescription(),
+				new AttackBomberFacingTolerance(),
+				new AttackFrontalFacingTolerance(),
+				new RenameCloakTypes(),
+				new SplitNukePowerMissileImage(),
+				new ReplaceSequenceEmbeddedPalette(),
+				new UnhardcodeBaseBuilderBotModule(),
+				new UnhardcodeVeteranProductionIconOverlay(),
+				new RenameContrailProperties(),
 			})
 		};
 

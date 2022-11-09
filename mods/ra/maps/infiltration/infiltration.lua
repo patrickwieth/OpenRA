@@ -1,12 +1,11 @@
 --[[
-   Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+   Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
    This file is part of OpenRA, which is free software. It is made
    available to you under the terms of the GNU General Public License
    as published by the Free Software Foundation, either version 3 of
    the License, or (at your option) any later version. For more
    information, see COPYING.
 ]]
-Difficulty = Map.LobbyOption("difficulty")
 
 if Difficulty == "hard" then
 	TimerTicks = DateTime.Minutes(25)
@@ -82,8 +81,8 @@ reinforcementsHaveArrived = false
 LabInfiltrated = function()
 	Utils.Do(humans, function(player)
 		if player then
-			secureLab = player.AddPrimaryObjective("Secure the laboratory by eliminating its guards.")
-			destroyBase = player.AddPrimaryObjective("Destroy the remaining Soviet presence.")
+			secureLab = player.AddObjective("Secure the laboratory by eliminating its guards.")
+			destroyBase = player.AddObjective("Destroy the remaining Soviet presence.")
 			player.MarkCompletedObjective(infiltrateLab)
 			Trigger.ClearAll(Lab)
 			Trigger.AfterDelay(0, function()
@@ -173,7 +172,7 @@ end
 InsertSpies = function()
 	Utils.Do(humans, function(player)
 		if player then
-			infiltrateLab = player.AddPrimaryObjective("Get our spy into the laboratory undetected.")
+			infiltrateLab = player.AddObjective("Get our spy into the laboratory undetected.")
 		end
 	end)
 
@@ -214,10 +213,6 @@ InsertSpies = function()
 	if player2 then
 		ChangeOwnerOnAddedToWorld(spies[2], player2)
 	end
-end
-
-IdleHunt = function(unit)
-	Trigger.OnIdle(unit, unit.Hunt)
 end
 
 StopHunt = function(unit)
@@ -358,26 +353,7 @@ WorldLoaded = function()
 
 	Utils.Do(humans, function(player)
 		if player and player.IsLocalPlayer then
-			Trigger.OnObjectiveAdded(player, function(p, id)
-				local objectiveType = string.lower(p.GetObjectiveType(id))
-				Media.DisplayMessage(p.GetObjectiveDescription(id), "New " .. objectiveType .. " objective")
-			end)
-
-			Trigger.OnObjectiveCompleted(player, function(p, id)
-				Media.DisplayMessage(p.GetObjectiveDescription(id), "Objective completed")
-			end)
-
-			Trigger.OnObjectiveFailed(player, function(p, id)
-				Media.DisplayMessage(p.GetObjectiveDescription(id), "Objective failed")
-			end)
-
-			Trigger.OnPlayerWon(player, function()
-				Media.PlaySpeechNotification(player, "MissionAccomplished")
-			end)
-
-			Trigger.OnPlayerLost(player, function()
-				Media.PlaySpeechNotification(player, "MissionFailed")
-			end)
+			InitObjectives(player)
 		end
 	end)
 

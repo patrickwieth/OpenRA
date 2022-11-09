@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -12,7 +12,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Mods.Common.Activities;
-using OpenRA.Orders;
+using OpenRA.Mods.Common.Orders;
 using OpenRA.Primitives;
 using OpenRA.Traits;
 
@@ -37,6 +37,18 @@ namespace OpenRA.Mods.Common.Traits
 
 		[Desc("Can the actor be ordered to move in to shroud?")]
 		public readonly bool MoveIntoShroud = true;
+
+		[CursorReference]
+		public readonly string AttackMoveCursor = "attackmove";
+
+		[CursorReference]
+		public readonly string AttackMoveBlockedCursor = "attackmove-blocked";
+
+		[CursorReference]
+		public readonly string AssaultMoveCursor = "assaultmove";
+
+		[CursorReference]
+		public readonly string AssaultMoveBlockedCursor = "assaultmove-blocked";
 
 		public override object Create(ActorInitializer init) { return new AttackMove(init.Self, this); }
 	}
@@ -137,16 +149,31 @@ namespace OpenRA.Mods.Common.Traits
 
 		public override string GetCursor(World world, CPos cell, int2 worldPixel, MouseInput mi)
 		{
-			var prefix = mi.Modifiers.HasModifier(Modifiers.Ctrl) ? "assaultmove" : "attackmove";
+			var isAssaultMove = mi.Modifiers.HasModifier(Modifiers.Ctrl);
 
-			if (world.Map.Contains(cell) && subjects.Any())
+			var subject = subjects.FirstOrDefault();
+			if (subject.Actor != null)
 			{
-				var explored = subjects.First().Actor.Owner.Shroud.IsExplored(cell);
-				var blocked = !explored && subjects.Any(a => !a.Trait.Info.MoveIntoShroud);
-				return blocked ? prefix + "-blocked" : prefix;
+				var info = subject.Trait.Info;
+				if (world.Map.Contains(cell))
+				{
+					var explored = subject.Actor.Owner.Shroud.IsExplored(cell);
+					var cannotMove = subjects.FirstOrDefault(a => !a.Trait.Info.MoveIntoShroud).Trait;
+					var blocked = !explored && cannotMove != null;
+
+					if (isAssaultMove)
+						return blocked ? cannotMove.Info.AssaultMoveBlockedCursor : info.AssaultMoveCursor;
+
+					return blocked ? cannotMove.Info.AttackMoveBlockedCursor : info.AttackMoveCursor;
+				}
+
+				if (isAssaultMove)
+					return info.AssaultMoveBlockedCursor;
+				else
+					return info.AttackMoveBlockedCursor;
 			}
 
-			return prefix + "-blocked";
+			return null;
 		}
 
 		public override bool InputOverridesSelection(World world, int2 xy, MouseInput mi)
@@ -155,6 +182,6 @@ namespace OpenRA.Mods.Common.Traits
 			return true;
 		}
 
-		public override bool ClearSelectionOnLeftClick { get { return false; } }
+		public override bool ClearSelectionOnLeftClick => false;
 	}
 }

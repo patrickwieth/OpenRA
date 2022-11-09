@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -17,7 +17,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 {
 	public class ResizeMapCommand : IUtilityCommand
 	{
-		string IUtilityCommand.Name { get { return "--resize-map"; } }
+		string IUtilityCommand.Name => "--resize-map";
 
 		int width;
 		int height;
@@ -63,7 +63,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 
 				if (!map.Contains(locationInit.Value))
 				{
-					Console.WriteLine("Removing actor {0} located at {1} due being outside of the new map boundaries.".F(actor.Type, locationInit.Value));
+					Console.WriteLine($"Removing actor {actor.Type} located at {locationInit.Value} due being outside of the new map boundaries.");
 					forRemoval.Add(kv);
 				}
 			}

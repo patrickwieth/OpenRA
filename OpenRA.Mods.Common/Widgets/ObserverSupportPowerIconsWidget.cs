@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -26,7 +26,6 @@ namespace OpenRA.Mods.Common.Widgets
 		readonly World world;
 		readonly WorldRenderer worldRenderer;
 		readonly Dictionary<string, Animation> clocks;
-		readonly int timestep;
 
 		readonly Lazy<TooltipContainerWidget> tooltipContainer;
 
@@ -55,11 +54,6 @@ namespace OpenRA.Mods.Common.Widgets
 			this.worldRenderer = worldRenderer;
 			clocks = new Dictionary<string, Animation>();
 
-			// Timers in replays should be synced to the effective game time, not the playback time.
-			timestep = world.Timestep;
-			if (world.IsReplay)
-				timestep = world.WorldActor.Trait<MapOptions>().GameSpeed.Timestep;
-
 			tooltipContainer = Exts.Lazy(() =>
 				Ui.Root.Get<TooltipContainerWidget>(TooltipContainer));
 		}
@@ -72,7 +66,6 @@ namespace OpenRA.Mods.Common.Widgets
 			world = other.world;
 			worldRenderer = other.worldRenderer;
 			clocks = other.clocks;
-			timestep = other.timestep;
 
 			IconWidth = other.IconWidth;
 			IconHeight = other.IconHeight;
@@ -113,7 +106,7 @@ namespace OpenRA.Mods.Common.Widgets
 					clocks.Add(power.a.Key, new Animation(world, ClockAnimation));
 			}
 
-			Bounds.Width = powers.Count() * (IconWidth + IconSpacing);
+			Bounds.Width = powers.Count * (IconWidth + IconSpacing);
 
 			Game.Renderer.EnableAntialiasingFilter();
 
@@ -131,14 +124,14 @@ namespace OpenRA.Mods.Common.Widgets
 				supportPowerIconsIcons.Add(new SupportPowersWidget.SupportPowerIcon { Power = item, Pos = location });
 				supportPowerIconsBounds.Add(new Rectangle((int)location.X, (int)location.Y, (int)iconSize.X, (int)iconSize.Y));
 
-				WidgetUtils.DrawSHPCentered(icon.Image, location + 0.5f * iconSize, worldRenderer.Palette(item.Info.IconPalette), 0.5f);
+				WidgetUtils.DrawSpriteCentered(icon.Image, worldRenderer.Palette(item.Info.IconPalette), location + 0.5f * iconSize, 0.5f);
 
 				var clock = clocks[power.a.Key];
 				clock.PlayFetchIndex(ClockSequence,
 					() => item.TotalTicks == 0 ? 0 : ((item.TotalTicks - item.RemainingTicks)
 						* (clock.CurrentSequence.Length - 1) / item.TotalTicks));
 				clock.Tick();
-				WidgetUtils.DrawSHPCentered(clock.Image, location + 0.5f * iconSize, worldRenderer.Palette(ClockPalette), 0.5f);
+				WidgetUtils.DrawSpriteCentered(clock.Image, worldRenderer.Palette(ClockPalette), location + 0.5f * iconSize, 0.5f);
 			}
 
 			Game.Renderer.DisableAntialiasingFilter();
@@ -146,7 +139,7 @@ namespace OpenRA.Mods.Common.Widgets
 			var tiny = Game.Renderer.Fonts["Tiny"];
 			foreach (var icon in supportPowerIconsIcons)
 			{
-				var text = GetOverlayForItem(icon.Power, timestep);
+				var text = GetOverlayForItem(icon.Power, world.Timestep);
 				tiny.DrawTextWithContrast(text,
 					icon.Pos + new float2(16, 12) - new float2(tiny.Measure(text).X / 2, 0),
 					Color.White, Color.Black, 1);

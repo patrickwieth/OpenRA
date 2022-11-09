@@ -1,6 +1,6 @@
 ﻿#region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -10,27 +10,22 @@
 #endregion
 
 using System.Collections.Generic;
-using System.Linq;
 
 namespace OpenRA.Mods.Common.UpdateRules.Rules
 {
 	public class MoveClassicFacingFudge : UpdateRule
 	{
-		public override string Name { get { return "UseClassicFacingFudge functionality was moved to Cnc-specific sequence/coordinate code."; } }
-		public override string Description
-		{
-			get
-			{
-				return "UseClassicFacingFudge has been replaced with ClassicFacingBodyOrientation trait\n" +
-						"and Classic* variants of *Sequence loaders respectively, both located in Mods.Cnc.";
-			}
-		}
+		public override string Name => "UseClassicFacingFudge functionality was moved to Cnc-specific sequence/coordinate code.";
+
+		public override string Description =>
+			"UseClassicFacingFudge has been replaced with ClassicFacingBodyOrientation trait\n" +
+			"and Classic* variants of *Sequence loaders respectively, both located in Mods.Cnc.";
 
 		readonly List<string> locations = new List<string>();
 
 		public override IEnumerable<string> AfterUpdate(ModData modData)
 		{
-			if (locations.Any())
+			if (locations.Count > 0)
 				yield return "UseClassicFacingFudge property on BodyOrientation was replaced with ClassicFacingBodyOrientation trait.\n" +
 							 "UseClassicFacingFudge for sequences was renamed to UseClassicFacings and moved to\n" +
 							 "Classic(TileSetSpecific)SpriteSequence loaders in Mods.Cnc.\n" +
@@ -43,8 +38,6 @@ namespace OpenRA.Mods.Common.UpdateRules.Rules
 
 		public override IEnumerable<string> UpdateActorNode(ModData modData, MiniYamlNode actorNode)
 		{
-			var modId = modData.Manifest.Id;
-
 			foreach (var bo in actorNode.ChildrenMatching("BodyOrientation"))
 			{
 				var usesClassicFacings = false;
@@ -58,7 +51,7 @@ namespace OpenRA.Mods.Common.UpdateRules.Rules
 				if (usesClassicFacings)
 				{
 					bo.RenameKey("ClassicFacingBodyOrientation");
-					locations.Add("{0} ({1})".F(actorNode.Key, actorNode.Location.Filename));
+					locations.Add($"{actorNode.Key} ({actorNode.Location.Filename})");
 				}
 			}
 

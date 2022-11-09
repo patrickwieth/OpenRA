@@ -1,6 +1,6 @@
 ﻿#region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -10,22 +10,17 @@
 #endregion
 
 using System.Collections.Generic;
-using System.Linq;
 
 namespace OpenRA.Mods.Common.UpdateRules.Rules
 {
 	public class ConvertSupportPowerRangesToFootprint : UpdateRule
 	{
-		public override string Name { get { return "Convert support power ranges to footprint"; } }
-		public override string Description
-		{
-			get
-			{
-				return "ChronoshiftPower and GrantExternalConditionPower use footprint areas\n" +
-				"instead of a circular range and they no longer have a fallback default area value.\n" +
-				"The old Range values will be converted to footprints as part of this update.";
-			}
-		}
+		public override string Name => "Convert support power ranges to footprint";
+
+		public override string Description =>
+			"ChronoshiftPower and GrantExternalConditionPower use footprint areas\n" +
+			"instead of a circular range and they no longer have a fallback default area value.\n" +
+			"The old Range values will be converted to footprints as part of this update.";
 
 		static readonly string[] AffectedTraits = new string[] { "GrantExternalConditionPower", "ChronoshiftPower" };
 
@@ -46,7 +41,7 @@ namespace OpenRA.Mods.Common.UpdateRules.Rules
 			{
 				range = rangeNode.NodeValue<int>();
 				if (range > 3)
-					locations.Add("{0} ({1})".F(rangeNode.Key, rangeNode.Location.Filename));
+					locations.Add($"{rangeNode.Key} ({rangeNode.Location.Filename})");
 
 				power.RemoveNode(rangeNode);
 			}
@@ -91,7 +86,7 @@ namespace OpenRA.Mods.Common.UpdateRules.Rules
 
 		public override IEnumerable<string> AfterUpdate(ModData modData)
 		{
-			if (locations.Any())
+			if (locations.Count > 0)
 				yield return "Please check and adjust the new auto-generated dimensions.\n" +
 					UpdateUtils.FormatMessageList(locations);
 

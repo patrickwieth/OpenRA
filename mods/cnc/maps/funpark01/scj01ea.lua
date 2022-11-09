@@ -1,5 +1,5 @@
 --[[
-   Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+   Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
    This file is part of OpenRA, which is free software. It is made
    available to you under the terms of the GNU General Public License
    as published by the Free Software Foundation, either version 3 of
@@ -13,8 +13,8 @@ BikeReinforcments = { "bike" }
 
 WorldLoaded = function()
 	Nod = Player.GetPlayer("Nod")
-	dinosaur = Player.GetPlayer("Dinosaur")
-	civilian = Player.GetPlayer("Civilian")
+	Dinosaur = Player.GetPlayer("Dinosaur")
+	Civilian = Player.GetPlayer("Civilian")
 
 	InvestigateObj = Nod.AddObjective("Investigate the nearby village for reports of\nstrange activity.")
 
@@ -22,9 +22,9 @@ WorldLoaded = function()
 
 	ReachVillageObj = Nod.AddObjective("Reach the village.")
 
-	Trigger.OnPlayerDiscovered(civilian, function(_, discoverer)
+	Trigger.OnPlayerDiscovered(Civilian, function(_, discoverer)
 		if discoverer == Nod and not Nod.IsObjectiveCompleted(ReachVillageObj) then
-			if not dinosaur.HasNoRequiredUnits() then
+			if not Dinosaur.HasNoRequiredUnits() then
 				KillDinos = Nod.AddObjective("Kill all creatures in the area.")
 			end
 
@@ -46,7 +46,7 @@ WorldLoaded = function()
 	Trigger.AfterDelay(DateTime.Seconds(3), function() InitialUnitsArrived = true end)
 
 	Trigger.AfterDelay(DateTime.Seconds(15), function() ReinforceWithLandingCraft(Nod, BazookaReinforcments, SeaEntryB.Location, BeachReinforceB.Location, BeachReinforceB.Location) end)
-	if Map.LobbyOption("difficulty") == "easy" then
+	if Difficulty == "easy" then
 		Trigger.AfterDelay(DateTime.Seconds(25), function() ReinforceWithLandingCraft(Nod, BikeReinforcments, SeaEntryA.Location, BeachReinforceA.Location, BeachReinforceA.Location) end)
 		Trigger.AfterDelay(DateTime.Seconds(30), function() ReinforceWithLandingCraft(Nod, BikeReinforcments, SeaEntryB.Location, BeachReinforceB.Location, BeachReinforceB.Location) end)
 	end
@@ -60,7 +60,7 @@ Tick = function()
 			Nod.MarkFailedObjective(InvestigateObj)
 		end
 
-		if dinosaur.HasNoRequiredUnits() then
+		if Dinosaur.HasNoRequiredUnits() then
 			if KillDinos then Nod.MarkCompletedObjective(KillDinos) end
 			Nod.MarkCompletedObjective(InvestigateObj)
 		end

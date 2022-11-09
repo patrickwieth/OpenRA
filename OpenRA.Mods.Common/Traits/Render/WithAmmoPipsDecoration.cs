@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -9,6 +9,7 @@
  */
 #endregion
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Graphics;
@@ -38,6 +39,9 @@ namespace OpenRA.Mods.Common.Traits.Render
 		[PaletteReference]
 		public readonly string Palette = "chrome";
 
+		[Desc("Name(s) of AmmoPool(s) that use this decoration. Leave empty to include all pools.")]
+		public readonly string[] AmmoPools = Array.Empty<string>();
+
 		public override object Create(ActorInitializer init) { return new WithAmmoPipsDecoration(init.Self, this); }
 	}
 
@@ -49,7 +53,13 @@ namespace OpenRA.Mods.Common.Traits.Render
 		public WithAmmoPipsDecoration(Actor self, WithAmmoPipsDecorationInfo info)
 			: base(self, info)
 		{
-			ammo = self.TraitsImplementing<AmmoPool>().ToArray();
+			if (info.AmmoPools.Length > 0)
+				ammo = self.TraitsImplementing<AmmoPool>()
+					.Where(ap => info.AmmoPools.Contains(ap.Info.Name))
+					.ToArray();
+			else
+				ammo = self.TraitsImplementing<AmmoPool>().ToArray();
+
 			pips = new Animation(self.World, info.Image);
 		}
 
@@ -74,7 +84,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 			for (var i = 0; i < pipCount; i++)
 			{
 				pips.PlayRepeating(currentAmmo * pipCount > i * totalAmmo ? Info.FullSequence : Info.EmptySequence);
-				yield return new UISpriteRenderable(pips.Image, self.CenterPosition, screenPos, 0, palette, 1f);
+				yield return new UISpriteRenderable(pips.Image, self.CenterPosition, screenPos, 0, palette);
 
 				screenPos += pipStride;
 			}

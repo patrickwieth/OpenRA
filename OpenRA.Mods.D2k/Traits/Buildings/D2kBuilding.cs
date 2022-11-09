@@ -1,6 +1,6 @@
 ﻿#region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -9,7 +9,10 @@
  */
 #endregion
 
+using System;
+using System.IO;
 using System.Linq;
+using OpenRA.Mods.Common.Terrain;
 using OpenRA.Mods.Common.Traits;
 using OpenRA.Primitives;
 using OpenRA.Traits;
@@ -25,7 +28,7 @@ namespace OpenRA.Mods.D2k.Traits.Buildings
 		public readonly int DamageInterval = 100;
 
 		[Desc("Apply the damage using these damagetypes.")]
-		public readonly BitSet<DamageType> DamageTypes = default(BitSet<DamageType>);
+		public readonly BitSet<DamageType> DamageTypes = default;
 
 		[Desc("Terrain types where the actor will take damage.")]
 		public readonly string[] DamageTerrainTypes = { "Rock" };
@@ -41,7 +44,7 @@ namespace OpenRA.Mods.D2k.Traits.Buildings
 		public readonly ushort ConcreteTemplate = 88;
 
 		[Desc("List of required prerequisites to place a terrain template.")]
-		public readonly string[] ConcretePrerequisites = { };
+		public readonly string[] ConcretePrerequisites = Array.Empty<string>();
 
 		public override object Create(ActorInitializer init) { return new D2kBuilding(init, this); }
 	}
@@ -77,10 +80,14 @@ namespace OpenRA.Mods.D2k.Traits.Buildings
 		{
 			base.AddedToWorld(self);
 
-			if (layer != null && (!info.ConcretePrerequisites.Any() || techTree == null || techTree.HasPrerequisites(info.ConcretePrerequisites)))
+			if (layer != null && (info.ConcretePrerequisites.Length == 0 || techTree == null || techTree.HasPrerequisites(info.ConcretePrerequisites)))
 			{
 				var map = self.World.Map;
-				var template = map.Rules.TileSet.Templates[info.ConcreteTemplate];
+
+				if (!(self.World.Map.Rules.TerrainInfo is ITemplatedTerrainInfo terrainInfo))
+					throw new InvalidDataException("D2kBuilding requires a template-based tileset.");
+
+				var template = terrainInfo.Templates[info.ConcreteTemplate];
 				if (template.PickAny)
 				{
 					// Fill the footprint with random variants
@@ -91,7 +98,7 @@ namespace OpenRA.Mods.D2k.Traits.Buildings
 							continue;
 
 						// Don't place under other buildings (or their bib)
-						if (bi.GetBuildingAt(c) != self)
+						if (bi.GetBuildingsAt(c).Any(a => a != self))
 							continue;
 
 						var index = Game.CosmeticRandom.Next(template.TilesCount);
@@ -109,7 +116,7 @@ namespace OpenRA.Mods.D2k.Traits.Buildings
 							continue;
 
 						// Don't place under other buildings (or their bib)
-						if (bi.GetBuildingAt(c) != self)
+						if (bi.GetBuildingsAt(c).Any(a => a != self))
 							continue;
 
 						layer.AddTile(c, new TerrainTile(template.Id, (byte)i));
@@ -136,10 +143,10 @@ namespace OpenRA.Mods.D2k.Traits.Buildings
 			if (!info.StartOnThreshold)
 				return;
 
-			// Start with maximum damage applied
+			// Start with maximum damage applied, ignoring modifiers like player handicap
 			var delta = health.HP - damageThreshold;
 			if (delta > 0)
-				self.InflictDamage(self.World.WorldActor, new Damage(delta, info.DamageTypes));
+				health.InflictDamage(self, self.World.WorldActor, new Damage(delta, info.DamageTypes), true);
 		}
 
 		void ITick.Tick(Actor self)
@@ -147,7 +154,8 @@ namespace OpenRA.Mods.D2k.Traits.Buildings
 			if (totalTiles == safeTiles || health.HP <= damageThreshold || --damageTicks > 0)
 				return;
 
-			self.InflictDamage(self.World.WorldActor, new Damage(info.Damage, info.DamageTypes));
+			// Terrain damage should not change with modifiers like player handicap
+			health.InflictDamage(self, self.World.WorldActor, new Damage(info.Damage, info.DamageTypes), true);
 			damageTicks = info.DamageInterval;
 		}
 	}

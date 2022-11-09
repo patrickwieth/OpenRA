@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -10,6 +10,7 @@
 #endregion
 
 using System.Linq;
+using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
 {
@@ -18,15 +19,20 @@ namespace OpenRA.Mods.Common.Traits
 	{
 		public readonly WDist Height = WDist.FromCells(1);
 
-		public override object Create(ActorInitializer init) { return new BlocksProjectiles(init.Self, this); }
+		[Desc("Determines what projectiles to block based on their allegiance to the wall owner.")]
+		public readonly PlayerRelationship ValidRelationships = PlayerRelationship.Ally | PlayerRelationship.Neutral | PlayerRelationship.Enemy;
+
+		public override object Create(ActorInitializer init) { return new BlocksProjectiles(this); }
 	}
 
 	public class BlocksProjectiles : ConditionalTrait<BlocksProjectilesInfo>, IBlocksProjectiles
 	{
-		public BlocksProjectiles(Actor self, BlocksProjectilesInfo info)
+		public BlocksProjectiles(BlocksProjectilesInfo info)
 			: base(info) { }
 
-		WDist IBlocksProjectiles.BlockingHeight { get { return Info.Height; } }
+		WDist IBlocksProjectiles.BlockingHeight => Info.Height;
+
+		PlayerRelationship IBlocksProjectiles.ValidRelationships { get { return Info.ValidRelationships; } }
 
 		public static bool AnyBlockingActorAt(World world, WPos pos)
 		{
@@ -38,7 +44,7 @@ namespace OpenRA.Mods.Common.Traits
 					.Any(Exts.IsTraitEnabled));
 		}
 
-		public static bool AnyBlockingActorsBetween(World world, WPos start, WPos end, WDist width, out WPos hit)
+		public static bool AnyBlockingActorsBetween(World world, Player owner, WPos start, WPos end, WDist width, out WPos hit)
 		{
 			var actors = world.FindBlockingActorsOnLine(start, end, width);
 			var length = (end - start).Length;
@@ -46,12 +52,13 @@ namespace OpenRA.Mods.Common.Traits
 			foreach (var a in actors)
 			{
 				var blockers = a.TraitsImplementing<IBlocksProjectiles>()
-					.Where(Exts.IsTraitEnabled).ToList();
+					.Where(Exts.IsTraitEnabled).Where(t => t.ValidRelationships.HasRelationship(a.Owner.RelationshipWith(owner)))
+					.ToList();
 
-				if (!blockers.Any())
+				if (blockers.Count == 0)
 					continue;
 
-				var hitPos = WorldExtensions.MinimumPointLineProjection(start, end, a.CenterPosition);
+				var hitPos = start.MinimumPointLineProjection(end, a.CenterPosition);
 				var dat = world.Map.DistanceAboveTerrain(hitPos);
 				if ((hitPos - start).Length < length && blockers.Any(t => t.BlockingHeight > dat))
 				{

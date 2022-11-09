@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -18,9 +18,20 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 	[ChromeLogicArgsHotkeys("MuteAudioKey")]
 	public class MuteHotkeyLogic : SingleHotkeyBaseLogic
 	{
+		readonly ModData modData;
+
+		[TranslationReference]
+		static readonly string AudioMuted = "audio-muted";
+
+		[TranslationReference]
+		static readonly string AudioUnmuted = "audio-unmuted";
+
 		[ObjectCreator.UseCtor]
 		public MuteHotkeyLogic(Widget widget, ModData modData, Dictionary<string, MiniYaml> logicArgs)
-			: base(widget, modData, "MuteAudioKey", "GLOBAL_KEYHANDLER", logicArgs) { }
+			: base(widget, modData, "MuteAudioKey", "GLOBAL_KEYHANDLER", logicArgs)
+		{
+			this.modData = modData;
+		}
 
 		protected override bool OnHotkeyActivated(KeyInput e)
 		{
@@ -29,12 +40,12 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			if (Game.Settings.Sound.Mute)
 			{
 				Game.Sound.MuteAudio();
-				Game.AddSystemLine("Audio muted");
+				TextNotificationsManager.AddFeedbackLine(modData.Translation.GetString(AudioMuted));
 			}
 			else
 			{
 				Game.Sound.UnmuteAudio();
-				Game.AddSystemLine("Audio unmuted");
+				TextNotificationsManager.AddFeedbackLine(modData.Translation.GetString(AudioUnmuted));
 			}
 
 			return true;

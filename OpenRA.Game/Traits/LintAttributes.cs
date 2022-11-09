@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -13,6 +13,7 @@ using System;
 
 namespace OpenRA.Traits
 {
+	[Flags]
 	public enum LintDictionaryReference
 	{
 		None = 0,
@@ -36,7 +37,7 @@ namespace OpenRA.Traits
 		public ActorReferenceAttribute(Type requiredTrait = null,
 			LintDictionaryReference dictionaryReference = LintDictionaryReference.None)
 		{
-			RequiredTraits = requiredTrait != null ? new[] { requiredTrait } : new Type[0];
+			RequiredTraits = requiredTrait != null ? new[] { requiredTrait } : Array.Empty<Type>();
 			DictionaryReference = dictionaryReference;
 		}
 	}
@@ -59,6 +60,17 @@ namespace OpenRA.Traits
 			ImageReference = imageReference;
 			Prefix = prefix;
 			AllowNullImage = allowNullImage;
+			DictionaryReference = dictionaryReference;
+		}
+	}
+
+	[AttributeUsage(AttributeTargets.Field)]
+	public sealed class CursorReferenceAttribute : Attribute
+	{
+		public readonly LintDictionaryReference DictionaryReference;
+
+		public CursorReferenceAttribute(LintDictionaryReference dictionaryReference = LintDictionaryReference.None)
+		{
 			DictionaryReference = dictionaryReference;
 		}
 	}
@@ -92,6 +104,16 @@ namespace OpenRA.Traits
 		public PaletteReferenceAttribute(string playerPaletteReferenceSwitch)
 		{
 			PlayerPaletteReferenceSwitch = playerPaletteReferenceSwitch;
+		}
+	}
+
+	[AttributeUsage(AttributeTargets.Class)]
+	public sealed class TraitLocationAttribute : Attribute
+	{
+		public readonly SystemActors SystemActors;
+		public TraitLocationAttribute(SystemActors systemActors)
+		{
+			SystemActors = systemActors;
 		}
 	}
 }

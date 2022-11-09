@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -14,8 +14,10 @@ using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.Traits;
+using OpenRA.Orders;
 using OpenRA.Primitives;
 using OpenRA.Traits;
+using OpenRA.Widgets;
 
 namespace OpenRA.Mods.Common.Orders
 {
@@ -38,6 +40,8 @@ namespace OpenRA.Mods.Common.Orders
 
 	public class PlaceBuildingOrderGenerator : IOrderGenerator
 	{
+		readonly string worldDefaultCursor = ChromeMetrics.Get<string>("WorldDefaultCursor");
+
 		class VariantWrapper
 		{
 			public readonly ActorInfo ActorInfo;
@@ -82,19 +86,19 @@ namespace OpenRA.Mods.Common.Orders
 		}
 
 		readonly World world;
-		readonly ProductionQueue queue;
+		protected readonly ProductionQueue Queue;
 		readonly PlaceBuildingInfo placeBuildingInfo;
-		readonly ResourceLayer resourceLayer;
+		readonly IResourceLayer resourceLayer;
 		readonly Viewport viewport;
 		readonly VariantWrapper[] variants;
 		int variant;
 
 		public PlaceBuildingOrderGenerator(ProductionQueue queue, string name, WorldRenderer worldRenderer)
 		{
-			this.queue = queue;
+			Queue = queue;
 			world = queue.Actor.World;
 			placeBuildingInfo = queue.Actor.Owner.PlayerActor.Info.TraitInfo<PlaceBuildingInfo>();
-			resourceLayer = world.WorldActor.TraitOrDefault<ResourceLayer>();
+			resourceLayer = world.WorldActor.TraitOrDefault<IResourceLayer>();
 			viewport = worldRenderer.Viewport;
 
 			// Clear selection if using Left-Click Orders
@@ -132,9 +136,10 @@ namespace OpenRA.Mods.Common.Orders
 				var ret = InnerOrder(world, cell, mi).ToArray();
 
 				// If there was a successful placement order
-				if (ret.Any(o => o.OrderString == "PlaceBuilding"
-				                 || o.OrderString == "LineBuild"
-				                 || o.OrderString == "PlacePlug"))
+				if (ret.Any(o =>
+						o.OrderString == "PlaceBuilding"
+						|| o.OrderString == "LineBuild"
+						|| o.OrderString == "PlacePlug"))
 					world.CancelInputMode();
 
 				return ret;
@@ -155,14 +160,15 @@ namespace OpenRA.Mods.Common.Orders
 			}
 		}
 
-		IEnumerable<Order> InnerOrder(World world, CPos cell, MouseInput mi)
+		protected virtual IEnumerable<Order> InnerOrder(World world, CPos cell, MouseInput mi)
 		{
 			if (world.Paused)
 				yield break;
 
-			var owner = queue.Actor.Owner;
+			var owner = Queue.Actor.Owner;
 			var ai = variants[variant].ActorInfo;
 			var bi = variants[variant].BuildingInfo;
+			var notification = Queue.Info.CannotPlaceAudio ?? placeBuildingInfo.CannotPlaceNotification;
 
 			if (mi.Button == MouseButton.Left)
 			{
@@ -175,7 +181,9 @@ namespace OpenRA.Mods.Common.Orders
 					orderType = "PlacePlug";
 					if (!AcceptsPlug(topLeft, plugInfo))
 					{
-						Game.Sound.PlayNotification(world.Map.Rules, owner, "Speech", placeBuildingInfo.CannotPlaceNotification, owner.Faction.InternalName);
+						Game.Sound.PlayNotification(world.Map.Rules, owner, "Speech", notification, owner.Faction.InternalName);
+						TextNotificationsManager.AddTransientLine(placeBuildingInfo.CannotPlaceTextNotification, owner);
+
 						yield break;
 					}
 				}
@@ -187,7 +195,9 @@ namespace OpenRA.Mods.Common.Orders
 						foreach (var order in ClearBlockersOrders(world, topLeft))
 							yield return order;
 
-						Game.Sound.PlayNotification(world.Map.Rules, owner, "Speech", placeBuildingInfo.CannotPlaceNotification, owner.Faction.InternalName);
+						Game.Sound.PlayNotification(world.Map.Rules, owner, "Speech", notification, owner.Faction.InternalName);
+						TextNotificationsManager.AddTransientLine(placeBuildingInfo.CannotPlaceTextNotification, owner);
+
 						yield break;
 					}
 
@@ -201,7 +211,7 @@ namespace OpenRA.Mods.Common.Orders
 					TargetString = variants[0].ActorInfo.Name,
 
 					// Actor ID to associate with placement may be quite large, so it gets its own uint
-					ExtraData = queue.Actor.ActorID,
+					ExtraData = Queue.Actor.ActorID,
 
 					// Actor variant will always be small enough to safely pack in a CPos
 					ExtraLocation = new CPos(variant, 0),
@@ -213,7 +223,7 @@ namespace OpenRA.Mods.Common.Orders
 
 		void IOrderGenerator.Tick(World world)
 		{
-			if (queue.AllQueued().All(i => !i.Done || i.Item != variants[0].ActorInfo.Name))
+			if (Queue.AllQueued().All(i => !i.Done || i.Item != variants[0].ActorInfo.Name))
 				world.CancelInputMode();
 
 			foreach (var v in variants)
@@ -226,7 +236,7 @@ namespace OpenRA.Mods.Common.Orders
 		{
 			foreach (var a in world.ActorMap.GetActorsAt(cell))
 				foreach (var p in a.TraitsImplementing<Pluggable>())
-					if (p.AcceptsPlug(a, plug.Type))
+					if (p.AcceptsPlug(plug.Type))
 						return true;
 
 			return false;
@@ -243,7 +253,7 @@ namespace OpenRA.Mods.Common.Orders
 			var plugInfo = activeVariant.PlugInfo;
 			var lineBuildInfo = activeVariant.LineBuildInfo;
 			var preview = activeVariant.Preview;
-			var owner = queue.Actor.Owner;
+			var owner = Queue.Actor.Owner;
 
 			if (plugInfo != null)
 			{
@@ -260,10 +270,18 @@ namespace OpenRA.Mods.Common.Orders
 
 				if (!Game.GetModifierKeys().HasModifier(Modifiers.Shift))
 				{
+					var segmentInfo = actorInfo;
+					var segmentBuildingInfo = buildingInfo;
+					if (!string.IsNullOrEmpty(lineBuildInfo.SegmentType))
+					{
+						segmentInfo = world.Map.Rules.Actors[lineBuildInfo.SegmentType];
+						segmentBuildingInfo = segmentInfo.TraitInfo<BuildingInfo>();
+					}
+
 					foreach (var t in BuildingUtils.GetLineBuildCells(world, topLeft, actorInfo, buildingInfo, owner))
 					{
-						var lineBuildable = world.IsCellBuildable(t.Cell, actorInfo, buildingInfo);
-						var lineCloseEnough = buildingInfo.IsCloseEnoughToBase(world, world.LocalPlayer, actorInfo, t.Cell);
+						var lineBuildable = world.IsCellBuildable(t.Cell, segmentInfo, segmentBuildingInfo);
+						var lineCloseEnough = segmentBuildingInfo.IsCloseEnoughToBase(world, world.LocalPlayer, segmentInfo, t.Cell);
 						footprint.Add(t.Cell, MakeCellType(lineBuildable && lineCloseEnough, true));
 					}
 				}
@@ -276,19 +294,22 @@ namespace OpenRA.Mods.Common.Orders
 			{
 				var isCloseEnough = buildingInfo.IsCloseEnoughToBase(world, world.LocalPlayer, actorInfo, topLeft);
 				foreach (var t in buildingInfo.Tiles(topLeft))
-					footprint.Add(t, MakeCellType(isCloseEnough && world.IsCellBuildable(t, actorInfo, buildingInfo) && (resourceLayer == null || resourceLayer.GetResourceType(t) == null)));
+					footprint.Add(t, MakeCellType(isCloseEnough && world.IsCellBuildable(t, actorInfo, buildingInfo) && (resourceLayer == null || resourceLayer.GetResource(t).Type == null)));
 			}
 
-			return preview != null ? preview.Render(wr, topLeft, footprint) : Enumerable.Empty<IRenderable>();
+			return preview?.Render(wr, topLeft, footprint) ?? Enumerable.Empty<IRenderable>();
 		}
 
 		IEnumerable<IRenderable> IOrderGenerator.RenderAnnotations(WorldRenderer wr, World world)
 		{
 			var preview = variants[variant].Preview;
-			return preview != null ? preview.RenderAnnotations(wr, TopLeft) : Enumerable.Empty<IRenderable>();
+			return preview?.RenderAnnotations(wr, TopLeft) ?? Enumerable.Empty<IRenderable>();
 		}
 
-		string IOrderGenerator.GetCursor(World world, CPos cell, int2 worldPixel, MouseInput mi) { return "default"; }
+		public virtual string GetCursor(World world, CPos cell, int2 worldPixel, MouseInput mi)
+		{
+			return worldDefaultCursor;
+		}
 
 		bool IOrderGenerator.HandleKeyPress(KeyInput e)
 		{
@@ -312,15 +333,14 @@ namespace OpenRA.Mods.Common.Orders
 				.Where(world.Map.Contains).ToList();
 
 			var blockers = allTiles.SelectMany(world.ActorMap.GetActorsAt)
-				.Where(a => a.Owner == queue.Actor.Owner && a.IsIdle)
+				.Where(a => a.Owner == Queue.Actor.Owner && a.IsIdle)
 				.Select(a => new TraitPair<IMove>(a, a.TraitOrDefault<IMove>()))
 				.Where(x => x.Trait != null);
 
 			foreach (var blocker in blockers)
 			{
 				CPos moveCell;
-				var mobile = blocker.Trait as Mobile;
-				if (mobile != null)
+				if (blocker.Trait is Mobile mobile)
 				{
 					var availableCells = adjacentTiles.Where(t => mobile.CanEnterCell(t)).ToList();
 					if (availableCells.Count == 0)

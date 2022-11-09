@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -14,6 +14,7 @@ using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.Widgets;
+using OpenRA.Orders;
 using OpenRA.Traits;
 using OpenRA.Widgets;
 
@@ -38,7 +39,7 @@ namespace OpenRA.Mods.Common.Traits
 		bool activated;
 		bool dragStarted;
 		Arrow currentArrow;
-		MouseAttachmentWidget mouseAttachment;
+		readonly MouseAttachmentWidget mouseAttachment;
 
 		public SelectDirectionalTarget(World world, string order, SupportPowerManager manager, string cursor,
 			string directionArrowAnimation, string directionArrowPalette)
@@ -112,10 +113,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		void IOrderGenerator.SelectionChanged(World world, IEnumerable<Actor> selected) { }
 
-		bool IsOutsideDragZone
-		{
-			get { return dragStarted && dragDirection.Length > MinDragThreshold; }
-		}
+		bool IsOutsideDragZone => dragStarted && dragDirection.Length > MinDragThreshold;
 
 		IEnumerable<IRenderable> IOrderGenerator.Render(WorldRenderer wr, World world) { yield break; }
 
@@ -180,9 +178,9 @@ namespace OpenRA.Mods.Common.Traits
 
 		class Arrow
 		{
-			public Sprite Sprite { get; private set; }
-			public double EndAngle { get; private set; }
-			public WAngle Direction { get; private set; }
+			public Sprite Sprite { get; }
+			public double EndAngle { get; }
+			public WAngle Direction { get; }
 
 			public Arrow(Sprite sprite, double endAngle, WAngle direction)
 			{

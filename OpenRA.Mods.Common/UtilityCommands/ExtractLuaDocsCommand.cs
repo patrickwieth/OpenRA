@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -12,13 +12,12 @@
 using System;
 using System.Linq;
 using OpenRA.Scripting;
-using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.UtilityCommands
 {
 	class ExtractLuaDocsCommand : IUtilityCommand
 	{
-		string IUtilityCommand.Name { get { return "--lua-docs"; } }
+		string IUtilityCommand.Name => "--lua-docs";
 
 		bool IUtilityCommand.ValidateArguments(string[] args)
 		{
@@ -70,62 +69,68 @@ namespace OpenRA.Mods.Common.UtilityCommands
 				var name = t.GetCustomAttributes<ScriptGlobalAttribute>(true).First().Name;
 				var members = ScriptMemberWrapper.WrappableMembers(t);
 
+				Console.WriteLine();
 				Console.WriteLine("### " + name);
-				Console.WriteLine("<table>");
+				Console.WriteLine();
+				Console.WriteLine("| Function | Description |");
+				Console.WriteLine("|---------:|-------------|");
 				foreach (var m in members.OrderBy(m => m.Name))
 				{
-					var desc = m.HasAttribute<DescAttribute>() ? m.GetCustomAttributes<DescAttribute>(true).First().Lines.JoinWith("\n") : "";
-					Console.WriteLine("<tr><td align=\"right\" width=\"50%\"><strong>{0}</strong></td><td>{1}</td></tr>".F(m.LuaDocString(), desc));
+					var desc = m.HasAttribute<DescAttribute>() ? m.GetCustomAttributes<DescAttribute>(true).First().Lines.JoinWith("<br />") : "";
+					Console.WriteLine($"| **{m.LuaDocString()}** | {desc} |");
 				}
-
-				Console.WriteLine("</table>");
 			}
 
-			Console.WriteLine("### Actor Properties / Commands");
+			Console.WriteLine();
+
+			Console.WriteLine("## Actor Properties / Commands");
 
 			var actorCategories = utility.ModData.ObjectCreator.GetTypesImplementing<ScriptActorProperties>().SelectMany(cg =>
 			{
 				var catAttr = cg.GetCustomAttributes<ScriptPropertyGroupAttribute>(false).FirstOrDefault();
 				var category = catAttr != null ? catAttr.Category : "Unsorted";
 
-				var required = RequiredTraitNames(cg);
+				var required = ScriptMemberWrapper.RequiredTraitNames(cg);
 				return ScriptMemberWrapper.WrappableMembers(cg).Select(mi => (category, mi, required));
 			}).GroupBy(g => g.Item1).OrderBy(g => g.Key);
 
 			foreach (var kv in actorCategories)
 			{
+				Console.WriteLine();
 				Console.WriteLine("### " + kv.Key);
-				Console.WriteLine("<table>");
+				Console.WriteLine();
+				Console.WriteLine("| Function | Description |");
+				Console.WriteLine("|---------:|-------------|");
 
 				foreach (var property in kv.OrderBy(p => p.Item2.Name))
 				{
 					var mi = property.Item2;
 					var required = property.Item3;
 					var hasDesc = mi.HasAttribute<DescAttribute>();
-					var hasRequires = required.Any();
+					var hasRequires = required.Length > 0;
 					var isActivity = mi.HasAttribute<ScriptActorPropertyActivityAttribute>();
 
-					Console.WriteLine("<tr><td width=\"50%\" align=\"right\"><strong>{0}</strong>", mi.LuaDocString());
+					Console.Write($"| **{mi.LuaDocString()}**");
 
 					if (isActivity)
-						Console.WriteLine("<br /><em>Queued Activity</em>");
+						Console.Write("<br />*Queued Activity*");
 
-					Console.WriteLine("</td><td>");
+					Console.Write(" | ");
 
 					if (hasDesc)
-						Console.WriteLine(mi.GetCustomAttributes<DescAttribute>(false).First().Lines.JoinWith("\n"));
+						Console.Write(mi.GetCustomAttributes<DescAttribute>(false).First().Lines.JoinWith("<br />"));
 
 					if (hasDesc && hasRequires)
-						Console.WriteLine("<br />");
+						Console.Write("<br />");
 
 					if (hasRequires)
-						Console.WriteLine("<b>Requires {1}:</b> {0}".F(required.JoinWith(", "), required.Length == 1 ? "Trait" : "Traits"));
+						Console.Write($"**Requires {(required.Length == 1 ? "Trait" : "Traits")}:** {required.JoinWith(", ")}");
 
-					Console.WriteLine("</td></tr>");
+					Console.WriteLine(" |");
 				}
-
-				Console.WriteLine("</table>");
 			}
+
+			Console.WriteLine();
 
 			Console.WriteLine("## Player Properties / Commands");
 
@@ -134,58 +139,47 @@ namespace OpenRA.Mods.Common.UtilityCommands
 				var catAttr = cg.GetCustomAttributes<ScriptPropertyGroupAttribute>(false).FirstOrDefault();
 				var category = catAttr != null ? catAttr.Category : "Unsorted";
 
-				var required = RequiredTraitNames(cg);
+				var required = ScriptMemberWrapper.RequiredTraitNames(cg);
 				return ScriptMemberWrapper.WrappableMembers(cg).Select(mi => (category, mi, required));
 			}).GroupBy(g => g.Item1).OrderBy(g => g.Key);
 
 			foreach (var kv in playerCategories)
 			{
-				Console.WriteLine("<table align=\"center\" width=\"1024\"><tr><th colspan=\"2\" width=\"1024\">{0}</th></tr>", kv.Key);
+				Console.WriteLine();
+				Console.WriteLine("### " + kv.Key);
+				Console.WriteLine();
+				Console.WriteLine("| Function | Description |");
+				Console.WriteLine("|---------:|-------------|");
 
 				foreach (var property in kv.OrderBy(p => p.Item2.Name))
 				{
 					var mi = property.Item2;
 					var required = property.Item3;
 					var hasDesc = mi.HasAttribute<DescAttribute>();
-					var hasRequires = required.Any();
+					var hasRequires = required.Length > 0;
 					var isActivity = mi.HasAttribute<ScriptActorPropertyActivityAttribute>();
 
-					Console.WriteLine("<tr><td width=\"50%\" align=\"right\"><strong>{0}</strong>", mi.LuaDocString());
+					Console.Write($"| **{mi.LuaDocString()}**");
 
 					if (isActivity)
-						Console.WriteLine("<br /><em>Queued Activity</em>");
+						Console.Write("<br />*Queued Activity*");
 
-					Console.WriteLine("</td><td>");
+					Console.Write(" | ");
 
 					if (hasDesc)
-						Console.WriteLine(mi.GetCustomAttributes<DescAttribute>(false).First().Lines.JoinWith("\n"));
+						Console.Write(mi.GetCustomAttributes<DescAttribute>(false).First().Lines.JoinWith("<br />"));
 
 					if (hasDesc && hasRequires)
-						Console.WriteLine("<br />");
+						Console.Write("<br />");
 
 					if (hasRequires)
-						Console.WriteLine("<b>Requires {1}:</b> {0}".F(required.JoinWith(", "), required.Length == 1 ? "Trait" : "Traits"));
+						Console.Write($"**Requires {(required.Length == 1 ? "Trait" : "Traits")}:** {required.JoinWith(", ")}");
 
-					Console.WriteLine("</td></tr>");
+					Console.WriteLine(" |");
 				}
 
-				Console.WriteLine("</table>");
+				Console.WriteLine();
 			}
-		}
-
-		static string[] RequiredTraitNames(Type t)
-		{
-			// Returns the inner types of all the Requires<T> interfaces on this type
-			var outer = t.GetInterfaces()
-				.Where(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(Requires<>));
-
-			// Get the inner types
-			var inner = outer.SelectMany(i => i.GetGenericArguments()).ToArray();
-
-			// Remove the namespace and the trailing "Info"
-			return inner.Select(i => i.Name.Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries).LastOrDefault())
-				.Select(s => s.EndsWith("Info") ? s.Remove(s.Length - 4, 4) : s)
-				.ToArray();
 		}
 	}
 }

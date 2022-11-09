@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -17,6 +17,7 @@ namespace OpenRA.Mods.Common.Traits
 {
 	[Desc("Sets a custom terrain type for cells that are obscured by back-facing cliffs.",
 		"This trait replicates the default CliffBackImpassability=2 behaviour from the TS/RA2 rules.ini.")]
+	[TraitLocation(SystemActors.World | SystemActors.EditorWorld)]
 	class CliffBackImpassabilityLayerInfo : TraitInfo
 	{
 		public readonly string TerrainType = "Impassable";
@@ -35,7 +36,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		public void WorldLoaded(World w, WorldRenderer wr)
 		{
-			var tileType = w.Map.Rules.TileSet.GetTerrainIndex(info.TerrainType);
+			var tileType = w.Map.Rules.TerrainInfo.GetTerrainIndex(info.TerrainType);
 
 			// Units are allowed behind cliffs *only* if they are part of a tunnel portal
 			var tunnelPortals = w.WorldActor.Info.TraitInfos<TerrainTunnelInfo>()

@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -34,9 +34,19 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Require the force-move modifier to display the move cursor.")]
 		public readonly bool RequiresForceMove = false;
 
+		[CursorReference]
+		[Desc("Cursor to display when a move order can be issued at target location.")]
+		public readonly string Cursor = "move";
+
+		[CursorReference]
+		[Desc("Cursor to display when a move order cannot be issued at target location.")]
+		public readonly string BlockedCursor = "move-blocked";
+
+		[CursorReference]
 		[Desc("Cursor to display when able to land at target building.")]
 		public readonly string EnterCursor = "enter";
 
+		[CursorReference]
 		[Desc("Cursor to display when unable to land at target building.")]
 		public readonly string EnterBlockedCursor = "enter-blocked";
 
@@ -77,7 +87,7 @@ namespace OpenRA.Mods.Common.Traits
 						AircraftCanEnter,
 						target => Reservable.IsAvailableFor(target, self));
 
-					yield return new AircraftMoveOrderTargeter(self, this);
+					yield return new AircraftMoveOrderTargeter(this);
 				}
 			}
 		}
@@ -134,7 +144,7 @@ namespace OpenRA.Mods.Common.Traits
 				return;
 
 			// Manually manage the inner activity queue
-			var activity = currentTransform ?? transform.GetTransformActivity(self);
+			var activity = currentTransform ?? transform.GetTransformActivity();
 			if (!order.Queued)
 				activity.NextActivity?.Cancel(self);
 
@@ -181,30 +191,29 @@ namespace OpenRA.Mods.Common.Traits
 				return modifiers.HasModifier(TargetModifiers.ForceMove);
 			}
 
-			public AircraftMoveOrderTargeter(Actor self, TransformsIntoAircraft aircraft)
+			public AircraftMoveOrderTargeter(TransformsIntoAircraft aircraft)
 			{
 				this.aircraft = aircraft;
 			}
 
-			public string OrderID { get { return "Move"; } }
-			public int OrderPriority { get { return 4; } }
+			public string OrderID => "Move";
+			public int OrderPriority => 4;
 			public bool IsQueued { get; protected set; }
 
-			public bool CanTarget(Actor self, in Target target, List<Actor> othersAtTarget, ref TargetModifiers modifiers, ref string cursor)
+			public bool CanTarget(Actor self, in Target target, ref TargetModifiers modifiers, ref string cursor)
 			{
 				if (target.Type != TargetType.Terrain || (aircraft.Info.RequiresForceMove && !modifiers.HasModifier(TargetModifiers.ForceMove)))
 					return false;
 
 				var location = self.World.Map.CellContaining(target.CenterPosition);
 				var explored = self.Owner.Shroud.IsExplored(location);
-				cursor = self.World.Map.Contains(location) ?
-					self.World.Map.GetTerrainInfo(location).CustomCursor ?? "move" : "move-blocked";
+				cursor = self.World.Map.Contains(location) ? aircraft.Info.Cursor : aircraft.Info.BlockedCursor;
 
 				IsQueued = modifiers.HasModifier(TargetModifiers.ForceQueue);
 
 				if (!(self.CurrentActivity is Transform || aircraft.transforms.Any(t => !t.IsTraitDisabled && !t.IsTraitPaused))
 					|| (!explored && !aircraft.Info.MoveIntoShroud))
-					cursor = "move-blocked";
+					cursor = aircraft.Info.BlockedCursor;
 
 				return true;
 			}

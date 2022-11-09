@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -30,7 +30,7 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("What is the fine scan radius of this power?", "For doing a detailed scan in the general target area.", "Minimum is 1")]
 		public readonly int FineScanRadius = 2;
 
-		[FieldLoader.LoadUsing("LoadConsiderations")]
+		[FieldLoader.LoadUsing(nameof(LoadConsiderations))]
 		[Desc("The decisions associated with this power")]
 		public readonly List<Consideration> Considerations = new List<Consideration>();
 
@@ -78,9 +78,9 @@ namespace OpenRA.Mods.Common.Traits
 				var br = world.Map.CellContaining(pos + delta);
 				var checkFrozen = firedBy.FrozenActorLayer.FrozenActorsInRegion(new CellRegion(world.Map.Grid.Type, tl, br));
 
-				// IsValid check filters out Frozen Actors that have not initizialized their Owner
+				// IsValid check filters out Frozen Actors that have not initialized their Owner
 				foreach (var scrutinized in checkFrozen)
-					answer += consideration.GetAttractiveness(scrutinized, firedBy.RelationshipWith(scrutinized.Owner), firedBy);
+					answer += consideration.GetAttractiveness(scrutinized, firedBy.RelationshipWith(scrutinized.Owner));
 			}
 
 			return answer;
@@ -105,7 +105,7 @@ namespace OpenRA.Mods.Common.Traits
 			foreach (var consideration in Considerations)
 				foreach (var scrutinized in frozenActors)
 					if (scrutinized.IsValid && scrutinized.Visible)
-						answer += consideration.GetAttractiveness(scrutinized, firedBy.RelationshipWith(scrutinized.Owner), firedBy);
+						answer += consideration.GetAttractiveness(scrutinized, firedBy.RelationshipWith(scrutinized.Owner));
 
 			return answer;
 		}
@@ -174,7 +174,7 @@ namespace OpenRA.Mods.Common.Traits
 				return 0;
 			}
 
-			public int GetAttractiveness(FrozenActor fa, PlayerRelationship stance, Player firedBy)
+			public int GetAttractiveness(FrozenActor fa, PlayerRelationship stance)
 			{
 				if (stance != Against)
 					return 0;

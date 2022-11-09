@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -11,7 +11,6 @@
 
 using System.Collections.Generic;
 using System.Linq;
-using OpenRA.Primitives;
 
 namespace OpenRA.Mods.Common.Traits
 {
@@ -54,8 +53,8 @@ namespace OpenRA.Mods.Common.Traits
 				}
 
 				// Replacements are enabled and the cell contained at least one (not ignored) actor or building bib
-				var building = world.WorldActor.Trait<BuildingInfluence>().GetBuildingAt(cell);
-				if (foundActors || building != null)
+				var foundBuilding = world.WorldActor.Trait<BuildingInfluence>().AnyBuildingAt(cell);
+				if (foundActors || foundBuilding)
 				{
 					// The cell contains at least one actor, and none were replaceable
 					if (acceptedReplacements == null)
@@ -73,8 +72,7 @@ namespace OpenRA.Mods.Common.Traits
 			{
 				// HACK: To preserve legacy behaviour, AllowInvalidPlacement should display red placement indicators
 				// if (and only if) there is a building or bib in the cell
-				var building = world.WorldActor.Trait<BuildingInfluence>().GetBuildingAt(cell);
-				if (building != null)
+				if (world.WorldActor.Trait<BuildingInfluence>().AnyBuildingAt(cell))
 					return false;
 			}
 
@@ -87,9 +85,9 @@ namespace OpenRA.Mods.Common.Traits
 			if (bi.AllowInvalidPlacement)
 				return true;
 
-			var res = world.WorldActor.TraitOrDefault<ResourceLayer>();
+			var resourceLayer = world.WorldActor.TraitOrDefault<IResourceLayer>();
 			return bi.Tiles(cell).All(t => world.Map.Contains(t) &&
-				(bi.AllowPlacementOnResources || res == null || res.GetResourceType(t) == null) &&
+				(bi.AllowPlacementOnResources || resourceLayer == null || resourceLayer.GetResource(t).Type == null) &&
 					world.IsCellBuildable(t, ai, bi, toIgnore));
 		}
 
@@ -114,9 +112,17 @@ namespace OpenRA.Mods.Common.Traits
 					if (dirs[d] != 0)
 						continue;
 
+					var segmentInfo = ai;
+					var segmentBuildingInfo = bi;
+					if (!string.IsNullOrEmpty(lbi.SegmentType))
+					{
+						segmentInfo = world.Map.Rules.Actors[lbi.SegmentType];
+						segmentBuildingInfo = segmentInfo.TraitInfo<BuildingInfo>();
+					}
+
 					// Continue the search if the cell is empty or not visible
 					var c = topLeft + i * vecs[d];
-					if (world.IsCellBuildable(c, ai, bi) || !owner.Shroud.IsExplored(c))
+					if (world.IsCellBuildable(c, segmentInfo, segmentBuildingInfo) || !owner.Shroud.IsExplored(c))
 						continue;
 
 					// Cell contains an actor. Is it the type we want?

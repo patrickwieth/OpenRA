@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -40,7 +40,7 @@ namespace OpenRA.Mods.Cnc.Traits
 		public readonly int Damage = 1000;
 
 		[Desc("Apply the damage using these damagetypes.")]
-		public readonly BitSet<DamageType> DamageTypes = default(BitSet<DamageType>);
+		public readonly BitSet<DamageType> DamageTypes = default;
 
 		[ConsumedConditionReference]
 		[Desc("Boolean expression defining the condition under which to teleport a replacement actor instead of triggering the vortex.")]
@@ -73,7 +73,7 @@ namespace OpenRA.Mods.Cnc.Traits
 		int conditionToken = Actor.InvalidConditionToken;
 
 		Actor chronosphere;
-		int duration;
+		readonly int duration;
 		bool returnOriginal;
 		bool selling;
 
@@ -81,7 +81,7 @@ namespace OpenRA.Mods.Cnc.Traits
 		int returnTicks = 0;
 
 		[Sync]
-		CPos origin;
+		readonly CPos origin;
 
 		[Sync]
 		bool triggered;
@@ -158,7 +158,7 @@ namespace OpenRA.Mods.Cnc.Traits
 		void ReturnToOrigin()
 		{
 			var selected = self.World.Selection.Contains(self);
-			var controlgroup = self.World.Selection.GetControlGroupForActor(self);
+			var controlgroup = self.World.ControlGroups.GetControlGroupForActor(self);
 			var mobileInfo = self.World.Map.Rules.Actors[info.OriginalActor].TraitInfo<MobileInfo>();
 			var destination = ChooseBestDestinationCell(mobileInfo, origin);
 
@@ -190,7 +190,7 @@ namespace OpenRA.Mods.Cnc.Traits
 				self.World.Selection.Add(a);
 
 			if (controlgroup.HasValue)
-				self.World.Selection.AddToControlGroup(a, controlgroup.Value);
+				self.World.ControlGroups.AddToControlGroup(a, controlgroup.Value);
 
 			Game.Sound.Play(SoundType.World, info.ChronoshiftSound, self.World.Map.CenterOfCell(destination.Value));
 			self.Dispose();
@@ -254,6 +254,6 @@ namespace OpenRA.Mods.Cnc.Traits
 		}
 
 		Color ISelectionBar.GetColor() { return info.TimeBarColor; }
-		bool ISelectionBar.DisplayWhenEmpty { get { return false; } }
+		bool ISelectionBar.DisplayWhenEmpty => false;
 	}
 }

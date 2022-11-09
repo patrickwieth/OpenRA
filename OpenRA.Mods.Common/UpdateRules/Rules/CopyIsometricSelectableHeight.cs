@@ -1,6 +1,6 @@
 ﻿#region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -17,15 +17,11 @@ namespace OpenRA.Mods.Common.UpdateRules.Rules
 {
 	public class CopyIsometricSelectableHeight : UpdateRule
 	{
-		public override string Name { get { return "Copy IsometricSelectable.Height from art*.ini definitions."; } }
-		public override string Description
-		{
-			get
-			{
-				return "Reads building Height entries art.ini/artfs.ini/artmd.ini from the current working directory\n" +
-					"and adds IsometricSelectable definitions to matching actors.";
-			}
-		}
+		public override string Name => "Copy IsometricSelectable.Height from art*.ini definitions.";
+
+		public override string Description =>
+			"Reads building Height entries art.ini/artfs.ini/artmd.ini from the current working directory\n" +
+			"and adds IsometricSelectable definitions to matching actors.";
 
 		static readonly string[] SourceFiles = { "art.ini", "artfs.ini", "artmd.ini" };
 
@@ -67,8 +63,7 @@ namespace OpenRA.Mods.Common.UpdateRules.Rules
 			if (complete || actorNode.LastChildMatching("IsometricSelectable") != null)
 				yield break;
 
-			var height = 0;
-			if (!selectionHeight.TryGetValue(actorNode.Key.ToLowerInvariant(), out height))
+			if (!selectionHeight.TryGetValue(actorNode.Key.ToLowerInvariant(), out var height))
 				yield break;
 
 			// Don't redefine the default value

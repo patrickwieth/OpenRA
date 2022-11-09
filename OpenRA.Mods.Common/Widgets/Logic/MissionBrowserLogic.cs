@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -25,6 +25,24 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 	{
 		enum PlayingVideo { None, Info, Briefing, GameStart }
 
+		[TranslationReference]
+		static readonly string NoVideoTitle = "no-video-title";
+
+		[TranslationReference]
+		static readonly string NoVideoPrompt = "no-video-prompt";
+
+		[TranslationReference]
+		static readonly string NoVideoCancel = "no-video-cancel";
+
+		[TranslationReference]
+		static readonly string CantPlayTitle = "cant-play-title";
+
+		[TranslationReference]
+		static readonly string CantPlayPrompt = "cant-play-prompt";
+
+		[TranslationReference]
+		static readonly string CantPlayCancel = "cant-play-cancel";
+
 		readonly ModData modData;
 		readonly Action onStart;
 		readonly ScrollPanelWidget descriptionPanel;
@@ -36,7 +54,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		readonly ButtonWidget stopBriefingVideoButton;
 		readonly ButtonWidget startInfoVideoButton;
 		readonly ButtonWidget stopInfoVideoButton;
-		readonly VqaPlayerWidget videoPlayer;
+		readonly VideoPlayerWidget videoPlayer;
 		readonly BackgroundWidget fullscreenVideoPlayer;
 
 		readonly ScrollPanelWidget missionList;
@@ -50,7 +68,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		string gameSpeed;
 
 		[ObjectCreator.UseCtor]
-		public MissionBrowserLogic(Widget widget, ModData modData, World world, Action onStart, Action onExit)
+		public MissionBrowserLogic(Widget widget, ModData modData, World world, Action onStart, Action onExit, string initialMap)
 		{
 			this.modData = modData;
 			this.onStart = onStart;
@@ -71,7 +89,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			previewWidget.Preview = () => selectedMap;
 			previewWidget.IsVisible = () => playingVideo == PlayingVideo.None;
 
-			videoPlayer = widget.Get<VqaPlayerWidget>("MISSION_VIDEO");
+			videoPlayer = widget.Get<VideoPlayerWidget>("MISSION_VIDEO");
 			widget.Get("MISSION_BIN").IsVisible = () => playingVideo != PlayingVideo.None;
 			fullscreenVideoPlayer = Ui.LoadWidget<BackgroundWidget>("FULLSCREEN_PLAYER", Ui.Root, new WidgetArgs { { "world", world } });
 
@@ -97,7 +115,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			missionList.RemoveChildren();
 
 			// Add a group for each campaign
-			if (modData.Manifest.Missions.Any())
+			if (modData.Manifest.Missions.Length > 0)
 			{
 				var yaml = MiniYaml.Merge(modData.Manifest.Missions.Select(
 					m => MiniYaml.FromStream(modData.DefaultFileSystem.Open(m), m)));
@@ -119,7 +137,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 					if (previews.Any())
 					{
-						CreateMissionGroup(kv.Key, previews);
+						CreateMissionGroup(kv.Key, previews, onExit);
 						allPreviews.AddRange(previews);
 					}
 				}
@@ -131,26 +149,33 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 			if (loosePreviews.Any())
 			{
-				CreateMissionGroup("Missions", loosePreviews);
+				CreateMissionGroup("Missions", loosePreviews, onExit);
 				allPreviews.AddRange(loosePreviews);
 			}
 
-			if (allPreviews.Any())
-				SelectMap(allPreviews.First());
+			if (allPreviews.Count > 0)
+			{
+				var uid = modData.MapCache.GetUpdatedMap(initialMap);
+				var map = uid == null ? null : modData.MapCache[uid];
+				if (map != null && map.Visibility.HasFlag(MapVisibility.MissionSelector))
+				{
+					SelectMap(map);
+					missionList.ScrollToSelectedItem();
+				}
+				else
+					SelectMap(allPreviews.First());
+			}
 
-			// Preload map preview and rules to reduce jank
+			// Preload map preview to reduce jank
 			new Thread(() =>
 			{
 				foreach (var p in allPreviews)
-				{
 					p.GetMinimap();
-					p.PreloadRules();
-				}
 			}).Start();
 
 			var startButton = widget.Get<ButtonWidget>("STARTGAME_BUTTON");
-			startButton.OnClick = StartMissionClicked;
-			startButton.IsDisabled = () => selectedMap == null || selectedMap.InvalidCustomRules;
+			startButton.OnClick = () => StartMissionClicked(onExit);
+			startButton.IsDisabled = () => selectedMap == null;
 
 			widget.Get<ButtonWidget>("BACK_BUTTON").OnClick = () =>
 			{
@@ -182,9 +207,9 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			base.Dispose(disposing);
 		}
 
-		void CreateMissionGroup(string title, IEnumerable<MapPreview> previews)
+		void CreateMissionGroup(string title, IEnumerable<MapPreview> previews, Action onExit)
 		{
-			var header = ScrollItemWidget.Setup(headerTemplate, () => true, () => { });
+			var header = ScrollItemWidget.Setup(headerTemplate, () => false, () => { });
 			header.Get<LabelWidget>("LABEL").GetText = () => title;
 			missionList.AddChild(header);
 
@@ -193,7 +218,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				var item = ScrollItemWidget.Setup(template,
 					() => selectedMap != null && selectedMap.Uid == preview.Uid,
 					() => SelectMap(preview),
-					StartMissionClicked);
+					() => StartMissionClicked(onExit));
 
 				var label = item.Get<LabelWithTooltipWidget>("TITLE");
 				WidgetUtils.TruncateLabelToTooltip(label, preview.Title);
@@ -218,7 +243,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 			new Thread(() =>
 			{
-				var mapDifficulty = preview.Rules.Actors["world"].TraitInfos<ScriptLobbyDropdownInfo>()
+				var mapDifficulty = preview.WorldActorInfo.TraitInfos<ScriptLobbyDropdownInfo>()
 					.FirstOrDefault(sld => sld.ID == "difficulty");
 
 				if (mapDifficulty != null)
@@ -228,7 +253,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					difficultyDisabled = mapDifficulty.Locked;
 				}
 
-				var missionData = preview.Rules.Actors["world"].TraitInfoOrDefault<MissionDataInfo>();
+				var missionData = preview.WorldActorInfo.TraitInfoOrDefault<MissionDataInfo>();
 				if (missionData != null)
 				{
 					briefingVideo = missionData.BriefingVideo;
@@ -237,7 +262,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					infoVideo = missionData.BackgroundVideo;
 					infoVideoVisible = infoVideo != null;
 
-					var briefing = WidgetUtils.WrapText(missionData.Briefing.Replace("\\n", "\n"), description.Bounds.Width, descriptionFont);
+					var briefing = WidgetUtils.WrapText(missionData.Briefing?.Replace("\\n", "\n"), description.Bounds.Width, descriptionFont);
 					var height = descriptionFont.Measure(briefing).Y;
 					Game.RunAfterTick(() =>
 					{
@@ -289,12 +314,13 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				var speeds = modData.Manifest.Get<GameSpeeds>().Speeds;
 				gameSpeed = "default";
 
-				gameSpeedButton.GetText = () => speeds[gameSpeed].Name;
+				var speedText = new CachedTransform<string, string>(s => modData.Translation.GetString(speeds[s].Name));
+				gameSpeedButton.GetText = () => speedText.Update(gameSpeed);
 				gameSpeedButton.OnMouseDown = _ =>
 				{
 					var options = speeds.Select(s => new DropDownOption
 					{
-						Title = s.Value.Name,
+						Title = modData.Translation.GetString(s.Value.Name),
 						IsSelected = () => gameSpeed == s.Key,
 						OnClick = () => gameSpeed = s.Key
 					});
@@ -329,14 +355,14 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				Game.Sound.MusicVolume = cachedMusicVolume;
 		}
 
-		void PlayVideo(VqaPlayerWidget player, string video, PlayingVideo pv, Action onComplete = null)
+		void PlayVideo(VideoPlayerWidget player, string video, PlayingVideo pv, Action onComplete = null)
 		{
 			if (!modData.DefaultFileSystem.Exists(video))
 			{
-				ConfirmationDialogs.ButtonPrompt(
-					title: "Video not installed",
-					text: "The game videos can be installed from the\n\"Manage Content\" menu in the mod chooser.",
-					cancelText: "Back",
+				ConfirmationDialogs.ButtonPrompt(modData,
+					title: NoVideoTitle,
+					text: NoVideoPrompt,
+					cancelText: NoVideoCancel,
 					onCancel: () => { });
 			}
 			else
@@ -346,19 +372,32 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				playingVideo = pv;
 				player.Load(video);
 
-				// video playback runs asynchronously
-				player.PlayThen(() =>
+				if (player.Video == null)
 				{
 					StopVideo(player);
-					onComplete?.Invoke();
-				});
 
-				// Mute other distracting sounds
-				MuteSounds();
+					ConfirmationDialogs.ButtonPrompt(modData,
+						title: CantPlayTitle,
+						text: CantPlayPrompt,
+						cancelText: CantPlayCancel,
+						onCancel: () => { });
+				}
+				else
+				{
+					// video playback runs asynchronously
+					player.PlayThen(() =>
+					{
+						StopVideo(player);
+						onComplete?.Invoke();
+					});
+
+					// Mute other distracting sounds
+					MuteSounds();
+				}
 			}
 		}
 
-		void StopVideo(VqaPlayerWidget player)
+		void StopVideo(VideoPlayerWidget player)
 		{
 			if (playingVideo == PlayingVideo.None)
 				return;
@@ -368,24 +407,32 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			playingVideo = PlayingVideo.None;
 		}
 
-		void StartMissionClicked()
+		void StartMissionClicked(Action onExit)
 		{
 			StopVideo(videoPlayer);
 
-			if (selectedMap.InvalidCustomRules)
+			// If selected mission becomes unavailable, exit MissionBrowser to refresh
+			var map = modData.MapCache.GetUpdatedMap(selectedMap.Uid);
+			if (map == null)
+			{
+				Game.Disconnect();
+				Ui.CloseWindow();
+				onExit();
 				return;
+			}
 
+			selectedMap = modData.MapCache[map];
 			var orders = new List<Order>();
 			if (difficulty != null)
-				orders.Add(Order.Command("option difficulty {0}".F(difficulty)));
+				orders.Add(Order.Command($"option difficulty {difficulty}"));
 
-			orders.Add(Order.Command("option gamespeed {0}".F(gameSpeed)));
-			orders.Add(Order.Command("state {0}".F(Session.ClientState.Ready)));
+			orders.Add(Order.Command($"option gamespeed {gameSpeed}"));
+			orders.Add(Order.Command($"state {Session.ClientState.Ready}"));
 
-			var missionData = selectedMap.Rules.Actors["world"].TraitInfoOrDefault<MissionDataInfo>();
+			var missionData = selectedMap.WorldActorInfo.TraitInfoOrDefault<MissionDataInfo>();
 			if (missionData != null && missionData.StartVideo != null && modData.DefaultFileSystem.Exists(missionData.StartVideo))
 			{
-				var fsPlayer = fullscreenVideoPlayer.Get<VqaPlayerWidget>("PLAYER");
+				var fsPlayer = fullscreenVideoPlayer.Get<VideoPlayerWidget>("PLAYER");
 				fullscreenVideoPlayer.Visible = true;
 				PlayVideo(fsPlayer, missionData.StartVideo, PlayingVideo.GameStart, () =>
 				{

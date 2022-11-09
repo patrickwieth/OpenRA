@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -10,27 +10,28 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using OpenRA.FileFormats;
 
 namespace OpenRA.Network
 {
-	sealed class ReplayRecorder
+	public sealed class ReplayRecorder
 	{
+		// Arbitrary value.
+		const int CreateReplayFileMaxRetryCount = 128;
+
 		public ReplayMetadata Metadata;
 		BinaryWriter writer;
-		Func<string> chooseFilename;
+		readonly Func<string> chooseFilename;
 		MemoryStream preStartBuffer = new MemoryStream();
 
 		static bool IsGameStart(byte[] data)
 		{
-			if (data.Length > 4 && (data[4] == (byte)OrderType.Disconnect || data[4] == (byte)OrderType.SyncHash))
+			if (!OrderIO.TryParseOrderPacket(data, out var orders))
 				return false;
 
-			var frame = BitConverter.ToInt32(data, 0);
-			return frame == 0 && data.ToOrderList(null).Any(o => o.OrderString == "StartGame");
+			return orders.Frame == 0 && orders.Orders.GetOrders(null).Any(o => o.OrderString == "StartGame");
 		}
 
 		public ReplayRecorder(Func<string> chooseFilename)
@@ -53,13 +54,17 @@ namespace OpenRA.Network
 			var id = -1;
 			while (file == null)
 			{
-				var fullFilename = Path.Combine(dir, id < 0 ? "{0}.orarep".F(filename) : "{0}-{1}.orarep".F(filename, id));
+				var fullFilename = Path.Combine(dir, id < 0 ? $"{filename}.orarep" : $"{filename}-{id}.orarep");
 				id++;
 				try
 				{
 					file = File.Create(fullFilename);
 				}
-				catch (IOException) { }
+				catch (IOException ex)
+				{
+					if (id > CreateReplayFileMaxRetryCount)
+						throw new ArgumentException($"Error creating replay file \"{filename}.orarep\"", ex);
+				}
 			}
 
 			file.WriteArray(initialContent);

@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -17,6 +17,7 @@ using OpenRA.FileSystem;
 using OpenRA.Mods.Cnc.FileFormats;
 using OpenRA.Mods.Common;
 using OpenRA.Mods.Common.FileFormats;
+using OpenRA.Mods.Common.Terrain;
 using OpenRA.Mods.Common.Traits;
 using OpenRA.Primitives;
 using OpenRA.Traits;
@@ -25,12 +26,14 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 {
 	class ImportTSMapCommand : IUtilityCommand
 	{
-		string IUtilityCommand.Name { get { return "--import-ts-map"; } }
+		string IUtilityCommand.Name => "--import-ts-map";
 		bool IUtilityCommand.ValidateArguments(string[] args) { return args.Length >= 2; }
 
 		static readonly Dictionary<byte, string> OverlayToActor = new Dictionary<byte, string>()
 		{
+			{ 0x00, "gasand" },
 			{ 0x01, "gasand" },
+			{ 0x02, "gawall" },
 			{ 0x03, "gawall" },
 			{ 0x18, "bridge1" },
 			{ 0x19, "bridge2" },
@@ -265,7 +268,10 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 			var iniBounds = mapSection.GetValue("LocalSize", "0, 0, 0, 0").Split(',').Select(int.Parse).ToArray();
 			var size = new Size(iniSize[2], 2 * iniSize[3]);
 
-			var map = new Map(Game.ModData, utility.ModData.DefaultTileSets[tileset], size.Width, size.Height)
+			if (!utility.ModData.DefaultTerrainInfo.TryGetValue(tileset, out var terrainInfo))
+				throw new InvalidDataException($"Unknown tileset {tileset}");
+
+			var map = new Map(Game.ModData, terrainInfo, size.Width, size.Height)
 			{
 				Title = basic.GetValue("Name", Path.GetFileNameWithoutExtension(filename)),
 				Author = "Westwood Studios",
@@ -328,7 +334,7 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 
 		static void ReadTiles(Map map, IniFile file, int2 fullSize)
 		{
-			var tileset = Game.ModData.DefaultTileSets[map.Tileset];
+			var terrainInfo = (ITemplatedTerrainInfo)Game.ModData.DefaultTerrainInfo[map.Tileset];
 			var mapSection = file.GetSection("IsoMapPack5");
 
 			var data = Convert.FromBase64String(string.Concat(mapSection.Select(kvp => kvp.Value)));
@@ -355,7 +361,7 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 
 				if (map.Tiles.Contains(cell))
 				{
-					if (!tileset.Templates.ContainsKey(tilenum))
+					if (!terrainInfo.Templates.ContainsKey(tilenum))
 						tilenum = subtile = 0;
 
 					map.Tiles[cell] = new TerrainTile(tilenum, subtile);
@@ -424,9 +430,14 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 								continue;
 					}
 
+					// Fix position of vein hole actors
+					var location = cell;
+					if (actorType == "veinhole")
+						location -= new CVec(1, 1);
+
 					var ar = new ActorReference(actorType)
 					{
-						new LocationInit(cell),
+						new LocationInit(location),
 						new OwnerInit("Neutral")
 					};
 
@@ -446,6 +457,19 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 
 					map.ActorDefinitions.Add(new MiniYamlNode("Actor" + map.ActorDefinitions.Count, ar.Save()));
 
+					continue;
+				}
+
+				// TS maps encode the non-harvestable border tiles as overlay
+				// Only convert to vein resources if the overlay data specifies non-border frames
+				if (overlayType == 0x7E)
+				{
+					var frame = overlayDataPack[overlayIndex[cell]];
+					if (frame < 48 || frame > 60)
+						continue;
+
+					// Pick half or full density based on the frame
+					map.Resources[cell] = new ResourceTile(3, (byte)(frame == 52 ? 1 : 2));
 					continue;
 				}
 
@@ -476,9 +500,11 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 				var dy = rx + ry - fullSize.X - 1;
 				var cell = new MPos(dx / 2, dy).ToCPos(map);
 
-				var ar = new ActorReference((!int.TryParse(kv.Key, out var wpindex) || wpindex > 7) ? "waypoint" : "mpspawn");
-				ar.Add(new LocationInit(cell));
-				ar.Add(new OwnerInit("Neutral"));
+				var ar = new ActorReference((!int.TryParse(kv.Key, out var wpindex) || wpindex > 7) ? "waypoint" : "mpspawn")
+				{
+					new LocationInit(cell),
+					new OwnerInit("Neutral")
+				};
 
 				map.ActorDefinitions.Add(new MiniYamlNode("Actor" + map.ActorDefinitions.Count, ar.Save()));
 			}
@@ -497,12 +523,14 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 				var cell = new MPos(dx / 2, dy).ToCPos(map);
 				var name = kv.Value.ToLowerInvariant();
 
-				var ar = new ActorReference(name);
-				ar.Add(new LocationInit(cell));
-				ar.Add(new OwnerInit("Neutral"));
+				var ar = new ActorReference(name)
+				{
+					new LocationInit(cell),
+					new OwnerInit("Neutral")
+				};
 
 				if (!map.Rules.Actors.ContainsKey(name))
-					Console.WriteLine("Ignoring unknown actor type: `{0}`".F(name));
+					Console.WriteLine($"Ignoring unknown actor type: `{name}`");
 				else
 					map.ActorDefinitions.Add(new MiniYamlNode("Actor" + map.ActorDefinitions.Count, ar.Save()));
 			}
@@ -527,7 +555,7 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 				var health = short.Parse(entries[2]);
 				var rx = int.Parse(entries[3]);
 				var ry = int.Parse(entries[4]);
-				var facing = (byte)(224 - byte.Parse(entries[5]));
+				var facing = (byte)(224 - byte.Parse(entries[type == "Infantry" ? 7 : 5]));
 
 				var dx = rx - ry + fullSize.X - 1;
 				var dy = rx + ry - fullSize.X - 1;
@@ -539,6 +567,20 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 					new OwnerInit(CreepActors.Contains(entries[1]) ? "Creeps" : "Neutral")
 				};
 
+				if (type == "Infantry")
+				{
+					var subcell = 0;
+					switch (byte.Parse(entries[5]))
+					{
+						case 2: subcell = 3; break;
+						case 3: subcell = 1; break;
+						case 4: subcell = 2; break;
+					}
+
+					if (subcell != 0)
+						ar.Add(new SubCellInit((SubCell)subcell));
+				}
+
 				if (health != 256)
 					ar.Add(new HealthInit(100 * health / 256));
 
@@ -548,7 +590,7 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 					ar.Add(new DeployStateInit(DeployState.Deployed));
 
 				if (!map.Rules.Actors.ContainsKey(name))
-					Console.WriteLine("Ignoring unknown actor type: `{0}`".F(name));
+					Console.WriteLine($"Ignoring unknown actor type: `{name}`");
 				else
 					map.ActorDefinitions.Add(new MiniYamlNode("Actor" + map.ActorDefinitions.Count, ar.Save()));
 			}
@@ -575,12 +617,11 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 				if (lightingTypes.ContainsKey(kv.Key))
 					parsed[kv.Key] = FieldLoader.GetValue<float>(kv.Key, kv.Value);
 				else
-					Console.WriteLine("Ignoring unknown lighting type: `{0}`".F(kv.Key));
+					Console.WriteLine($"Ignoring unknown lighting type: `{kv.Key}`");
 			}
 
 			// Merge Ground into Ambient
-			float ground = 0;
-			if (parsed.TryGetValue("Ground", out ground))
+			if (parsed.TryGetValue("Ground", out var ground))
 			{
 				if (!parsed.ContainsKey("Ambient"))
 					parsed["Ambient"] = 1f;
@@ -593,7 +634,7 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 					lightingNodes.Add(new MiniYamlNode(node.Value, FieldSaver.FormatValue(val)));
 			}
 
-			if (lightingNodes.Any())
+			if (lightingNodes.Count > 0)
 			{
 				map.RuleDefinitions.Nodes.Add(new MiniYamlNode("^BaseWorld", new MiniYaml("", new List<MiniYamlNode>()
 				{
@@ -633,7 +674,7 @@ namespace OpenRA.Mods.Cnc.UtilityCommands
 					}
 				}
 
-				if (lightingNodes.Any())
+				if (lightingNodes.Count > 0)
 				{
 					map.RuleDefinitions.Nodes.Add(new MiniYamlNode(lamp, new MiniYaml("", new List<MiniYamlNode>()
 					{

@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -10,17 +10,43 @@
 #endregion
 
 using System;
+using System.Collections.Generic;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.Traits;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Commands
 {
+	[TraitLocation(SystemActors.World)]
 	[Desc("Enables visualization commands via the chatbox. Attach this to the world actor.")]
 	public class DebugVisualizationCommandsInfo : TraitInfo<DebugVisualizationCommands> { }
 
 	public class DebugVisualizationCommands : IChatCommand, IWorldLoaded
 	{
+		[TranslationReference]
+		static readonly string CombatGeometryDescription = "combat-geometry-description";
+
+		[TranslationReference]
+		static readonly string RenderGeometryDescription = "render-geometry-description";
+
+		[TranslationReference]
+		static readonly string ScreenMapOverlayDescription = "screen-map-overlay-description";
+
+		[TranslationReference]
+		static readonly string DepthBufferDescription = "depth-buffer-description";
+
+		[TranslationReference]
+		static readonly string ActorTagsOverlayDescripition = "actor-tags-overlay-description";
+
+		readonly IDictionary<string, (string Description, Action<DebugVisualizations, DeveloperMode> Handler)> commandHandlers = new Dictionary<string, (string Description, Action<DebugVisualizations, DeveloperMode> Handler)>
+		{
+			{ "combat-geometry", (CombatGeometryDescription, CombatGeometry) },
+			{ "render-geometry", (RenderGeometryDescription, RenderGeometry) },
+			{ "screen-map", (ScreenMapOverlayDescription, ScreenMap) },
+			{ "depth-buffer", (DepthBufferDescription, DepthBuffer) },
+			{ "actor-tags", (ActorTagsOverlayDescripition, ActorTags) },
+		};
+
 		DebugVisualizations debugVis;
 		DeveloperMode devMode;
 
@@ -38,44 +64,46 @@ namespace OpenRA.Mods.Common.Commands
 			var console = world.WorldActor.Trait<ChatCommands>();
 			var help = world.WorldActor.Trait<HelpCommand>();
 
-			Action<string, string> register = (name, helpText) =>
+			foreach (var command in commandHandlers)
 			{
-				console.RegisterCommand(name, this);
-				help.RegisterHelp(name, helpText);
-			};
+				if (command.Key == "depth-buffer" && !w.Map.Grid.EnableDepthBuffer)
+					continue;
 
-			register("showcombatgeometry", "toggles combat geometry overlay.");
-			register("showrendergeometry", "toggles render geometry overlay.");
-			register("showscreenmap", "toggles screen map overlay.");
-			register("showdepthbuffer", "toggles depth buffer overlay.");
-			register("showactortags", "toggles actor tags overlay.");
+				console.RegisterCommand(command.Key, this);
+				help.RegisterHelp(command.Key, command.Value.Description);
+			}
+		}
+
+		static void CombatGeometry(DebugVisualizations debugVis, DeveloperMode devMode)
+		{
+			debugVis.CombatGeometry ^= true;
+		}
+
+		static void RenderGeometry(DebugVisualizations debugVis, DeveloperMode devMode)
+		{
+			debugVis.RenderGeometry ^= true;
+		}
+
+		static void ScreenMap(DebugVisualizations debugVis, DeveloperMode devMode)
+		{
+			if (devMode == null || devMode.Enabled)
+				debugVis.ScreenMap ^= true;
+		}
+
+		static void DepthBuffer(DebugVisualizations debugVis, DeveloperMode devMode)
+		{
+			debugVis.DepthBuffer ^= true;
+		}
+
+		static void ActorTags(DebugVisualizations debugVis, DeveloperMode devMode)
+		{
+			debugVis.ActorTags ^= true;
 		}
 
 		public void InvokeCommand(string name, string arg)
 		{
-			switch (name)
-			{
-				case "showcombatgeometry":
-					debugVis.CombatGeometry ^= true;
-					break;
-
-				case "showrendergeometry":
-					debugVis.RenderGeometry ^= true;
-					break;
-
-				case "showscreenmap":
-					if (devMode == null || devMode.Enabled)
-						debugVis.ScreenMap ^= true;
-					break;
-
-				case "showdepthbuffer":
-					debugVis.DepthBuffer ^= true;
-					break;
-
-				case "showactortags":
-					debugVis.ActorTags ^= true;
-					break;
-			}
+			if (commandHandlers.TryGetValue(name, out var command))
+				command.Handler(debugVis, devMode);
 		}
 	}
 }

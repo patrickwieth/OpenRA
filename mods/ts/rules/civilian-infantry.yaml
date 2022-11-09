@@ -19,6 +19,7 @@ WEEDGUY:
 		ProneOffset: 128,0,-320
 	AttackFrontal:
 		Voice: Attack
+		FacingTolerance: 0
 	-SpawnActorOnDeath@FLAMEGUY:
 	WithDeathAnimation@fire:
 		DeathSequence: die-
@@ -48,7 +49,8 @@ UMAGON:
 		Weapon: Sniper
 	AttackFrontal:
 		Voice: Attack
-	WithInfantryBody:
+		FacingTolerance: 0
+	WithSplitAttackPaletteInfantryBody:
 		DefaultAttackSequence: attack
 	ProducibleWithLevel:
 		Prerequisites: barracks.upgraded
@@ -80,9 +82,10 @@ CHAMSPY:
 	Infiltrates:
 		Types: SpyInfiltrate
 		Notification: BuildingInfiltrated
-	-WithInfantryBody:
+		TextNotification: Building infiltrated.
+	-WithSplitAttackPaletteInfantryBody:
 	WithDisguisingInfantryBody:
-		IdleSequences: idle1,idle2
+		IdleSequences: idle1, idle2
 
 MUTANT:
 	Inherits: ^Soldier
@@ -106,7 +109,8 @@ MUTANT:
 		Weapon: Vulcan
 	AttackFrontal:
 		Voice: Attack
-	WithInfantryBody:
+		FacingTolerance: 0
+	WithSplitAttackPaletteInfantryBody:
 		DefaultAttackSequence: attack
 	ProducibleWithLevel:
 		Prerequisites: barracks.upgraded
@@ -133,7 +137,8 @@ MWMN:
 		Weapon: Vulcan
 	AttackFrontal:
 		Voice: Attack
-	WithInfantryBody:
+		FacingTolerance: 0
+	WithSplitAttackPaletteInfantryBody:
 		DefaultAttackSequence: attack
 	ProducibleWithLevel:
 		Prerequisites: barracks.upgraded
@@ -160,8 +165,12 @@ MUTANT3:
 		Weapon: Vulcan
 	AttackFrontal:
 		Voice: Attack
-	WithInfantryBody:
+		FacingTolerance: 0
+	WithSplitAttackPaletteInfantryBody:
 		DefaultAttackSequence: attack
+		Palette: player-nobright
+		IsPlayerPalette: true
+		SplitAttackPalette: bright
 	ProducibleWithLevel:
 		Prerequisites: barracks.upgraded
 
@@ -180,8 +189,6 @@ TRATOS:
 		Speed: 71
 	RevealsShroud:
 		Range: 4c0
-	WithInfantryBody:
-		DefaultAttackSequence:
 
 OXANNA:
 	Inherits: ^Soldier
@@ -197,7 +204,7 @@ OXANNA:
 		Speed: 56
 	RevealsShroud:
 		Range: 4c0
-	WithInfantryBody:
+	WithSplitAttackPaletteInfantryBody:
 		DefaultAttackSequence: attack
 
 SLAV:
@@ -214,18 +221,22 @@ SLAV:
 		Speed: 56
 	RevealsShroud:
 		Range: 4c0
-	WithInfantryBody:
+	WithSplitAttackPaletteInfantryBody:
 		DefaultAttackSequence: attack
 
 CIV1:
 	Inherits: ^CivilianInfantry
 	Inherits@AUTOTARGET: ^AutoTargetGroundAssaultMove
-	WithInfantryBody:
+	WithSplitAttackPaletteInfantryBody:
 		DefaultAttackSequence: attack
+		Palette: player-nomuzzle
+		IsPlayerPalette: true
+		SplitAttackPalette: muzzle
 	Armament:
 		Weapon: Pistola
 	AttackFrontal:
 		Voice: Attack
+		FacingTolerance: 0
 	Voiced:
 		VoiceSet: Civilian1
 
@@ -244,11 +255,15 @@ CTECH:
 	Inherits@AUTOTARGET: ^AutoTargetGroundAssaultMove
 	RenderSprites:
 		Image: civ3
-	WithInfantryBody:
+	WithSplitAttackPaletteInfantryBody:
 		DefaultAttackSequence: attack
+		Palette: player-nomuzzle
+		IsPlayerPalette: true
+		SplitAttackPalette: muzzle
 	Armament:
 		Weapon: Pistola
 	AttackFrontal:
 		Voice: Attack
+		FacingTolerance: 0
 	Voiced:
 		VoiceSet: CivilianTechnician

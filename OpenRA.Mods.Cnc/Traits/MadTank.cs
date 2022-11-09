@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -59,9 +59,17 @@ namespace OpenRA.Mods.Cnc.Traits
 		public WeaponInfo DetonationWeaponInfo { get; private set; }
 
 		[Desc("Types of damage that this trait causes to self while self-destructing. Leave empty for no damage types.")]
-		public readonly BitSet<DamageType> DamageTypes = default(BitSet<DamageType>);
+		public readonly BitSet<DamageType> DamageTypes = default;
 
-		public override object Create(ActorInitializer init) { return new MadTank(init.Self, this); }
+		[CursorReference]
+		[Desc("Cursor to display when targeting.")]
+		public readonly string AttackCursor = "attack";
+
+		[CursorReference]
+		[Desc("Cursor to display when able to set up the detonation sequence.")]
+		public readonly string DeployCursor = "deploy";
+
+		public override object Create(ActorInitializer init) { return new MadTank(this); }
 
 		public void RulesetLoaded(Ruleset rules, ActorInfo ai)
 		{
@@ -69,10 +77,10 @@ namespace OpenRA.Mods.Cnc.Traits
 			var detonationWeaponToLower = (DetonationWeapon ?? string.Empty).ToLowerInvariant();
 
 			if (!rules.Weapons.TryGetValue(thumpDamageWeaponToLower, out var thumpDamageWeapon))
-				throw new YamlException("Weapons Ruleset does not contain an entry '{0}'".F(thumpDamageWeaponToLower));
+				throw new YamlException($"Weapons Ruleset does not contain an entry '{thumpDamageWeaponToLower}'");
 
 			if (!rules.Weapons.TryGetValue(detonationWeaponToLower, out var detonationWeapon))
-				throw new YamlException("Weapons Ruleset does not contain an entry '{0}'".F(detonationWeaponToLower));
+				throw new YamlException($"Weapons Ruleset does not contain an entry '{detonationWeaponToLower}'");
 
 			ThumpDamageWeaponInfo = thumpDamageWeapon;
 			DetonationWeaponInfo = detonationWeapon;
@@ -83,7 +91,9 @@ namespace OpenRA.Mods.Cnc.Traits
 	{
 		readonly MadTankInfo info;
 
-		public MadTank(Actor self, MadTankInfo info)
+		bool initiated;
+
+		public MadTank(MadTankInfo info)
 		{
 			this.info = info;
 		}
@@ -92,8 +102,10 @@ namespace OpenRA.Mods.Cnc.Traits
 		{
 			get
 			{
-				yield return new TargetTypeOrderTargeter(new BitSet<TargetableType>("DetonateAttack"), "DetonateAttack", 5, "attack", true, false) { ForceAttack = false };
-				yield return new DeployOrderTargeter("Detonate", 5);
+				yield return new TargetTypeOrderTargeter(new BitSet<TargetableType>("DetonateAttack"), "DetonateAttack", 5, info.AttackCursor, true, false) { ForceAttack = false };
+
+				if (!initiated)
+					yield return new DeployOrderTargeter("Detonate", 5, () => info.DeployCursor);
 			}
 		}
 
@@ -137,11 +149,9 @@ namespace OpenRA.Mods.Cnc.Traits
 			readonly MadTank mad;
 			readonly IMove move;
 			readonly WithFacingSpriteBody wfsb;
-			readonly ScreenShaker screenShaker;
 			readonly bool assignTargetOnFirstRun;
 
 			int ticks;
-			bool initiated;
 			Target target;
 
 			public DetonationSequence(Actor self, MadTank mad)
@@ -158,7 +168,6 @@ namespace OpenRA.Mods.Cnc.Traits
 
 				move = self.Trait<IMove>();
 				wfsb = self.Trait<WithFacingSpriteBody>();
-				screenShaker = self.World.WorldActor.Trait<ScreenShaker>();
 			}
 
 			protected override void OnFirstRun(Actor self)
@@ -178,7 +187,7 @@ namespace OpenRA.Mods.Cnc.Traits
 					return false;
 				}
 
-				if (!initiated)
+				if (!mad.initiated)
 				{
 					// If the target has died while we were moving, we should abort detonation.
 					if (target.Type == TargetType.Invalid)
@@ -191,7 +200,7 @@ namespace OpenRA.Mods.Cnc.Traits
 						wfsb.PlayCustomAnimationRepeating(self, mad.info.ThumpSequence);
 
 					IsInterruptible = false;
-					initiated = true;
+					mad.initiated = true;
 				}
 
 				if (++ticks % mad.info.ThumpInterval == 0)
@@ -211,7 +220,7 @@ namespace OpenRA.Mods.Cnc.Traits
 
 			protected override void OnLastRun(Actor self)
 			{
-				if (!initiated)
+				if (!mad.initiated)
 					return;
 
 				Game.Sound.Play(SoundType.World, mad.info.DetonationSound, self.CenterPosition);

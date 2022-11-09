@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -30,12 +30,12 @@ namespace OpenRA.Mods.Cnc.SpriteLoaders
 
 		class ShpD2Frame : ISpriteFrame
 		{
-			public SpriteFrameType Type { get { return SpriteFrameType.Indexed; } }
-			public Size Size { get; private set; }
-			public Size FrameSize { get { return Size; } }
-			public float2 Offset { get { return float2.Zero; } }
+			public SpriteFrameType Type => SpriteFrameType.Indexed8;
+			public Size Size { get; }
+			public Size FrameSize => Size;
+			public float2 Offset => float2.Zero;
 			public byte[] Data { get; set; }
-			public bool DisableExportPadding { get { return false; } }
+			public bool DisableExportPadding => false;
 
 			public ShpD2Frame(Stream s)
 			{
@@ -155,7 +155,7 @@ namespace OpenRA.Mods.Cnc.SpriteLoaders
 			return frames;
 		}
 
-		public bool TryParseSprite(Stream s, out ISpriteFrame[] frames, out TypeDictionary metadata)
+		public bool TryParseSprite(Stream s, string filename, out ISpriteFrame[] frames, out TypeDictionary metadata)
 		{
 			metadata = null;
 			if (!IsShpD2(s))

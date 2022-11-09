@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -18,6 +18,7 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Warheads
 {
+	[Desc("Creates a smudge in `SmudgeLayer`.")]
 	public class LeaveSmudgeWarhead : Warhead
 	{
 		[Desc("Size of the area. A smudge will be created in each tile.", "Provide 2 values for a ring effect (outer/inner).")]
@@ -26,7 +27,7 @@ namespace OpenRA.Mods.Common.Warheads
 		[Desc("Type of smudge to apply to terrain.")]
 		public readonly HashSet<string> SmudgeType = new HashSet<string>();
 
-		[Desc("Percentual chance the smudge is created.")]
+		[Desc("Percentage chance the smudge is created.")]
 		public readonly int Chance = 100;
 
 		public override void DoImpact(in Target target, WarheadArgs args)
@@ -64,7 +65,7 @@ namespace OpenRA.Mods.Common.Warheads
 					continue;
 
 				if (!smudgeLayers.TryGetValue(smudgeType, out var smudgeLayer))
-					throw new NotImplementedException("Unknown smudge type `{0}`".F(smudgeType));
+					throw new NotImplementedException($"Unknown smudge type `{smudgeType}`");
 
 				smudgeLayer.AddSmudge(sc);
 			}

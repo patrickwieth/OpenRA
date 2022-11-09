@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -18,6 +18,7 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
 {
+	[TraitLocation(SystemActors.Player)]
 	[Desc("Attach this to the player actor.")]
 	public class SupportPowerManagerInfo : TraitInfo, Requires<DeveloperModeInfo>, Requires<TechTreeInfo>
 	{
@@ -62,7 +63,7 @@ namespace OpenRA.Mods.Common.Traits
 				{
 					Powers.Add(key, t.CreateInstance(key, this));
 
-					if (t.Info.Prerequisites.Any())
+					if (t.Info.Prerequisites.Length > 0)
 					{
 						TechTree.Add(key, t.Info.Prerequisites, 0, this);
 						TechTree.Update();
@@ -105,7 +106,7 @@ namespace OpenRA.Mods.Common.Traits
 				Powers[order.OrderString].Activate(order);
 		}
 
-		static readonly SupportPowerInstance[] NoInstances = { };
+		static readonly SupportPowerInstance[] NoInstances = Array.Empty<SupportPowerInstance>();
 
 		public IEnumerable<SupportPowerInstance> GetPowersForActor(Actor a)
 		{
@@ -147,21 +148,16 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly int TotalTicks;
 
 		protected int remainingSubTicks;
-		public int RemainingTicks { get { return remainingSubTicks / 100; } }
+		public int RemainingTicks => remainingSubTicks / 100;
 		public bool Active { get; private set; }
-		public bool Disabled
-		{
-			get
-			{
-				return Manager.Self.Owner.WinState == WinState.Lost ||
-					(!prereqsAvailable && !Manager.DevMode.AllTech) ||
-					!instancesEnabled ||
-					oneShotFired;
-			}
-		}
+		public bool Disabled =>
+			Manager.Self.Owner.WinState == WinState.Lost ||
+			(!prereqsAvailable && !Manager.DevMode.AllTech) ||
+			!instancesEnabled ||
+			oneShotFired;
 
 		public SupportPowerInfo Info { get { return Instances.Select(i => i.Info).FirstOrDefault(); } }
-		public bool Ready { get { return Active && RemainingTicks == 0; } }
+		public bool Ready => Active && RemainingTicks == 0;
 
 		bool instancesEnabled;
 		bool prereqsAvailable = true;
@@ -237,6 +233,8 @@ namespace OpenRA.Mods.Common.Traits
 			Game.Sound.PlayNotification(power.Self.World.Map.Rules, power.Self.Owner, "Speech",
 				Info.SelectTargetSpeechNotification, power.Self.Owner.Faction.InternalName);
 
+			TextNotificationsManager.AddTransientLine(Info.SelectTargetTextNotification, power.Self.Owner);
+
 			power.SelectTarget(power.Self, Key, Manager);
 		}
 
@@ -310,7 +308,7 @@ namespace OpenRA.Mods.Common.Traits
 		readonly string cursor;
 		readonly MouseButton expectedButton;
 
-		public string OrderKey { get { return order; } }
+		public string OrderKey => order;
 
 		public SelectGenericPowerTarget(string order, SupportPowerManager manager, string cursor, MouseButton button)
 		{

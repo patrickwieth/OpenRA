@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -30,14 +30,18 @@ namespace OpenRA.Scripting
 		{
 			if (!LuaTypeNameReplacements.TryGetValue(t.Name, out var ret))
 				ret = t.Name;
+
+			if (t.IsGenericType && t.GetGenericTypeDefinition() == typeof(Nullable<>))
+				ret = $"{t.GetGenericArguments()[0].LuaDocString()}?";
+
 			return ret;
 		}
 
 		public static string LuaDocString(this ParameterInfo pi)
 		{
-			var ret = "{0} {1}".F(pi.ParameterType.LuaDocString(), pi.Name);
+			var ret = $"{pi.ParameterType.LuaDocString()} {pi.Name}";
 			if (pi.IsOptional)
-				ret += " = {0}".F(pi.DefaultValue != null ? pi.DefaultValue : "nil");
+				ret += $" = {pi.DefaultValue ?? "nil"}";
 
 			return ret;
 		}
@@ -48,7 +52,7 @@ namespace OpenRA.Scripting
 			if (methodInfo != null)
 			{
 				var parameters = methodInfo.GetParameters().Select(pi => pi.LuaDocString());
-				return "{0} {1}({2})".F(methodInfo.ReturnType.LuaDocString(), mi.Name, parameters.JoinWith(", "));
+				return $"{methodInfo.ReturnType.LuaDocString()} {mi.Name}({parameters.JoinWith(", ")})";
 			}
 
 			var propertyInfo = mi as PropertyInfo;
@@ -60,10 +64,10 @@ namespace OpenRA.Scripting
 				if (propertyInfo.GetSetMethod() != null)
 					types.Add("set;");
 
-				return "{0} {1} {{ {2} }}".F(propertyInfo.PropertyType.LuaDocString(), mi.Name, types.JoinWith(" "));
+				return $"{propertyInfo.PropertyType.LuaDocString()} {mi.Name} {{ {types.JoinWith(" ")} }}";
 			}
 
-			return "Unknown field: {0}".F(mi.Name);
+			return $"Unknown field: {mi.Name}";
 		}
 	}
 }

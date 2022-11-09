@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -19,7 +19,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 {
 	public class CheckConditionalTraitInterfaceOverrides : IUtilityCommand
 	{
-		string IUtilityCommand.Name { get { return "--check-conditional-trait-interface-overrides"; } }
+		string IUtilityCommand.Name => "--check-conditional-trait-interface-overrides";
 
 		bool IUtilityCommand.ValidateArguments(string[] args)
 		{
@@ -52,7 +52,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 				if (!IsConditionalTrait(t))
 					continue;
 
-				var overridesCreated = t.GetMethod("{0}.{1}".F(interfaceType.FullName, methodName), BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly) != null;
+				var overridesCreated = t.GetMethod($"{interfaceType.FullName}.{methodName}", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly) != null;
 				if (overridesCreated)
 				{
 					Console.WriteLine("{0} must override ConditionalTrait's {1} method instead of implementing {2} directly", t.Name, methodName, interfaceType.Name);

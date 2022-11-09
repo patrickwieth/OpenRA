@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -28,6 +28,7 @@ namespace OpenRA.Server
 		//   - UInt64 containing the current defeat state (a bit set
 		//     to 1 means the corresponding player is defeated)
 		// - 0xBF: Player disconnected
+		//   - Int32 specifying the client ID that disconnected
 		// - 0xFE: Handshake (also used for ServerOrders for ProtocolVersion.Orders < 8)
 		//   - Length-prefixed string specifying a name or key
 		//   - Length-prefixed string specifying a value / data
@@ -35,6 +36,14 @@ namespace OpenRA.Server
 		//   - Length-prefixed string specifying the order name
 		//   - OrderFields enum encoded as a byte: specifies the data included in the rest of the order
 		//   - Order-specific data - see OpenRA.Game/Server/Order.cs for details
+		// - 0x10: Order acknowledgement (sent from the server to a client in response to a packet with world orders)
+		//   - Int32 containing the frame number that the client should apply the orders it sent
+		//   - byte containing the number of sent order packets to apply
+		// - 0x20: Ping
+		//   - Int64 containing the server timestamp when the ping was generated
+		//   - [client -> server only] byte containing the number of frames ready to simulate
+		// - 0x76: TickScale
+		//   - Float containing the scale.
 		//
 		// A connection handshake begins when a client opens a connection to the server:
 		// - Server sends:
@@ -68,6 +77,6 @@ namespace OpenRA.Server
 		// The protocol for server and world orders
 		// This applies after the handshake has completed, and is provided to support
 		// alternative server implementations that wish to support multiple versions in parallel
-		public const int Orders = 11;
+		public const int Orders = 20;
 	}
 }

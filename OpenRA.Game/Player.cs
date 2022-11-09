@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -37,9 +37,6 @@ namespace OpenRA
 
 	public class Player : IScriptBindable, IScriptNotifyBind, ILuaTableBinding, ILuaEqualityBinding, ILuaToStringBinding
 	{
-		public const string PlayerActorType = "Player";
-		public const string EditorPlayerActorType = "EditorPlayer";
-
 		struct StanceColors
 		{
 			public Color Self;
@@ -77,26 +74,21 @@ namespace OpenRA
 		public WinState WinState = WinState.Undefined;
 		public bool HasObjectives = false;
 
-		public bool Spectating
-		{
-			get
-			{
-				// Players in mission maps must not leave the player view
-				return !inMissionMap && (spectating || WinState != WinState.Undefined);
-			}
-		}
+		// Players in mission maps must not leave the player view
+		public bool Spectating => !inMissionMap && (spectating || WinState != WinState.Undefined);
 
-		public World World { get; private set; }
+		public World World { get; }
 
 		readonly bool inMissionMap;
 		readonly bool spectating;
 		readonly IUnlocksRenderPlayer[] unlockRenderPlayer;
+		readonly INotifyPlayerDisconnected[] notifyDisconnected;
 
 		// Each player is identified with a unique bit in the set
 		// Cache masks for the player's index and ally/enemy player indices for performance.
 		public LongBitSet<PlayerBitMask> PlayerMask;
-		public LongBitSet<PlayerBitMask> AlliedPlayersMask = default(LongBitSet<PlayerBitMask>);
-		public LongBitSet<PlayerBitMask> EnemyPlayersMask = default(LongBitSet<PlayerBitMask>);
+		public LongBitSet<PlayerBitMask> AlliedPlayersMask = default;
+		public LongBitSet<PlayerBitMask> EnemyPlayersMask = default;
 
 		public bool UnlockedRenderPlayer
 		{
@@ -121,13 +113,13 @@ namespace OpenRA
 				?? selectableFactions.Random(playerRandom);
 
 			// Don't loop infinite
-			for (var i = 0; i <= 10 && selected.RandomFactionMembers.Any(); i++)
+			for (var i = 0; i <= 10 && selected.RandomFactionMembers.Count > 0; i++)
 			{
 				var faction = selected.RandomFactionMembers.Random(playerRandom);
 				selected = selectableFactions.FirstOrDefault(f => f.InternalName == faction);
 
 				if (selected == null)
-					throw new YamlException("Unknown faction: {0}".F(faction));
+					throw new YamlException($"Unknown faction: {faction}");
 			}
 
 			return selected;
@@ -135,13 +127,13 @@ namespace OpenRA
 
 		static FactionInfo ResolveFaction(World world, string factionName, MersenneTwister playerRandom, bool requireSelectable)
 		{
-			var factionInfos = world.Map.Rules.Actors["world"].TraitInfos<FactionInfo>();
+			var factionInfos = world.Map.Rules.Actors[SystemActors.World].TraitInfos<FactionInfo>();
 			return ResolveFaction(factionName, factionInfos, playerRandom, requireSelectable);
 		}
 
 		static FactionInfo ResolveDisplayFaction(World world, string factionName)
 		{
-			var factions = world.Map.Rules.Actors["world"].TraitInfos<FactionInfo>().ToArray();
+			var factions = world.Map.Rules.Actors[SystemActors.World].TraitInfos<FactionInfo>().ToArray();
 
 			return factions.FirstOrDefault(f => f.InternalName == factionName) ?? factions.First();
 		}
@@ -152,7 +144,7 @@ namespace OpenRA
 			{
 				var botInfo = botInfos.First(b => b.Type == client.Bot);
 				var botsOfSameType = clients.Where(c => c.Bot == client.Bot).ToArray();
-				return botsOfSameType.Length == 1 ? botInfo.Name : "{0} {1}".F(botInfo.Name, botsOfSameType.IndexOf(client) + 1);
+				return botsOfSameType.Length == 1 ? botInfo.Name : $"{botInfo.Name} {botsOfSameType.IndexOf(client) + 1}";
 			}
 
 			return client.Name;
@@ -171,7 +163,7 @@ namespace OpenRA
 			{
 				ClientIndex = client.Index;
 				Color = client.Color;
-				PlayerName = ResolvePlayerName(client, world.LobbyInfo.Clients, world.Map.Rules.Actors["player"].TraitInfos<IBotInfo>());
+				PlayerName = ResolvePlayerName(client, world.LobbyInfo.Clients, world.Map.Rules.Actors[SystemActors.Player].TraitInfos<IBotInfo>());
 
 				BotType = client.Bot;
 				Faction = ResolveFaction(world, client.Faction, playerRandom, !pr.LockFaction);
@@ -187,7 +179,7 @@ namespace OpenRA
 			else
 			{
 				// Map player
-				ClientIndex = 0; // Owned by the host (TODO: fix this)
+				ClientIndex = world.LobbyInfo.Clients.FirstOrDefault(c => c.IsAdmin)?.Index ?? 0; // Owned by the host (TODO: fix this)
 				Color = pr.Color;
 				PlayerName = pr.Name;
 				NonCombatant = pr.NonCombatant;
@@ -212,8 +204,8 @@ namespace OpenRA
 			// querying player traits in INotifyCreated.Created would crash.
 			// Therefore assign the uninitialized actor and run the Created callbacks
 			// by calling Initialize ourselves.
-			var playerActorType = world.Type == WorldType.Editor ? EditorPlayerActorType : PlayerActorType;
-			PlayerActor = new Actor(world, playerActorType, new TypeDictionary { new OwnerInit(this) });
+			var playerActorType = world.Type == WorldType.Editor ? SystemActors.EditorPlayer : SystemActors.Player;
+			PlayerActor = new Actor(world, playerActorType.ToString(), new TypeDictionary { new OwnerInit(this) });
 			PlayerActor.Initialize(true);
 
 			Shroud = PlayerActor.Trait<Shroud>();
@@ -235,11 +227,12 @@ namespace OpenRA
 			stanceColors.Neutrals = ChromeMetrics.Get<Color>("PlayerStanceColorNeutrals");
 
 			unlockRenderPlayer = PlayerActor.TraitsImplementing<IUnlocksRenderPlayer>().ToArray();
+			notifyDisconnected = PlayerActor.TraitsImplementing<INotifyPlayerDisconnected>().ToArray();
 		}
 
 		public override string ToString()
 		{
-			return "{0} ({1})".F(PlayerName, ClientIndex);
+			return $"{PlayerName} ({ClientIndex})";
 		}
 
 		public PlayerRelationship RelationshipWith(Player other)
@@ -260,22 +253,22 @@ namespace OpenRA
 			return PlayerRelationship.Neutral;
 		}
 
+		/// <summary> returns true if player is null </summary>
 		public bool IsAlliedWith(Player p)
 		{
 			return RelationshipWith(p) == PlayerRelationship.Ally;
 		}
 
-		public Color PlayerStanceColor(Actor a)
+		public Color PlayerRelationshipColor(Actor a)
 		{
-			var player = a.World.RenderPlayer ?? a.World.LocalPlayer;
+			var renderPlayer = a.World.RenderPlayer;
+			var player = renderPlayer ?? a.World.LocalPlayer;
 			if (player != null && !player.Spectating)
 			{
-				var apparentOwner = a.EffectiveOwner != null && a.EffectiveOwner.Disguised
-					? a.EffectiveOwner.Owner
-					: a.Owner;
-
-				if (a.Owner.IsAlliedWith(a.World.RenderPlayer))
-					apparentOwner = a.Owner;
+				var effectiveOwner = a.EffectiveOwner;
+				var apparentOwner = a.Owner;
+				if (effectiveOwner != null && effectiveOwner.Disguised && !a.Owner.IsAlliedWith(renderPlayer))
+					apparentOwner = effectiveOwner.Owner;
 
 				if (apparentOwner == player)
 					return stanceColors.Self;
@@ -290,6 +283,12 @@ namespace OpenRA
 			return stanceColors.Neutrals;
 		}
 
+		internal void PlayerDisconnected(Player p)
+		{
+			foreach (var np in notifyDisconnected)
+				np.PlayerDisconnected(PlayerActor, p);
+		}
+
 		#region Scripting interface
 
 		Lazy<ScriptPlayerInterface> luaInterface;
@@ -301,8 +300,8 @@ namespace OpenRA
 
 		public LuaValue this[LuaRuntime runtime, LuaValue keyValue]
 		{
-			get { return luaInterface.Value[runtime, keyValue]; }
-			set { luaInterface.Value[runtime, keyValue] = value; }
+			get => luaInterface.Value[runtime, keyValue];
+			set => luaInterface.Value[runtime, keyValue] = value;
 		}
 
 		public LuaValue Equals(LuaRuntime runtime, LuaValue left, LuaValue right)
@@ -315,7 +314,7 @@ namespace OpenRA
 
 		public LuaValue ToString(LuaRuntime runtime)
 		{
-			return "Player ({0})".F(PlayerName);
+			return $"Player ({PlayerName})";
 		}
 
 		#endregion

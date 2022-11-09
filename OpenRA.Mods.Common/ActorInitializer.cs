@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -44,16 +44,16 @@ namespace OpenRA.Mods.Common
 			this.value = (int)value;
 		}
 
-		public virtual SubCell Value { get { return (SubCell)value; } }
+		public virtual SubCell Value => (SubCell)value;
 
 		public void Initialize(MiniYaml yaml)
 		{
-			Initialize((int)FieldLoader.GetValue("value", typeof(int), yaml.Value));
+			Initialize((int)FieldLoader.GetValue(nameof(value), typeof(int), yaml.Value));
 		}
 
 		public void Initialize(int value)
 		{
-			var field = GetType().GetField("value", BindingFlags.NonPublic | BindingFlags.Instance);
+			var field = GetType().GetField(nameof(value), BindingFlags.NonPublic | BindingFlags.Instance);
 			if (field != null)
 				field.SetValue(this, value);
 		}
@@ -83,7 +83,7 @@ namespace OpenRA.Mods.Common
 			: base(value) { }
 	}
 
-	internal class ActorInitLoader : TypeConverter
+	class ActorInitLoader : TypeConverter
 	{
 		public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType)
 		{
@@ -102,12 +102,8 @@ namespace OpenRA.Mods.Common
 
 		public override object ConvertTo(ITypeDescriptorContext context, System.Globalization.CultureInfo culture, object value, Type destinationType)
 		{
-			if (destinationType == typeof(string))
-			{
-				var reference = value as ActorInitActorReference;
-				if (reference != null)
-					return reference.InternalName;
-			}
+			if (destinationType == typeof(string) && value is ActorInitActorReference reference)
+				return reference.InternalName;
 
 			return base.ConvertTo(context, culture, value, destinationType);
 		}

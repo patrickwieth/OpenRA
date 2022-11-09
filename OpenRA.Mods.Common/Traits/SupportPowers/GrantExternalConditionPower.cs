@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -19,7 +19,7 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
 {
-	class GrantExternalConditionPowerInfo : SupportPowerInfo
+	public class GrantExternalConditionPowerInfo : SupportPowerInfo
 	{
 		[FieldLoader.Require]
 		[Desc("The condition to apply. Must be included in the target actor's ExternalConditions list.")]
@@ -47,13 +47,19 @@ namespace OpenRA.Mods.Common.Traits
 			"This requires the actor to have the WithSpriteBody trait or one of its derivatives.")]
 		public readonly string Sequence = "active";
 
+		[CursorReference]
 		[Desc("Cursor to display when there are no units to apply the condition in range.")]
 		public readonly string BlockedCursor = "move-blocked";
+
+		public readonly string FootprintImage = "overlay";
+
+		[SequenceReference(nameof(FootprintImage))]
+		public readonly string FootprintSequence = "target-select";
 
 		public override object Create(ActorInitializer init) { return new GrantExternalConditionPower(init.Self, this); }
 	}
 
-	class GrantExternalConditionPower : SupportPower
+	public class GrantExternalConditionPower : SupportPower
 	{
 		readonly GrantExternalConditionPowerInfo info;
 		readonly char[] footprint;
@@ -83,7 +89,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			foreach (var a in UnitsInRange(self.World.Map.CellContaining(order.Target.CenterPosition)))
 				a.TraitsImplementing<ExternalCondition>()
-					.FirstOrDefault(t => t.Info.Condition == info.Condition && t.CanGrantCondition(a, self))
+					.FirstOrDefault(t => t.Info.Condition == info.Condition && t.CanGrantCondition(self))
 					?.GrantCondition(a, self, info.Duration);
 		}
 
@@ -96,11 +102,11 @@ namespace OpenRA.Mods.Common.Traits
 
 			return units.Distinct().Where(a =>
 			{
-				if (!info.ValidRelationships.HasStance(Self.Owner.RelationshipWith(a.Owner)))
+				if (!info.ValidRelationships.HasRelationship(Self.Owner.RelationshipWith(a.Owner)))
 					return false;
 
 				return a.TraitsImplementing<ExternalCondition>()
-					.Any(t => t.Info.Condition == info.Condition && t.CanGrantCondition(a, Self));
+					.Any(t => t.Info.Condition == info.Condition && t.CanGrantCondition(Self));
 			});
 		}
 
@@ -110,6 +116,7 @@ namespace OpenRA.Mods.Common.Traits
 			readonly char[] footprint;
 			readonly CVec dimensions;
 			readonly Sprite tile;
+			readonly float alpha;
 			readonly SupportPowerManager manager;
 			readonly string order;
 
@@ -124,7 +131,10 @@ namespace OpenRA.Mods.Common.Traits
 				this.power = power;
 				footprint = power.info.Footprint.Where(c => !char.IsWhiteSpace(c)).ToArray();
 				dimensions = power.info.Dimensions;
-				tile = world.Map.Rules.Sequences.GetSequence("overlay", "target-select").GetSprite(0);
+
+				var sequence = world.Map.Rules.Sequences.GetSequence(power.info.FootprintImage, power.info.FootprintSequence);
+				tile = sequence.GetSprite(0);
+				alpha = sequence.GetAlpha(0);
 			}
 
 			protected override IEnumerable<Order> OrderInner(World world, CPos cell, int2 worldPixel, MouseInput mi)
@@ -161,7 +171,7 @@ namespace OpenRA.Mods.Common.Traits
 				var pal = wr.Palette(TileSet.TerrainPaletteInternalName);
 
 				foreach (var t in power.CellsMatching(xy, footprint, dimensions))
-					yield return new SpriteRenderable(tile, wr.World.Map.CenterOfCell(t), WVec.Zero, -511, pal, 1f, true, true);
+					yield return new SpriteRenderable(tile, wr.World.Map.CenterOfCell(t), WVec.Zero, -511, pal, 1f, alpha, float3.Ones, TintModifiers.IgnoreWorldTint, true);
 			}
 
 			protected override string GetCursor(World world, CPos cell, int2 worldPixel, MouseInput mi)

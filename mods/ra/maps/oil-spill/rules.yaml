@@ -1,9 +1,9 @@
 World:
 	LuaScript:
 		Scripts: oil-spill.lua
-	SpawnMPUnits:
+	SpawnStartingUnits:
 		DropdownVisible: False
-	MPStartUnits@mcvonly:
+	StartingUnits@mcvonly:
 		BaseActor: fcom
 
 FCOM:
@@ -46,7 +46,7 @@ OILB.Husk:
 	Inherits@shape: ^2x2Shape
 	Selectable:
 		Priority: 0
-		Bounds: 48,48
+		Bounds: 2048, 2048
 	CapturableProgressBar:
 	CapturableProgressBlink:
 	Building:

@@ -1,5 +1,5 @@
 --[[
-   Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+   Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
    This file is part of OpenRA, which is free software. It is made
    available to you under the terms of the GNU General Public License
    as published by the Free Software Foundation, either version 3 of
@@ -85,11 +85,8 @@ end
 LabInfiltrated = false
 SetupTriggers = function()
 	Trigger.OnAllKilled(SamSites, function()
-		local proxy = Actor.Create("powerproxy.parabombs", false, { Owner = USSR })
-		proxy.TargetAirstrike(TacticalNuke1.CenterPosition, Angle.SouthWest)
-		proxy.TargetAirstrike(TacticalNuke2.CenterPosition, Angle.SouthWest)
-		proxy.TargetAirstrike(TacticalNuke3.CenterPosition, Angle.SouthWest)
-		proxy.Destroy()
+		USSR.MarkCompletedObjective(KillSams)
+		SendInBombers()
 	end)
 
 	Trigger.OnInfiltrated(BioLab, function()
@@ -97,6 +94,7 @@ SetupTriggers = function()
 		Trigger.AfterDelay(DateTime.Seconds(5), function()
 			USSR.MarkCompletedObjective(InfiltrateLab)
 			LabInfiltrated = true
+			SendInBombers()
 		end)
 	end)
 
@@ -117,6 +115,17 @@ SetupTriggers = function()
 		end
 	end)
 end
+
+SendInBombers = function()
+	if LabInfiltrated and USSR.IsObjectiveCompleted(KillSams) then
+		local proxy = Actor.Create("powerproxy.parabombs", false, { Owner = USSR })
+		proxy.TargetAirstrike(TacticalNuke1.CenterPosition, Angle.SouthWest)
+		proxy.TargetAirstrike(TacticalNuke2.CenterPosition, Angle.SouthWest)
+		proxy.TargetAirstrike(TacticalNuke3.CenterPosition, Angle.SouthWest)
+		proxy.Destroy()
+	end
+end
+
 
 SendInVolkov = function()
 	if not VolkovArrived then
@@ -160,33 +169,14 @@ WorldLoaded = function()
 	USSR = Player.GetPlayer("USSR")
 	Turkey = Player.GetPlayer("Turkey")
 
-	Trigger.OnObjectiveAdded(USSR, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "New " .. string.lower(p.GetObjectiveType(id)) .. " objective")
-	end)
+	InitObjectives(USSR)
 
 	LaunchMissles = Turkey.AddObjective("Survive until time expires.")
 	KillPower = USSR.AddObjective("Bring the base to low power. Volkov will arrive\nonce the defenses are down.")
 	InfiltrateLab = USSR.AddObjective("Infiltrate the bio-weapons lab with the scientist.")
-	DestroyFacility = USSR.AddObjective("Destroy all sam sites on the island.\nOur strategic bombers will finish the rest.")
+	DestroyFacility = USSR.AddObjective("Destroy the bio-weapons lab and missile silos.")
+	KillSams = USSR.AddObjective("Destroy all sam sites on the island.\nOur strategic bombers will finish the rest.", "Secondary", false)
 	VolkovSurvive = USSR.AddObjective("Volkov must survive.")
-
-	Trigger.OnObjectiveCompleted(USSR, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "Objective completed")
-	end)
-	Trigger.OnObjectiveFailed(USSR, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "Objective failed")
-	end)
-
-	Trigger.OnPlayerLost(USSR, function()
-		Trigger.AfterDelay(DateTime.Seconds(1), function()
-			Media.PlaySpeechNotification(USSR, "MissionFailed")
-		end)
-	end)
-	Trigger.OnPlayerWon(USSR, function()
-		Trigger.AfterDelay(DateTime.Seconds(1), function()
-			Media.PlaySpeechNotification(USSR, "MissionAccomplished")
-		end)
-	end)
 
 	Trigger.AfterDelay(DateTime.Minutes(3), function()
 		Media.PlaySpeechNotification(USSR, "WarningFiveMinutesRemaining")

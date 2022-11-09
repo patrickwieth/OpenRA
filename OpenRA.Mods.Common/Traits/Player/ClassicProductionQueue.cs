@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -9,6 +9,7 @@
  */
 #endregion
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Primitives;
@@ -16,6 +17,7 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
 {
+	[TraitLocation(SystemActors.Player)]
 	[Desc("Attach this to the player actor (not a building!) to define a new shared build queue.",
 		"Will only work together with the Production: trait on the actor that actually does the production.",
 		"You will also want to add PrimaryBuildings: to let the user choose where new units should exit.")]
@@ -27,20 +29,20 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Every time another production building of the same queue is",
 			"constructed, the build times of all actors in the queue",
 			"decreased by a percentage of the original time.")]
-		public readonly int[] BuildTimeSpeedReduction = { 100, 85, 75, 65, 60, 55, 50 };
+		public readonly int[] BuildTimeSpeedReduction = { 100, 86, 75, 67, 60, 55, 50 };
 
 		public override object Create(ActorInitializer init) { return new ClassicProductionQueue(init, this); }
 	}
 
 	public class ClassicProductionQueue : ProductionQueue
 	{
-		static readonly ActorInfo[] NoItems = { };
+		static readonly ActorInfo[] NoItems = Array.Empty<ActorInfo>();
 
 		readonly Actor self;
 		readonly ClassicProductionQueueInfo info;
 
 		public ClassicProductionQueue(ActorInitializer init, ClassicProductionQueueInfo info)
-			: base(init, init.Self, info)
+			: base(init, info)
 		{
 			self = init.Self;
 			this.info = info;

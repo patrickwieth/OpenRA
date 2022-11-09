@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -18,13 +18,16 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
 {
+	[TraitLocation(SystemActors.World | SystemActors.EditorWorld)]
 	[Desc("Renders a debug overlay showing the terrain cells. Attach this to the world actor.")]
 	public class TerrainGeometryOverlayInfo : TraitInfo<TerrainGeometryOverlay> { }
 
 	public class TerrainGeometryOverlay : IRenderAnnotations, IWorldLoaded, IChatCommand
 	{
-		const string CommandName = "terrainoverlay";
-		const string CommandDesc = "toggles the terrain geometry overlay.";
+		const string CommandName = "terrain-geometry";
+
+		[TranslationReference]
+		const string CommandDescription = "terrain-geometry-overlay";
 
 		public bool Enabled;
 
@@ -37,7 +40,7 @@ namespace OpenRA.Mods.Common.Traits
 				return;
 
 			console.RegisterCommand(CommandName, this);
-			help.RegisterHelp(CommandName, CommandDesc);
+			help.RegisterHelp(CommandName, CommandDescription);
 		}
 
 		void IChatCommand.InvokeCommand(string name, string arg)
@@ -52,8 +55,7 @@ namespace OpenRA.Mods.Common.Traits
 				yield break;
 
 			var map = wr.World.Map;
-			var tileSet = wr.World.Map.Rules.TileSet;
-			var colors = tileSet.HeightDebugColors;
+			var colors = wr.World.Map.Rules.TerrainInfo.HeightDebugColors;
 			var mouseCell = wr.Viewport.ViewToWorld(Viewport.LastMousePos).ToMPos(wr.World.Map);
 
 			foreach (var uv in wr.Viewport.AllVisibleCells.CandidateMapCoords)
@@ -96,6 +98,6 @@ namespace OpenRA.Mods.Common.Traits
 			}
 		}
 
-		bool IRenderAnnotations.SpatiallyPartitionable { get { return false; } }
+		bool IRenderAnnotations.SpatiallyPartitionable => false;
 	}
 }

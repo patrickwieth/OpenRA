@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -42,9 +42,10 @@ namespace OpenRA.Graphics
 
 		class ReadOnlyPalette : IPalette
 		{
-			IPalette palette;
+			readonly IPalette palette;
 			public ReadOnlyPalette(IPalette palette) { this.palette = palette; }
-			public uint this[int index] { get { return palette[index]; } }
+			public uint this[int index] => palette[index];
+
 			public void CopyToArray(Array destination, int destinationOffset)
 			{
 				palette.CopyToArray(destination, destinationOffset);
@@ -56,28 +57,25 @@ namespace OpenRA.Graphics
 	{
 		readonly uint[] colors = new uint[Palette.Size];
 
-		public uint this[int index]
-		{
-			get { return colors[index]; }
-		}
+		public uint this[int index] => colors[index];
 
 		public void CopyToArray(Array destination, int destinationOffset)
 		{
 			Buffer.BlockCopy(colors, 0, destination, destinationOffset * 4, Palette.Size * 4);
 		}
 
-		public ImmutablePalette(string filename, int[] remap)
+		public ImmutablePalette(string filename, int[] remapTransparent, int[] remap)
 		{
 			using (var s = File.OpenRead(filename))
-				LoadFromStream(s, remap);
+				LoadFromStream(s, remapTransparent, remap);
 		}
 
-		public ImmutablePalette(Stream s, int[] remapShadow)
+		public ImmutablePalette(Stream s, int[] remapTransparent, int[] remapShadow)
 		{
-			LoadFromStream(s, remapShadow);
+			LoadFromStream(s, remapTransparent, remapShadow);
 		}
 
-		void LoadFromStream(Stream s, int[] remapShadow)
+		void LoadFromStream(Stream s, int[] remapTransparent, int[] remapShadow)
 		{
 			using (var reader = new BinaryReader(s))
 				for (var i = 0; i < Palette.Size; i++)
@@ -94,7 +92,9 @@ namespace OpenRA.Graphics
 					colors[i] = (uint)((255 << 24) | (r << 16) | (g << 8) | b);
 				}
 
-			colors[0] = 0; // Convert black background to transparency.
+			foreach (var i in remapTransparent)
+				colors[i] = 0;
+
 			foreach (var i in remapShadow)
 				colors[i] = 140u << 24;
 		}
@@ -126,8 +126,8 @@ namespace OpenRA.Graphics
 
 		public uint this[int index]
 		{
-			get { return colors[index]; }
-			set { colors[index] = value; }
+			get => colors[index];
+			set => colors[index] = value;
 		}
 
 		public void CopyToArray(Array destination, int destinationOffset)

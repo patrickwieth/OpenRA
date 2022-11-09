@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -27,8 +27,8 @@ namespace OpenRA.Mods.Common.Traits
 
 	class CapturableProgressBlink : ConditionalTrait<CapturableProgressBlinkInfo>, ITick, ICaptureProgressWatcher
 	{
-		List<Player> captorOwners = new List<Player>();
-		HashSet<Actor> captors = new HashSet<Actor>();
+		readonly List<Player> captorOwners = new List<Player>();
+		readonly HashSet<Actor> captors = new HashSet<Actor>();
 		int tick = 0;
 
 		public CapturableProgressBlink(CapturableProgressBlinkInfo info)
@@ -64,10 +64,10 @@ namespace OpenRA.Mods.Common.Traits
 			if (tick / 4 < captorOwners.Count && tick % 4 == 0)
 			{
 				var captorOwner = captorOwners[tick / 4];
-				self.World.Add(new FlashTarget(self, captorOwner));
+				self.World.Add(new FlashTarget(self, captorOwner.Color));
 				foreach (var captor in captors)
 					if (captor.Owner == captorOwner)
-						self.World.Add(new FlashTarget(captor, captorOwner));
+						self.World.Add(new FlashTarget(captor, captorOwner.Color));
 			}
 
 			if (++tick >= Info.Interval)

@@ -1,6 +1,6 @@
 ﻿#region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -46,13 +46,13 @@ namespace OpenRA.Mods.Cnc.Traits
 	public class TransformsNearResources : ITick
 	{
 		readonly TransformsNearResourcesInfo info;
-		readonly ResourceLayer resourceLayer;
+		readonly IResourceLayer resourceLayer;
 		int delay;
 
 		public TransformsNearResources(Actor self, TransformsNearResourcesInfo info)
 		{
-			resourceLayer = self.World.WorldActor.Trait<ResourceLayer>();
-			delay = Common.Util.RandomDelay(self.World, info.Delay);
+			resourceLayer = self.World.WorldActor.Trait<IResourceLayer>();
+			delay = Common.Util.RandomInRange(self.World.SharedRandom, info.Delay);
 			this.info = info;
 		}
 
@@ -66,12 +66,11 @@ namespace OpenRA.Mods.Cnc.Traits
 			{
 				var location = self.Location + direction;
 
-				var resource = resourceLayer.GetResourceType(location);
-				if (resource == null || resource.Info.Type != info.Type)
+				var resource = resourceLayer.GetResource(location);
+				if (resource.Type == null || resource.Type != info.Type)
 					continue;
 
-				var density = resourceLayer.GetResourceDensity(location);
-				if (density < info.Density)
+				if (resource.Density < info.Density)
 					continue;
 
 				if (++adjacent < info.Adjacency)
@@ -87,7 +86,7 @@ namespace OpenRA.Mods.Cnc.Traits
 
 		void Transform(Actor self)
 		{
-			var transform = new Transform(self, info.IntoActor);
+			var transform = new Transform(info.IntoActor);
 
 			var facing = self.TraitOrDefault<IFacing>();
 			if (facing != null)

@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -44,7 +44,7 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly int EditorDisplayOrder = 5;
 
 		[GrantedConditionReference]
-		public IEnumerable<string> LinterConditions { get { return Conditions.Values; } }
+		public IEnumerable<string> LinterConditions => Conditions.Values;
 
 		[ConsumedConditionReference]
 		public IEnumerable<string> ConsumedConditions
@@ -54,7 +54,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		IEnumerable<EditorActorOption> IEditorActorOptions.ActorOptions(ActorInfo ai, World world)
 		{
-			if (!EditorOptions.Any())
+			if (EditorOptions.Count == 0)
 				yield break;
 
 			// Make sure the no-plug option is always available
@@ -63,7 +63,7 @@ namespace OpenRA.Mods.Common.Traits
 				actor =>
 				{
 					var init = actor.GetInitOrDefault<PlugInit>(this);
-					return init != null ? init.Value : "";
+					return init?.Value ?? "";
 				},
 				(actor, value) =>
 				{
@@ -83,7 +83,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		readonly string initialPlug;
 		int conditionToken = Actor.InvalidConditionToken;
-		Dictionary<string, bool> plugTypesAvailability = null;
+		readonly Dictionary<string, bool> plugTypesAvailability = null;
 
 		string active;
 
@@ -107,7 +107,7 @@ namespace OpenRA.Mods.Common.Traits
 				EnablePlug(self, initialPlug);
 		}
 
-		public bool AcceptsPlug(Actor self, string type)
+		public bool AcceptsPlug(string type)
 		{
 			if (!Info.Conditions.ContainsKey(type))
 				return false;

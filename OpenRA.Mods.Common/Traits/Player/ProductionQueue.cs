@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -20,7 +20,7 @@ namespace OpenRA.Mods.Common.Traits
 	[Desc("Attach this to an actor (usually a building) to let it produce units or construct buildings.",
 		"If one builds another actor of this type, he will get a separate queue to create two actors",
 		"at the same time. Will only work together with the Production: trait.")]
-	public class ProductionQueueInfo : TraitInfo
+	public class ProductionQueueInfo : TraitInfo, IRulesetLoaded
 	{
 		[FieldLoader.Require]
 		[Desc("What kind of production will be added (e.g. Building, Infantry, Vehicle, ...)")]
@@ -61,11 +61,18 @@ namespace OpenRA.Mods.Common.Traits
 			"The filename of the audio is defined per faction in notifications.yaml.")]
 		public readonly string ReadyAudio = null;
 
+		[Desc("Notification displayed when production is complete.")]
+		public readonly string ReadyTextNotification = null;
+
 		[NotificationReference("Speech")]
 		[Desc("Notification played when you can't train another actor",
 			"when the build limit exceeded or the exit is jammed.",
 			"The filename of the audio is defined per faction in notifications.yaml.")]
 		public readonly string BlockedAudio = null;
+
+		[Desc("Notification displayed when you can't train another actor",
+			"when the build limit exceeded or the exit is jammed.")]
+		public readonly string BlockedTextNotification = null;
 
 		[NotificationReference("Speech")]
 		[Desc("Notification played when you can't queue another actor",
@@ -73,22 +80,45 @@ namespace OpenRA.Mods.Common.Traits
 			"The filename of the audio is defined per faction in notifications.yaml.")]
 		public readonly string LimitedAudio = null;
 
+		[Desc("Notification displayed when you can't queue another actor",
+			"when the queue length limit is exceeded.")]
+		public readonly string LimitedTextNotification = null;
+
+		[NotificationReference("Speech")]
+		[Desc("Notification played when you can't place a building.",
+			"Overrides PlaceBuilding.CannotPlaceNotification for this queue.",
+			"The filename of the audio is defined per faction in notifications.yaml.")]
+		public readonly string CannotPlaceAudio = null;
+
 		[NotificationReference("Speech")]
 		[Desc("Notification played when user clicks on the build palette icon.",
 			"The filename of the audio is defined per faction in notifications.yaml.")]
 		public readonly string QueuedAudio = null;
+
+		[Desc("Notification displayed when user clicks on the build palette icon.")]
+		public readonly string QueuedTextNotification = null;
 
 		[NotificationReference("Speech")]
 		[Desc("Notification played when player right-clicks on the build palette icon.",
 			"The filename of the audio is defined per faction in notifications.yaml.")]
 		public readonly string OnHoldAudio = null;
 
+		[Desc("Notification displayed when player right-clicks on the build palette icon.")]
+		public readonly string OnHoldTextNotification = null;
+
 		[NotificationReference("Speech")]
 		[Desc("Notification played when player right-clicks on a build palette icon that is already on hold.",
 			"The filename of the audio is defined per faction in notifications.yaml.")]
 		public readonly string CancelledAudio = null;
 
-		public override object Create(ActorInitializer init) { return new ProductionQueue(init, init.Self.Owner.PlayerActor, this); }
+		[Desc("Notification displayed when player right-clicks on a build palette icon that is already on hold.")]
+		public readonly string CancelledTextNotification = null;
+
+		// CA Addition
+		[Desc("If true, any units being produced that have been replaced by an upgrade will be completed.")]
+		public readonly bool CompleteUpgradedInProgress = true;
+
+		public override object Create(ActorInitializer init) { return new ProductionQueue(init, this); }
 
 		public void RulesetLoaded(Ruleset rules, ActorInfo ai)
 		{
@@ -116,7 +146,7 @@ namespace OpenRA.Mods.Common.Traits
 		protected DeveloperMode developerMode;
 		protected TechTree techTree;
 
-		public Actor Actor { get { return self; } }
+		public Actor Actor => self;
 
 		[Sync]
 		public bool Enabled { get; protected set; }
@@ -126,13 +156,17 @@ namespace OpenRA.Mods.Common.Traits
 		[Sync]
 		public bool IsValidFaction { get; private set; }
 
-		public ProductionQueue(ActorInitializer init, Actor playerActor, ProductionQueueInfo info)
+		// CA Additions
+		HashSet<string> lastBuildableNames = new HashSet<string>();
+		string replacedInProduction = null;
+
+		public ProductionQueue(ActorInitializer init, ProductionQueueInfo info)
 		{
 			self = init.Self;
 			Info = info;
 
 			Faction = init.GetValue<FactionInit, string>(self.Owner.Faction.InternalName);
-			IsValidFaction = !info.Factions.Any() || info.Factions.Contains(Faction);
+			IsValidFaction = info.Factions.Count == 0 || info.Factions.Contains(Faction);
 			Enabled = IsValidFaction;
 
 			allProducibles = Producible.Where(a => a.Value.Buildable || a.Value.Visible).Select(a => a.Key);
@@ -147,7 +181,7 @@ namespace OpenRA.Mods.Common.Traits
 			techTree = self.Owner.PlayerActor.Trait<TechTree>();
 
 			productionTraits = self.TraitsImplementing<Production>().Where(p => p.Info.Produces.Contains(Info.Type)).ToArray();
-			CacheProducibles(self.Owner.PlayerActor);
+			CacheProducibles();
 		}
 
 		protected void ClearQueue()
@@ -170,12 +204,12 @@ namespace OpenRA.Mods.Common.Traits
 			if (!Info.Sticky)
 			{
 				Faction = self.Owner.Faction.InternalName;
-				IsValidFaction = !Info.Factions.Any() || Info.Factions.Contains(Faction);
+				IsValidFaction = Info.Factions.Count == 0 || Info.Factions.Contains(Faction);
 			}
 
 			// Regenerate the producibles and tech tree state
 			oldOwner.PlayerActor.Trait<TechTree>().Remove(this);
-			CacheProducibles(newOwner.PlayerActor);
+			CacheProducibles();
 			techTree.Update();
 		}
 
@@ -187,7 +221,7 @@ namespace OpenRA.Mods.Common.Traits
 		void INotifyTransform.OnTransform(Actor self) { }
 		void INotifyTransform.AfterTransform(Actor self) { }
 
-		void CacheProducibles(Actor playerActor)
+		void CacheProducibles()
 		{
 			Producible.Clear();
 			if (!Enabled)
@@ -248,7 +282,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		public virtual IEnumerable<ActorInfo> AllItems()
 		{
-			if (productionTraits.Any() && productionTraits.All(p => p.IsTraitDisabled))
+			if (productionTraits.Length > 0 && productionTraits.All(p => p.IsTraitDisabled))
 				return Enumerable.Empty<ActorInfo>();
 			if (developerMode.AllTech)
 				return Producible.Keys;
@@ -258,7 +292,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		public virtual IEnumerable<ActorInfo> BuildableItems()
 		{
-			if (productionTraits.Any() && productionTraits.All(p => p.IsTraitDisabled))
+			if (productionTraits.Length > 0 && productionTraits.All(p => p.IsTraitDisabled))
 				return Enumerable.Empty<ActorInfo>();
 			if (!Enabled)
 				return Enumerable.Empty<ActorInfo>();
@@ -307,12 +341,27 @@ namespace OpenRA.Mods.Common.Traits
 				Queue[0].Tick(playerResources);
 		}
 
+		// CA modified to replace items in the queue with their upgraded counterparts if applicable
 		protected void CancelUnbuildableItems()
 		{
 			if (Queue.Count == 0)
+			{
+				// reset lastBuildableNames to ensure checks will be done immediately when queue is populated again
+				lastBuildableNames = new HashSet<string>();
 				return;
+			}
 
 			var buildableNames = BuildableItems().Select(b => b.Name).ToHashSet();
+
+			// if buildables haven't changed since last tick we don't need to do anything else
+			if (lastBuildableNames == buildableNames)
+				return;
+
+			var rules = self.World.Map.Rules;
+			var replacements = new Dictionary<string, ReplacementDetails>();
+
+			if (playerPower == null)
+				playerPower = self.Owner.PlayerActor.TraitOrDefault<PowerManager>();
 
 			// EndProduction removes the item from the queue, so we enumerate
 			// by index in reverse to avoid issues with index reassignment
@@ -321,15 +370,22 @@ namespace OpenRA.Mods.Common.Traits
 				if (buildableNames.Contains(Queue[i].Item))
 					continue;
 
+				Queue[i] = GetReplacement(Queue[i], replacements, buildableNames, rules, out var replaced);
+				if (replaced)
+					continue;
+
 				// Refund what's been paid so far
 				playerResources.GiveCash(Queue[i].TotalCost - Queue[i].RemainingCost);
 				EndProduction(Queue[i]);
 			}
+
+			lastBuildableNames = buildableNames;
 		}
 
-		public bool CanQueue(ActorInfo actor, out string notificationAudio)
+		public bool CanQueue(ActorInfo actor, out string notificationAudio, out string notificationText)
 		{
 			notificationAudio = Info.BlockedAudio;
+			notificationText = Info.BlockedTextNotification;
 
 			var bi = actor.TraitInfoOrDefault<BuildableInfo>();
 			if (bi == null)
@@ -340,6 +396,7 @@ namespace OpenRA.Mods.Common.Traits
 				if (Info.QueueLimit > 0 && Queue.Count >= Info.QueueLimit)
 				{
 					notificationAudio = Info.LimitedAudio;
+					notificationText = Info.LimitedTextNotification;
 					return false;
 				}
 
@@ -347,6 +404,7 @@ namespace OpenRA.Mods.Common.Traits
 				if (Info.ItemLimit > 0 && queueCount >= Info.ItemLimit)
 				{
 					notificationAudio = Info.LimitedAudio;
+					notificationText = Info.LimitedTextNotification;
 					return false;
 				}
 
@@ -360,6 +418,7 @@ namespace OpenRA.Mods.Common.Traits
 			}
 
 			notificationAudio = Info.QueuedAudio;
+			notificationText = Info.QueuedTextNotification;
 			return true;
 		}
 
@@ -418,13 +477,22 @@ namespace OpenRA.Mods.Common.Traits
 
 							var isBuilding = unit.HasTraitInfo<BuildingInfo>();
 							if (isBuilding && !hasPlayedSound)
+							{
 								hasPlayedSound = Game.Sound.PlayNotification(rules, self.Owner, "Speech", Info.ReadyAudio, self.Owner.Faction.InternalName);
+								TextNotificationsManager.AddTransientLine(Info.ReadyTextNotification, self.Owner);
+							}
 							else if (!isBuilding)
 							{
 								if (BuildUnit(unit))
+								{
 									Game.Sound.PlayNotification(rules, self.Owner, "Speech", Info.ReadyAudio, self.Owner.Faction.InternalName);
+									TextNotificationsManager.AddTransientLine(Info.ReadyTextNotification, self.Owner);
+								}
 								else if (!hasPlayedSound && time > 0)
+								{
 									hasPlayedSound = Game.Sound.PlayNotification(rules, self.Owner, "Speech", Info.BlockedAudio, self.Owner.Faction.InternalName);
+									TextNotificationsManager.AddTransientLine(Info.BlockedTextNotification, self.Owner);
+								}
 							}
 						})), !order.Queued);
 					}
@@ -510,6 +578,10 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			Queue.Remove(item);
 
+			// CA Addition
+			if (item.Started && item.Item == replacedInProduction)
+				HideReplacedInProduction();
+
 			if (item.Infinite)
 				Queue.Add(new ProductionItem(this, item.Item, item.TotalCost, playerPower, item.OnComplete) { Infinite = true });
 		}
@@ -559,7 +631,9 @@ namespace OpenRA.Mods.Common.Traits
 		// Returns false if the unit can't be built
 		protected virtual bool BuildUnit(ActorInfo unit)
 		{
-			var mostLikelyProducerTrait = MostLikelyProducer().Trait;
+			var bi = unit.TraitInfo<BuildableInfo>();
+			var mostLikelyProducer = MostLikelyProducer(bi.BuildAtProductionType);
+			var mostLikelyProducerTrait = mostLikelyProducer.Trait;
 
 			// Cannot produce if I'm dead or trait is disabled
 			if (!self.IsInWorld || self.IsDead || mostLikelyProducerTrait == null)
@@ -574,16 +648,102 @@ namespace OpenRA.Mods.Common.Traits
 				new FactionInit(BuildableInfo.GetInitialFaction(unit, Faction))
 			};
 
-			var bi = unit.TraitInfo<BuildableInfo>();
 			var type = developerMode.AllTech ? Info.Type : (bi.BuildAtProductionType ?? Info.Type);
 			var item = Queue.First(i => i.Done && i.Item == unit.Name);
-			if (!mostLikelyProducerTrait.IsTraitPaused && mostLikelyProducerTrait.Produce(self, unit, type, inits, item.TotalCost))
+
+			if (!mostLikelyProducerTrait.IsTraitPaused && mostLikelyProducerTrait.Produce(mostLikelyProducer.Actor, unit, type, inits, item.TotalCost))
 			{
 				EndProduction(item);
 				return true;
 			}
 
 			return false;
+		}
+
+		// CA additions
+		ProductionItem GetReplacement(ProductionItem queueItem, Dictionary<string, ReplacementDetails> replacements, HashSet<string> buildableNames, Ruleset rules, out bool replaced)
+		{
+			replaced = false;
+
+			// if started already, and not set to complete any in progress, don't replace (will be cancelled and refunded)
+			if (queueItem.Item == null || (queueItem.Started && !Info.CompleteUpgradedInProgress))
+				return queueItem;
+
+			if (!replacements.ContainsKey(queueItem.Item))
+			{
+				var upgradeableTo = rules.Actors[queueItem.Item].TraitInfoOrDefault<UpgradeableToInfo>();
+				var replacement = new ReplacementDetails();
+
+				if (upgradeableTo != null)
+				{
+					var replacementName = upgradeableTo.Actors.Where(a => buildableNames.Contains(a)).FirstOrDefault();
+					if (replacementName != null)
+					{
+						replacement.Info = rules.Actors[replacementName];
+						var valued = replacement.Info.TraitInfoOrDefault<ValuedInfo>();
+						replacement.Cost = valued != null ? valued.Cost : 0;
+					}
+				}
+
+				replacements[queueItem.Item] = replacement;
+			}
+
+			if (replacements[queueItem.Item].Info != null)
+			{
+				// if a replacement is buildable, but we've already started producing, we should be able to finish production (as CompleteUpgradedInProgress is true)
+				if (queueItem.Started)
+				{
+					Producible[self.World.Map.Rules.Actors[queueItem.Item]].Visible = true;
+					replacedInProduction = queueItem.Item; // rules.Actors[queueItem.Item];
+					replaced = true;
+					return queueItem;
+				}
+
+				var r = replacements[queueItem.Item];
+
+				var replacementItem = new ProductionItem(this, r.Info.Name, r.Cost, playerPower, () => self.World.AddFrameEndTask(_ =>
+				{
+					// Make sure the item hasn't been invalidated between the ProductionItem ticking and this FrameEndTask running
+					if (!Queue.Any(j => j.Done && j.Item == r.Info.Name))
+						return;
+
+					var isBuilding = r.Info.HasTraitInfo<BuildingInfo>();
+					if (isBuilding)
+						return;
+
+					if (BuildUnit(r.Info))
+						Game.Sound.PlayNotification(rules, self.Owner, "Speech", Info.ReadyAudio, self.Owner.Faction.InternalName);
+				}));
+
+				replaced = true;
+				return replacementItem;
+			}
+
+			return queueItem;
+		}
+
+		void HideReplacedInProduction()
+		{
+			if (replacedInProduction != null)
+			{
+				PrerequisitesItemHidden(replacedInProduction);
+				replacedInProduction = null;
+			}
+		}
+
+		TraitPair<Production> MostLikelyProducer(string type)
+		{
+			if (type == null || !self.Info.HasTraitInfo<IOccupySpaceInfo>() || productionTraits.Where(p => !p.IsTraitDisabled && p.Info.Produces.Contains(type)).Any())
+				return MostLikelyProducer();
+
+			var producer = self.World.ActorsWithTrait<Production>()
+				.Where(x => x.Actor.Owner == self.Owner
+					&& !x.Trait.IsTraitDisabled
+					&& x.Trait.Info.Produces.Contains(type))
+				.OrderBy(x => (x.Actor.CenterPosition - self.CenterPosition).Length)
+				.FirstOrDefault();
+
+			return producer;
 		}
 	}
 
@@ -603,21 +763,16 @@ namespace OpenRA.Mods.Common.Traits
 		public int TotalTime { get; private set; }
 		public int RemainingTime { get; private set; }
 		public int RemainingCost { get; private set; }
-		public int RemainingTimeActual
-		{
-			get
-			{
-				return (pm == null || pm.PowerState == PowerState.Normal) ? RemainingTime :
-					RemainingTime * Queue.Info.LowPowerModifier / 100;
-			}
-		}
+		public int RemainingTimeActual =>
+			(pm == null || pm.PowerState == PowerState.Normal) ? RemainingTime :
+				RemainingTime * Queue.Info.LowPowerModifier / 100;
 
 		public bool Paused { get; private set; }
 		public bool Done { get; private set; }
 		public bool Started { get; private set; }
 		public int Slowdown { get; private set; }
 		public bool Infinite { get; set; }
-		public int BuildPaletteOrder { get; private set; }
+		public int BuildPaletteOrder { get; }
 
 		readonly ActorInfo ai;
 		readonly BuildableInfo bi;
@@ -681,5 +836,12 @@ namespace OpenRA.Mods.Common.Traits
 		}
 
 		public void Pause(bool paused) { Paused = paused; }
+	}
+
+	// CA addition
+	public class ReplacementDetails
+	{
+		public ActorInfo Info;
+		public int Cost;
 	}
 }

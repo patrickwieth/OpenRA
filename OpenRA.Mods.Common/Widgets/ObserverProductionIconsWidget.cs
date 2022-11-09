@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -27,7 +27,6 @@ namespace OpenRA.Mods.Common.Widgets
 		public Func<Player> GetPlayer;
 		readonly World world;
 		readonly WorldRenderer worldRenderer;
-		readonly int timestep;
 
 		public int IconWidth = 32;
 		public int IconHeight = 24;
@@ -40,12 +39,12 @@ namespace OpenRA.Mods.Common.Widgets
 		public ProductionIcon TooltipIcon { get; private set; }
 		public Func<ProductionIcon> GetTooltipIcon;
 
-		Dictionary<ProductionQueue, Animation> clocks;
+		readonly Dictionary<ProductionQueue, Animation> clocks;
 		readonly Lazy<TooltipContainerWidget> tooltipContainer;
 		readonly List<ProductionIcon> productionIcons = new List<ProductionIcon>();
 		readonly List<Rectangle> productionIconsBounds = new List<Rectangle>();
 
-		float2 iconSize;
+		readonly float2 iconSize;
 		int lastIconIdx;
 		public int MinWidth = 240;
 		int currentTooltipToken;
@@ -56,7 +55,6 @@ namespace OpenRA.Mods.Common.Widgets
 			this.world = world;
 			this.worldRenderer = worldRenderer;
 			clocks = new Dictionary<ProductionQueue, Animation>();
-			timestep = world.IsReplay ? world.WorldActor.Trait<MapOptions>().GameSpeed.Timestep : world.Timestep;
 			GetTooltipIcon = () => TooltipIcon;
 			tooltipContainer = Exts.Lazy(() =>
 				Ui.Root.Get<TooltipContainerWidget>(TooltipContainer));
@@ -69,7 +67,6 @@ namespace OpenRA.Mods.Common.Widgets
 			GetPlayer = other.GetPlayer;
 			world = other.world;
 			worldRenderer = other.worldRenderer;
-			timestep = other.timestep;
 			clocks = other.clocks;
 
 			IconWidth = other.IconWidth;
@@ -137,7 +134,7 @@ namespace OpenRA.Mods.Common.Widgets
 					continue;
 
 				var rsi = actor.TraitInfo<RenderSpritesInfo>();
-				var icon = new Animation(world, rsi.GetImage(actor, world.Map.Rules.Sequences, faction));
+				var icon = new Animation(world, rsi.GetImage(actor, faction));
 				var bi = actor.TraitInfo<BuildableInfo>();
 
 				icon.Play(bi.Icon);
@@ -147,7 +144,7 @@ namespace OpenRA.Mods.Common.Widgets
 				var centerPosition = iconTopLeft + 0.5f * iconSize;
 
 				var palette = bi.IconPaletteIsPlayerPalette ? bi.IconPalette + player.InternalName : bi.IconPalette;
-				WidgetUtils.DrawSHPCentered(icon.Image, centerPosition, worldRenderer.Palette(palette), 0.5f);
+				WidgetUtils.DrawSpriteCentered(icon.Image, worldRenderer.Palette(palette), centerPosition, 0.5f);
 
 				var rect = new Rectangle((int)iconTopLeft.X, (int)iconTopLeft.Y, (int)iconSize.X, (int)iconSize.Y);
 				productionIcons.Add(new ProductionIcon
@@ -160,19 +157,18 @@ namespace OpenRA.Mods.Common.Widgets
 
 				productionIconsBounds.Add(rect);
 
-				var pio = queue.Actor.Owner.PlayerActor.TraitsImplementing<IProductionIconOverlay>()
-					.FirstOrDefault(p => p.IsOverlayActive(actor));
+				var pios = queue.Actor.Owner.PlayerActor.TraitsImplementing<IProductionIconOverlay>();
 
-				if (pio != null)
-					WidgetUtils.DrawSHPCentered(pio.Sprite, centerPosition + pio.Offset(iconSize),
-						worldRenderer.Palette(pio.Palette), 0.5f);
+				foreach (var pio in pios.Where(p => p.IsOverlayActive(actor)))
+					WidgetUtils.DrawSpriteCentered(pio.Sprite, worldRenderer.Palette(pio.Palette),
+						centerPosition + pio.Offset(iconSize), 0.5f);
 
 				var clock = clocks[queue];
 				clock.PlayFetchIndex(ClockSequence, () => current.TotalTime == 0 ? 0 :
 					(current.TotalTime - current.RemainingTime) * (clock.CurrentSequence.Length - 1) / current.TotalTime);
 
 				clock.Tick();
-				WidgetUtils.DrawSHPCentered(clock.Image, centerPosition, worldRenderer.Palette(ClockPalette), 0.5f);
+				WidgetUtils.DrawSpriteCentered(clock.Image, worldRenderer.Palette(ClockPalette), centerPosition, 0.5f);
 
 				queueCol++;
 			}
@@ -198,7 +194,7 @@ namespace OpenRA.Mods.Common.Widgets
 			foreach (var icon in productionIcons)
 			{
 				var current = icon.Queued.First();
-				var text = GetOverlayForItem(current, timestep);
+				var text = GetOverlayForItem(current, world.Timestep);
 				tiny.DrawTextWithContrast(text,
 					icon.Pos + new float2(16, 12) - new float2(tiny.Measure(text).X / 2, 0),
 					Color.White, Color.Black, 1);

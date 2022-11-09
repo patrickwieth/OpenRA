@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -19,11 +19,11 @@ using SDL2;
 
 namespace OpenRA.Platforms.Default
 {
-	[SuppressMessage("Microsoft.StyleCop.CSharp.NamingRules", "SA1300:ElementMustBeginWithUpperCaseLetter",
-		Justification = "C-style naming is kept for consistency with the underlying native API.")]
 	[SuppressMessage("Microsoft.StyleCop.CSharp.NamingRules", "SA1310:FieldNamesMustNotContainUnderscore",
 		Justification = "C-style naming is kept for consistency with the underlying native API.")]
-	internal static class OpenGL
+	[SuppressMessage("Style", "IDE1006:Naming Styles",
+		Justification = "C-style naming is kept for consistency with the underlying native API.")]
+	static class OpenGL
 	{
 		[Flags]
 		public enum GLFeatures
@@ -143,6 +143,8 @@ namespace OpenRA.Platforms.Default
 		public const int GL_LINK_STATUS = 0x8B82;
 		public const int GL_INFO_LOG_LENGTH = 0x8B84;
 		public const int GL_ACTIVE_UNIFORMS = 0x8B86;
+
+		public const int GL_RGBA16F = 0x881A;
 
 		// OpenGL 4.3
 		public const int GL_DEBUG_OUTPUT = 0x92E0;
@@ -631,6 +633,7 @@ namespace OpenRA.Platforms.Default
 					glGenVertexArrays = null;
 					glBindVertexArray = null;
 					glBindFragDataLocation = null;
+					glGetTexImage = Bind<GetTexImage>("glGetTexImage");
 					glGenFramebuffers = Bind<GenFramebuffers>("glGenFramebuffersEXT");
 					glBindFramebuffer = Bind<BindFramebuffer>("glBindFramebufferEXT");
 					glFramebufferTexture2D = Bind<FramebufferTexture2D>("glFramebufferTexture2DEXT");
@@ -645,7 +648,7 @@ namespace OpenRA.Platforms.Default
 			}
 			catch (Exception e)
 			{
-				WriteGraphicsLog("Failed to initialize OpenGL bindings.\nInner exception was: {0}".F(e));
+				WriteGraphicsLog($"Failed to initialize OpenGL bindings.\nInner exception was: {e}");
 				throw new InvalidProgramException("Failed to initialize OpenGL. See graphics.log for details.", e);
 			}
 		}
@@ -749,7 +752,7 @@ namespace OpenRA.Platforms.Default
 
 			string errorText;
 			errorText = ErrorToText.TryGetValue(type, out errorText) ? errorText : type.ToString("X");
-			var error = "GL Error: {0}\n{1}".F(errorText, new StackTrace());
+			var error = $"GL Error: {errorText}\n{new StackTrace()}";
 
 			WriteGraphicsLog(error);
 
@@ -790,7 +793,7 @@ namespace OpenRA.Platforms.Default
 			severityText = DebugSeverityToText.TryGetValue(severity, out severityText) ? severityText : severity.ToString("X");
 			var messageText = message.ToString();
 
-			return "{0} - GL Debug {1} Output: {2} - {3}\n{4}".F(severityText, sourceText, typeText, messageText, new StackTrace());
+			return $"{severityText} - GL Debug {sourceText} Output: {typeText} - {messageText}\n{new StackTrace()}";
 		}
 	}
 }

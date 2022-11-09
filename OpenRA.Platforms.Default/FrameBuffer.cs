@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -30,7 +30,7 @@ namespace OpenRA.Platforms.Default
 			this.size = size;
 			this.clearColor = clearColor;
 			if (!Exts.IsPowerOf2(size.Width) || !Exts.IsPowerOf2(size.Height))
-				throw new InvalidDataException("Frame buffer size ({0}x{1}) must be a power of two".F(size.Width, size.Height));
+				throw new InvalidDataException($"Frame buffer size ({size.Width}x{size.Height}) must be a power of two");
 
 			OpenGL.glGenFramebuffers(1, out framebuffer);
 			OpenGL.CheckGLError();
@@ -61,7 +61,7 @@ namespace OpenRA.Platforms.Default
 			var status = OpenGL.glCheckFramebufferStatus(OpenGL.GL_FRAMEBUFFER);
 			if (status != OpenGL.GL_FRAMEBUFFER_COMPLETE)
 			{
-				var error = "Error creating framebuffer: {0}\n{1}".F(status, new StackTrace());
+				var error = $"Error creating framebuffer: {status}\n{new StackTrace()}";
 				OpenGL.WriteGraphicsLog(error);
 				throw new InvalidOperationException("OpenGL Error: See graphics.log for details.");
 			}
@@ -143,17 +143,10 @@ namespace OpenRA.Platforms.Default
 
 		public void Dispose()
 		{
-			Dispose(true);
-			GC.SuppressFinalize(this);
-		}
-
-		void Dispose(bool disposing)
-		{
 			if (disposed)
 				return;
 			disposed = true;
-			if (disposing)
-				texture.Dispose();
+			texture.Dispose();
 
 			OpenGL.glDeleteFramebuffers(1, ref framebuffer);
 			OpenGL.CheckGLError();

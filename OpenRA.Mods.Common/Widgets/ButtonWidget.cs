@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -10,14 +10,13 @@
 #endregion
 
 using System;
-using System.Linq;
 using OpenRA.Graphics;
 using OpenRA.Primitives;
 using OpenRA.Widgets;
 
 namespace OpenRA.Mods.Common.Widgets
 {
-	public class ButtonWidget : Widget
+	public class ButtonWidget : InputWidget
 	{
 		public readonly string TooltipContainer;
 		public readonly string TooltipTemplate = "BUTTON_TOOLTIP";
@@ -26,7 +25,6 @@ namespace OpenRA.Mods.Common.Widgets
 		public bool DisableKeyRepeat = false;
 		public bool DisableKeySound = false;
 
-		[Translate]
 		public string Text = "";
 		public TextAlign Align = TextAlign.Center;
 		public int LeftMargin = 5;
@@ -44,25 +42,21 @@ namespace OpenRA.Mods.Common.Widgets
 		public int ContrastRadius = ChromeMetrics.Get<int>("ButtonTextContrastRadius");
 		public string ClickSound = ChromeMetrics.Get<string>("ClickSound");
 		public string ClickDisabledSound = ChromeMetrics.Get<string>("ClickDisabledSound");
-		public bool Disabled = false;
 		public bool Highlighted = false;
 		public Func<string> GetText;
 		public Func<Color> GetColor;
 		public Func<Color> GetColorDisabled;
 		public Func<Color> GetContrastColorDark;
 		public Func<Color> GetContrastColorLight;
-		public Func<bool> IsDisabled;
 		public Func<bool> IsHighlighted;
 		public Action<MouseInput> OnMouseDown = _ => { };
 		public Action<MouseInput> OnMouseUp = _ => { };
 
 		protected Lazy<TooltipContainerWidget> tooltipContainer;
 
-		[Translate]
 		public string TooltipText;
 		public Func<string> GetTooltipText;
 
-		[Translate]
 		public string TooltipDesc;
 		public Func<string> GetTooltipDesc;
 
@@ -70,6 +64,8 @@ namespace OpenRA.Mods.Common.Widgets
 		public Action OnClick = () => { };
 		public Action OnDoubleClick = () => { };
 		public Action<KeyInput> OnKeyPress = _ => { };
+
+		public string Cursor = ChromeMetrics.Get<string>("ButtonCursor");
 
 		protected readonly Ruleset ModRules;
 
@@ -85,7 +81,6 @@ namespace OpenRA.Mods.Common.Widgets
 			GetContrastColorLight = () => ContrastColorLight;
 			OnMouseUp = _ => OnClick();
 			OnKeyPress = _ => OnClick();
-			IsDisabled = () => Disabled;
 			IsHighlighted = () => Highlighted;
 			GetTooltipText = () => TooltipText;
 			GetTooltipDesc = () => TooltipDesc;
@@ -120,7 +115,6 @@ namespace OpenRA.Mods.Common.Widgets
 			GetContrastColorLight = other.GetContrastColorLight;
 			OnMouseDown = other.OnMouseDown;
 			Disabled = other.Disabled;
-			IsDisabled = other.IsDisabled;
 			Highlighted = other.Highlighted;
 			IsHighlighted = other.IsHighlighted;
 
@@ -224,14 +218,11 @@ namespace OpenRA.Mods.Common.Widgets
 			tooltipContainer.Value.RemoveTooltip();
 		}
 
-		public override int2 ChildOrigin
-		{
-			get
-			{
-				return RenderOrigin +
-					(Depressed ? new int2(VisualHeight, VisualHeight) : new int2(0, 0));
-			}
-		}
+		public override string GetCursor(int2 pos) { return Cursor; }
+
+		public override int2 ChildOrigin =>
+			RenderOrigin +
+			(Depressed ? new int2(VisualHeight, VisualHeight) : new int2(0, 0));
 
 		public override void Draw()
 		{
@@ -281,7 +272,7 @@ namespace OpenRA.Mods.Common.Widgets
 		}
 
 		public override Widget Clone() { return new ButtonWidget(this); }
-		public virtual int UsableWidth { get { return Bounds.Width; } }
+		public virtual int UsableWidth => Bounds.Width;
 
 		public virtual void DrawBackground(Rectangle rect, bool disabled, bool pressed, bool hover, bool highlighted)
 		{

@@ -1,5 +1,5 @@
 --[[
-   Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+   Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
    This file is part of OpenRA, which is free software. It is made
    available to you under the terms of the GNU General Public License
    as published by the Free Software Foundation, either version 3 of
@@ -7,12 +7,12 @@
    information, see COPYING.
 ]]
 
-if Map.LobbyOption("difficulty") == "easy" then
+if Difficulty == "easy" then
 	TanyaType = "e7"
 	ReinforceCash = 5000
 	HoldAITime = DateTime.Minutes(3)
 	SpecialCameras = true
-elseif Map.LobbyOption("difficulty") == "normal" then
+elseif Difficulty == "normal" then
 	TanyaType = "e7.noautotarget"
 	ReinforceCash = 2250
 	HoldAITime = DateTime.Minutes(2)
@@ -89,7 +89,7 @@ Tick = function()
 	end
 
 	if ussr.HasNoRequiredUnits() then
-		if not greece.IsObjectiveCompleted(KillAll) and Map.LobbyOption("difficulty") == "tough" then
+		if not greece.IsObjectiveCompleted(KillAll) and Difficulty == "tough" then
 			SendWaterExtraction()
 		end
 		greece.MarkCompletedObjective(KillAll)
@@ -137,7 +137,7 @@ SendWaterExtraction = function()
 	Camera.Position = flare.CenterPosition
 
 	WaterExtractionTran = Reinforcements.ReinforceWithTransport(greece, ExtractionTransport, nil, SpyEntryPath)[1]
-	ExtractObj = greece.AddPrimaryObjective("Get all your forces into the transport.")
+	ExtractObj = greece.AddObjective("Get all your forces into the transport.")
 
 	Trigger.OnKilled(WaterExtractionTran, function() ussr.MarkCompletedObjective(ussrObj) end)
 	Trigger.OnAllRemovedFromWorld(greece.GetGroundAttackers(), function()
@@ -191,14 +191,14 @@ FreeTanya = function()
 
 	Trigger.OnKilled(Tanya, function() ussr.MarkCompletedObjective(ussrObj) end)
 
-	if Map.LobbyOption("difficulty") == "tough" then
-		KillSams = greece.AddPrimaryObjective("Destroy all four SAM Sites that block\nour reinforcements' helicopter.")
+	if Difficulty == "tough" then
+		KillSams = greece.AddObjective("Destroy all four SAM Sites that block\nour reinforcements' helicopter.")
 
 		greece.MarkCompletedObjective(mainObj)
-		surviveObj = greece.AddPrimaryObjective("Tanya must not die!")
+		surviveObj = greece.AddObjective("Tanya must not die!")
 		Media.PlaySpeechNotification(greece, "TanyaRescued")
 	else
-		KillSams = greece.AddPrimaryObjective("Destroy all four SAM sites that block\nthe extraction helicopter.")
+		KillSams = greece.AddObjective("Destroy all four SAM sites that block\nthe extraction helicopter.")
 
 		Media.PlaySpeechNotification(greece, "TargetFreed")
 	end
@@ -316,7 +316,7 @@ InitTriggers = function()
 		end
 	end)
 
-	if Map.LobbyOption("difficulty") ~= "tough" then
+	if Difficulty ~= "tough" then
 		Trigger.OnKilled(Mammoth, function()
 			Trigger.AfterDelay(HoldAITime - DateTime.Seconds(45), function() HoldProduction = false end)
 			Trigger.AfterDelay(HoldAITime, function() Attacking = true end)
@@ -342,7 +342,7 @@ InitTriggers = function()
 		Trigger.AfterDelay(DateTime.Seconds(7), flare.Destroy)
 		Media.PlaySpeechNotification(greece, "SignalFlare")
 
-		if Map.LobbyOption("difficulty") == "tough" then
+		if Difficulty == "tough" then
 			Reinforcements.ReinforceWithTransport(greece, InsertionHeliType, HeliReinforcements, ExtractionPath, { ExtractionPath[1] })
 			if not Harvester.IsDead then
 				Harvester.FindResources()
@@ -358,7 +358,9 @@ InitTriggers = function()
 
 					Media.PlaySpeechNotification(greece, "TanyaRescued")
 					greece.MarkCompletedObjective(mainObj)
-					SendReinforcements()
+					Trigger.AfterDelay(DateTime.Seconds(2), function()
+						SendReinforcements()
+					end)
 
 					if PrisonCamera and PrisonCamera.IsInWorld then
 						PrisonCamera.Destroy()
@@ -369,36 +371,19 @@ InitTriggers = function()
 	end)
 end
 
-InitObjectives = function()
-	Trigger.OnObjectiveAdded(greece, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "New " .. string.lower(p.GetObjectiveType(id)) .. " objective")
-	end)
-
-	ussrObj = ussr.AddPrimaryObjective("Deny the Allies.")
-	mainObj = greece.AddPrimaryObjective("Rescue Tanya.")
-	KillAll = greece.AddPrimaryObjective("Eliminate all Soviet units in this area.")
-	infWarfactory = greece.AddSecondaryObjective("Infiltrate the Soviet warfactory.")
-
-	Trigger.OnObjectiveCompleted(greece, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "Objective completed")
-	end)
-	Trigger.OnObjectiveFailed(greece, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "Objective failed")
-	end)
-
-	Trigger.OnPlayerLost(greece, function()
-		Media.PlaySpeechNotification(player, "Lose")
-	end)
-	Trigger.OnPlayerWon(greece, function()
-		Media.PlaySpeechNotification(player, "Win")
-	end)
+AddObjectives = function()
+	ussrObj = ussr.AddObjective("Deny the Allies.")
+	mainObj = greece.AddObjective("Rescue Tanya.")
+	KillAll = greece.AddObjective("Eliminate all Soviet units in this area.")
+	infWarfactory = greece.AddObjective("Infiltrate the Soviet warfactory.", "Secondary", false)
 end
 
 WorldLoaded = function()
 	greece = Player.GetPlayer("Greece")
 	ussr = Player.GetPlayer("USSR")
 
-	InitObjectives()
+	InitObjectives(greece)
+	AddObjectives()
 	InitTriggers()
 	SendSpy()
 

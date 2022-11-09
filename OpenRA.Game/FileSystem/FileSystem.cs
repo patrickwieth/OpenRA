@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -28,7 +28,7 @@ namespace OpenRA.FileSystem
 
 	public class FileSystem : IReadOnlyFileSystem
 	{
-		public IEnumerable<IReadOnlyPackage> MountedPackages { get { return mountedPackages.Keys; } }
+		public IEnumerable<IReadOnlyPackage> MountedPackages => mountedPackages.Keys;
 		readonly Dictionary<IReadOnlyPackage, int> mountedPackages = new Dictionary<IReadOnlyPackage, int>();
 		readonly Dictionary<string, IReadOnlyPackage> explicitMounts = new Dictionary<string, IReadOnlyPackage>();
 		readonly string modID;
@@ -63,7 +63,7 @@ namespace OpenRA.FileSystem
 		{
 			// Raw directories are the easiest and one of the most common cases, so try these first
 			var resolvedPath = Platform.ResolvePath(filename);
-			if (!resolvedPath.Contains("|") && Directory.Exists(resolvedPath))
+			if (!resolvedPath.Contains('|') && Directory.Exists(resolvedPath))
 				return new Folder(resolvedPath);
 
 			// Children of another package require special handling
@@ -95,7 +95,7 @@ namespace OpenRA.FileSystem
 					name = name.Substring(1);
 
 					if (!installedMods.TryGetValue(name, out var mod))
-						throw new InvalidOperationException("Could not load mod '{0}'. Available mods: {1}".F(name, installedMods.Keys.JoinWith(", ")));
+						throw new InvalidOperationException($"Could not load mod '{name}'. Available mods: {installedMods.Keys.JoinWith(", ")}");
 
 					package = mod.Package;
 					modPackages.Add(package);
@@ -104,7 +104,7 @@ namespace OpenRA.FileSystem
 				{
 					package = OpenPackage(name);
 					if (package == null)
-						throw new InvalidOperationException("Could not open package '{0}', file not found or its format is not supported.".F(name));
+						throw new InvalidOperationException($"Could not open package '{name}', file not found or its format is not supported.");
 				}
 
 				Mount(package, explicitName);
@@ -203,7 +203,7 @@ namespace OpenRA.FileSystem
 		public Stream Open(string filename)
 		{
 			if (!TryOpen(filename, out var s))
-				throw new FileNotFoundException("File not found: {0}".F(filename), filename);
+				throw new FileNotFoundException($"File not found: {filename}", filename);
 
 			return s;
 		}

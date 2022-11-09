@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -30,22 +30,18 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly Rectangle Bounds;
 		public readonly SelectionBoxAnnotationRenderable SelectionBox;
 
-		public string Tooltip
-		{
-			get
-			{
-				return (tooltip == null ? " < " + Info.Name + " >" : tooltip.Name) + "\n" + Owner.Name + " (" + Owner.Faction + ")"
-					+ "\nID: " + ID + "\nType: " + Info.Name;
-			}
-		}
+		public string Tooltip =>
+			(tooltip == null ? " < " + Info.Name + " >" : tooltip.Name) + "\n" + Owner.Name + " (" + Owner.Faction + ")"
+			+ "\nID: " + ID + "\nType: " + Info.Name;
 
-		public string Type { get { return reference.Type; } }
+		public string Type => reference.Type;
 
 		public string ID { get; set; }
 		public PlayerReference Owner { get; set; }
-		public SubCell SubCell { get; private set; }
+		public SubCell SubCell { get; }
 		public bool Selected { get; set; }
-		public readonly Color RadarColor;
+		public Color RadarColor { get; private set; }
+		readonly RadarColorFromTerrainInfo terrainRadarColorInfo;
 
 		readonly WorldRenderer worldRenderer;
 		readonly TooltipInfoBase tooltip;
@@ -68,7 +64,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			var world = worldRenderer.World;
 			if (!world.Map.Rules.Actors.TryGetValue(reference.Type.ToLowerInvariant(), out Info))
-				throw new InvalidDataException("Actor {0} of unknown type {1}".F(id, reference.Type.ToLowerInvariant()));
+				throw new InvalidDataException($"Actor {id} of unknown type {reference.Type.ToLowerInvariant()}");
 
 			CenterPosition = PreviewPosition(world, reference);
 
@@ -78,16 +74,11 @@ namespace OpenRA.Mods.Common.Traits
 			var subCellInit = reference.GetOrDefault<SubCellInit>();
 			var subCell = subCellInit != null ? subCellInit.Value : SubCell.Any;
 
-			var radarColorInfo = Info.TraitInfoOrDefault<RadarColorFromTerrainInfo>();
-			RadarColor = radarColorInfo == null ? owner.Color : radarColorInfo.GetColorFromTerrain(world);
-
-			if (ios != null)
-				Footprint = ios.OccupiedCells(Info, location, subCell);
+			var occupiedCells = ios?.OccupiedCells(Info, location, subCell);
+			if (occupiedCells == null || occupiedCells.Count == 0)
+				Footprint = new Dictionary<CPos, SubCell>() { { location, SubCell.FullCell } };
 			else
-			{
-				var footprint = new Dictionary<CPos, SubCell>() { { location, SubCell.FullCell } };
-				Footprint = new ReadOnlyDictionary<CPos, SubCell>(footprint);
-			}
+				Footprint = occupiedCells;
 
 			tooltip = Info.TraitInfos<EditorOnlyTooltipInfo>().FirstOrDefault(info => info.EnabledByDefault) as TooltipInfoBase
 				?? Info.TraitInfos<TooltipInfo>().FirstOrDefault(info => info.EnabledByDefault);
@@ -95,6 +86,9 @@ namespace OpenRA.Mods.Common.Traits
 			DescriptiveName = tooltip != null ? tooltip.Name : Info.Name;
 
 			GeneratePreviews();
+
+			terrainRadarColorInfo = Info.TraitInfoOrDefault<RadarColorFromTerrainInfo>();
+			UpdateRadarColor();
 
 			// Bounds are fixed from the initial render.
 			// If this is a problem, then we may need to fetch the area from somewhere else
@@ -117,9 +111,13 @@ namespace OpenRA.Mods.Common.Traits
 			var items = previews.SelectMany(p => p.Render(worldRenderer, CenterPosition));
 			if (Selected)
 			{
-				var highlight = worldRenderer.Palette("highlight");
-				var overlay = items.Where(r => !r.IsDecoration)
-					.Select(r => r.WithPalette(highlight));
+				var overlay = items.Where(r => !r.IsDecoration && r is IModifyableRenderable)
+					.Select(r =>
+					{
+						var mr = (IModifyableRenderable)r;
+						return mr.WithTint(float3.Ones, mr.TintModifiers | TintModifiers.ReplaceColor).WithAlpha(0.5f);
+					});
+
 				return items.Concat(overlay);
 			}
 
@@ -198,6 +196,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			reference.Add(init);
 			GeneratePreviews();
+			UpdateRadarColor();
 		}
 
 		public void RemoveInit<T>() where T : ActorInit, ISingleInstanceInit
@@ -210,8 +209,10 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			Func<object, bool> saveInit = init =>
 			{
-				var factionInit = init as FactionInit;
-				if (factionInit != null && factionInit.Value == Owner.Faction)
+				if (init is FactionInit factionInit && factionInit.Value == Owner.Faction)
+					return false;
+
+				if (init is HealthInit healthInit && healthInit.Value == 100)
 					return false;
 
 				var healthInit = init as HealthInit;
@@ -249,7 +250,7 @@ namespace OpenRA.Mods.Common.Traits
 				return world.Map.CenterOfSubCell(cell, subCell) + offset;
 			}
 			else
-				throw new InvalidDataException("Actor {0} must define Location or CenterPosition".F(ID));
+				throw new InvalidDataException($"Actor {ID} must define Location or CenterPosition");
 		}
 
 		void GeneratePreviews()
@@ -260,6 +261,11 @@ namespace OpenRA.Mods.Common.Traits
 				.ToArray();
 		}
 
+		void UpdateRadarColor()
+		{
+			RadarColor = terrainRadarColorInfo == null ? Owner.Color : terrainRadarColorInfo.GetColorFromTerrain(worldRenderer.World);
+		}
+
 		public ActorReference Export()
 		{
 			return reference.Clone();
@@ -267,7 +273,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		public override string ToString()
 		{
-			return "{0} {1}".F(Info.Name, ID);
+			return $"{Info.Name} {ID}";
 		}
 
 		public bool Equals(EditorActorPreview other)

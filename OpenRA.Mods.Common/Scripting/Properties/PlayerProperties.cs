@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -25,22 +25,22 @@ namespace OpenRA.Mods.Common.Scripting
 			: base(context, player) { }
 
 		[Desc("The player's internal name.")]
-		public string InternalName { get { return Player.InternalName; } }
+		public string InternalName => Player.InternalName;
 
 		[Desc("The player's name.")]
-		public string Name { get { return Player.PlayerName; } }
+		public string Name => Player.PlayerName;
 
 		[Desc("The player's color.")]
-		public Color Color { get { return Player.Color; } }
+		public Color Color => Player.Color;
 
 		[Desc("The player's faction.")]
-		public string Faction { get { return Player.Faction.InternalName; } }
+		public string Faction => Player.Faction.InternalName;
 
 		[Desc("The player's spawnpoint ID.")]
-		public int Spawn { get { return Player.SpawnPoint; } }
+		public int Spawn => Player.SpawnPoint;
 
 		[Desc("The player's home/starting location.")]
-		public CPos HomeLocation { get { return Player.HomeLocation; } }
+		public CPos HomeLocation => Player.HomeLocation;
 
 		[Desc("The player's team ID.")]
 		public int Team
@@ -63,13 +63,13 @@ namespace OpenRA.Mods.Common.Scripting
 		}
 
 		[Desc("Returns true if the player is a bot.")]
-		public bool IsBot { get { return Player.IsBot; } }
+		public bool IsBot => Player.IsBot;
 
 		[Desc("Returns true if the player is non combatant.")]
-		public bool IsNonCombatant { get { return Player.NonCombatant; } }
+		public bool IsNonCombatant => Player.NonCombatant;
 
 		[Desc("Returns true if the player is the local player.")]
-		public bool IsLocalPlayer { get { return Player == (Player.World.RenderPlayer ?? Player.World.LocalPlayer); } }
+		public bool IsLocalPlayer => Player == (Player.World.RenderPlayer ?? Player.World.LocalPlayer);
 
 		[Desc("Returns all living actors staying inside the world for this player.")]
 		public Actor[] GetActors()
@@ -91,7 +91,7 @@ namespace OpenRA.Mods.Common.Scripting
 			var result = new List<Actor>();
 
 			if (!Context.World.Map.Rules.Actors.TryGetValue(type, out var ai))
-				throw new LuaException("Unknown actor type '{0}'".F(type));
+				throw new LuaException($"Unknown actor type '{type}'");
 
 			result.AddRange(Player.World.Actors
 				.Where(actor => actor.Owner == Player && !actor.IsDead && actor.IsInWorld && actor.Info.Name == ai.Name));
@@ -106,7 +106,7 @@ namespace OpenRA.Mods.Common.Scripting
 
 			foreach (var type in types)
 				if (!Context.World.Map.Rules.Actors.ContainsKey(type))
-					throw new LuaException("Unknown actor type '{0}'".F(type));
+					throw new LuaException($"Unknown actor type '{type}'");
 
 			result.AddRange(Player.World.Actors
 				.Where(actor => actor.Owner == Player && !actor.IsDead && actor.IsInWorld && types.Contains(actor.Info.Name)));
@@ -119,7 +119,7 @@ namespace OpenRA.Mods.Common.Scripting
 		{
 			var tt = Player.PlayerActor.TraitOrDefault<TechTree>();
 			if (tt == null)
-				throw new LuaException("Missing TechTree trait on player {0}!".F(Player));
+				throw new LuaException($"Missing TechTree trait on player {Player}!");
 
 			return tt.HasPrerequisites(type);
 		}

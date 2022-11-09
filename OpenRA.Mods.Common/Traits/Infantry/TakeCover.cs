@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -28,7 +28,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		[Desc("Damage types that trigger prone state. Defined on the warheads.",
 			"If Duration is negative (permanent), you can leave this empty to trigger prone state immediately.")]
-		public readonly BitSet<DamageType> DamageTriggers = default(BitSet<DamageType>);
+		public readonly BitSet<DamageType> DamageTriggers = default;
 
 		[Desc("Damage modifiers for each damage type (defined on the warheads) while the unit is prone.")]
 		public readonly Dictionary<string, int> DamageModifiers = new Dictionary<string, int>();
@@ -58,10 +58,10 @@ namespace OpenRA.Mods.Common.Traits
 		[Sync]
 		int remainingDuration = 0;
 
-		bool IsProne { get { return !IsTraitDisabled && remainingDuration != 0; } }
+		bool IsProne => !IsTraitDisabled && remainingDuration != 0;
 
-		bool IRenderInfantrySequenceModifier.IsModifyingSequence { get { return IsProne; } }
-		string IRenderInfantrySequenceModifier.SequencePrefix { get { return info.ProneSequencePrefix; } }
+		bool IRenderInfantrySequenceModifier.IsModifyingSequence => IsProne;
+		string IRenderInfantrySequenceModifier.SequencePrefix => info.ProneSequencePrefix;
 
 		public TakeCover(ActorInitializer init, TakeCoverInfo info)
 			: base(init, info)
@@ -96,10 +96,7 @@ namespace OpenRA.Mods.Common.Traits
 				localOffset = WVec.Zero;
 		}
 
-		public override bool HasAchievedDesiredFacing
-		{
-			get { return true; }
-		}
+		public override bool HasAchievedDesiredFacing => true;
 
 		int IDamageModifier.GetDamageModifier(Actor attacker, Damage damage)
 		{

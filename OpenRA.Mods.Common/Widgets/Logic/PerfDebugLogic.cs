@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -10,6 +10,7 @@
 #endregion
 
 using System.Diagnostics;
+using OpenRA.Graphics;
 using OpenRA.Support;
 using OpenRA.Widgets;
 
@@ -18,7 +19,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 	public class PerfDebugLogic : ChromeLogic
 	{
 		[ObjectCreator.UseCtor]
-		public PerfDebugLogic(Widget widget)
+		public PerfDebugLogic(Widget widget, WorldRenderer worldRenderer)
 		{
 			var perfGraph = widget.Get("GRAPH_BG");
 			perfGraph.IsVisible = () => Game.Settings.Debug.PerfGraph;
@@ -40,10 +41,13 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					fpsReferenceFrame = Game.RenderFrame;
 				}
 
-				return "FPS: {0}\nTick {1} @ {2:F1} ms\nRender {3} @ {4:F1} ms\nBatches: {5}".F(
-					fps, Game.LocalTick, PerfHistory.Items["tick_time"].Average(Game.Settings.Debug.Samples),
-					Game.RenderFrame, PerfHistory.Items["render"].Average(Game.Settings.Debug.Samples),
-					PerfHistory.Items["batches"].LastValue);
+				var wfbSize = Game.Renderer.WorldFrameBufferSize;
+				var viewportSize = worldRenderer.Viewport.Rectangle.Size;
+				return $"FPS: {fps}\nTick {Game.LocalTick} @ {PerfHistory.Items["tick_time"].Average(Game.Settings.Debug.Samples):F1} ms\n" +
+					$"Render {Game.RenderFrame} @ {PerfHistory.Items["render"].Average(Game.Settings.Debug.Samples):F1} ms\n" +
+					$"Batches: {PerfHistory.Items["batches"].LastValue}\n" +
+					$"Viewport Size: {viewportSize.Width} x {viewportSize.Height} / {Game.Renderer.WorldDownscaleFactor}\n" +
+					$"WFB Size: {wfbSize.Width} x {wfbSize.Height}";
 			};
 		}
 	}

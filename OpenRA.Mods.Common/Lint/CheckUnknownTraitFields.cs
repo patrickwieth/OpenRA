@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -11,12 +11,29 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using OpenRA.FileSystem;
+using OpenRA.Server;
 
 namespace OpenRA.Mods.Common.Lint
 {
-	class CheckUnknownTraitFields : ILintPass, ILintMapPass
+	class CheckUnknownTraitFields : ILintPass, ILintMapPass, ILintServerMapPass
 	{
+		void ILintPass.Run(Action<string> emitError, Action<string> emitWarning, ModData modData)
+		{
+			foreach (var f in modData.Manifest.Rules)
+				CheckActors(MiniYaml.FromStream(modData.DefaultFileSystem.Open(f), f), emitError, modData);
+		}
+
+		void ILintMapPass.Run(Action<string> emitError, Action<string> emitWarning, ModData modData, Map map)
+		{
+			CheckMapYaml(emitError, modData, map, map.RuleDefinitions);
+		}
+
+		void ILintServerMapPass.Run(Action<string> emitError, Action<string> emitWarning, ModData modData, MapPreview map, Ruleset mapRules)
+		{
+			CheckMapYaml(emitError, modData, map, map.RuleDefinitions);
+		}
+
 		string NormalizeName(string key)
 		{
 			var name = key.Split('@')[0];
@@ -35,11 +52,11 @@ namespace OpenRA.Mods.Common.Lint
 					// Removals can never define children or values
 					if (t.Key.StartsWith("-", StringComparison.Ordinal))
 					{
-						if (t.Value.Nodes.Any())
-							emitError("{0} {1} defines child nodes, which are not valid for removals.".F(t.Location, t.Key));
+						if (t.Value.Nodes.Count > 0)
+							emitError($"{t.Location} {t.Key} defines child nodes, which are not valid for removals.");
 
 						if (!string.IsNullOrEmpty(t.Value.Value))
-							emitError("{0} {1} defines a value, which is not valid for removals.".F(t.Location, t.Key));
+							emitError($"{t.Location} {t.Key} defines a value, which is not valid for removals.");
 
 						continue;
 					}
@@ -47,40 +64,42 @@ namespace OpenRA.Mods.Common.Lint
 					var traitName = NormalizeName(t.Key);
 
 					// Inherits can never define children
-					if (traitName == "Inherits" && t.Value.Nodes.Any())
+					if (traitName == "Inherits")
 					{
-						emitError("{0} defines child nodes, which are not valid for Inherits.".F(t.Location));
+						if (t.Value.Nodes.Count > 0)
+							emitError($"{t.Location} defines child nodes, which are not valid for Inherits.");
+
 						continue;
 					}
 
 					var traitInfo = modData.ObjectCreator.FindType(traitName + "Info");
+					if (traitInfo == null)
+					{
+						emitError($"{t.Location} defines unknown trait `{traitName}`.");
+						continue;
+					}
+
 					foreach (var field in t.Value.Nodes)
 					{
 						var fieldName = NormalizeName(field.Key);
 						if (traitInfo.GetField(fieldName) == null)
-							emitError("{0} refers to a trait field `{1}` that does not exist on `{2}`.".F(field.Location, fieldName, traitName));
+							emitError($"{field.Location} refers to a trait field `{fieldName}` that does not exist on `{traitName}`.");
 					}
 				}
 			}
 		}
 
-		void ILintPass.Run(Action<string> emitError, Action<string> emitWarning, ModData modData)
+		void CheckMapYaml(Action<string> emitError, ModData modData, IReadOnlyFileSystem fileSystem, MiniYaml ruleDefinitions)
 		{
-			foreach (var f in modData.Manifest.Rules)
-				CheckActors(MiniYaml.FromStream(modData.DefaultFileSystem.Open(f), f), emitError, modData);
-		}
+			if (ruleDefinitions == null)
+				return;
 
-		void ILintMapPass.Run(Action<string> emitError, Action<string> emitWarning, ModData modData, Map map)
-		{
-			if (map.RuleDefinitions != null && map.RuleDefinitions.Value != null)
-			{
-				var mapFiles = FieldLoader.GetValue<string[]>("value", map.RuleDefinitions.Value);
-				foreach (var f in mapFiles)
-					CheckActors(MiniYaml.FromStream(map.Open(f), f), emitError, modData);
+			var mapFiles = FieldLoader.GetValue<string[]>("value", ruleDefinitions.Value);
+			foreach (var f in mapFiles)
+				CheckActors(MiniYaml.FromStream(fileSystem.Open(f), f), emitError, modData);
 
-				if (map.RuleDefinitions.Nodes.Any())
-					CheckActors(map.RuleDefinitions.Nodes, emitError, modData);
-			}
+			if (ruleDefinitions.Nodes.Count > 0)
+				CheckActors(ruleDefinitions.Nodes, emitError, modData);
 		}
 	}
 }

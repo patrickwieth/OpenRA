@@ -26,7 +26,8 @@ E2:
 		ProneOffset: 160,128,-555
 	AttackFrontal:
 		Voice: Attack
-	WithInfantryBody:
+		FacingTolerance: 0
+	WithSplitAttackPaletteInfantryBody:
 		DefaultAttackSequence: attack
 	RevealsShroud:
 		Range: 7c0
@@ -77,7 +78,8 @@ MEDIC:
 	AutoTargetPriority@DEFAULT:
 		ValidTargets: Infantry
 	AttackFrontal:
-	WithInfantryBody:
+		FacingTolerance: 0
+	WithSplitAttackPaletteInfantryBody:
 		DefaultAttackSequence: heal
 	ChangesHealth:
 		Step: 500
@@ -119,7 +121,8 @@ JUMPJET:
 	-Crushable:
 	AttackFrontal:
 		Voice: Attack
-	WithInfantryBody:
+		FacingTolerance: 0
+	WithSplitAttackPaletteInfantryBody:
 		RequiresCondition: !airborne
 		DefaultAttackSequence: attack
 	WithInfantryBody@flying:
@@ -127,6 +130,14 @@ JUMPJET:
 		DefaultAttackSequence: flying-attack
 		StandSequences: flying
 		MoveSequence: flying
+		Palette: player-nomuzzle
+		IsPlayerPalette: true
+	WithInfantryBody@flying-muzzle:
+		RequiresCondition: airborne
+		DefaultAttackSequence: flying-attack-muzzle
+		StandSequences: flying-muzzle
+		MoveSequence: flying-muzzle
+		Palette: muzzle
 	-TakeCover:
 	Hovers:
 		RequiresCondition: airborne
@@ -240,10 +251,11 @@ GHOST:
 		CrushSound: squishy2.aud
 	AttackFrontal:
 		Voice: Attack
+		FacingTolerance: 0
 	Demolition:
 		DetonationDelay: 45
 		Voice: Attack
-	WithInfantryBody:
+	WithSplitAttackPaletteInfantryBody:
 		DefaultAttackSequence: attack
 	ProducibleWithLevel:
 		Prerequisites: barracks.upgraded

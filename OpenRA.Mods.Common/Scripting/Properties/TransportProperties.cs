@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -30,13 +30,13 @@ namespace OpenRA.Mods.Common.Scripting
 		}
 
 		[Desc("Returns references to passengers inside the transport.")]
-		public Actor[] Passengers { get { return cargo.Passengers.ToArray(); } }
+		public Actor[] Passengers => cargo.Passengers.ToArray();
 
 		[Desc("Specifies whether transport has any passengers.")]
-		public bool HasPassengers { get { return cargo.Passengers.Any(); } }
+		public bool HasPassengers => cargo.Passengers.Any();
 
 		[Desc("Specifies the amount of passengers.")]
-		public int PassengerCount { get { return cargo.Passengers.Count(); } }
+		public int PassengerCount => cargo.Passengers.Count();
 
 		[Desc("Teleport an existing actor inside this transport.")]
 		public void LoadPassenger(Actor a)

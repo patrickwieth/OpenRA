@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -20,7 +20,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 {
 	class ConvertSpriteToPngCommand : IUtilityCommand
 	{
-		string IUtilityCommand.Name { get { return "--png"; } }
+		string IUtilityCommand.Name => "--png";
 
 		bool IUtilityCommand.ValidateArguments(string[] args)
 		{
@@ -35,7 +35,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 			var modData = Game.ModData = utility.ModData;
 
 			var src = args[1];
-			var shadowIndex = new int[] { };
+			var shadowIndex = Array.Empty<int>();
 			if (args.Contains("--noshadow"))
 			{
 				Array.Resize(ref shadowIndex, shadowIndex.Length + 3);
@@ -44,12 +44,12 @@ namespace OpenRA.Mods.Common.UtilityCommands
 				shadowIndex[shadowIndex.Length - 3] = 4;
 			}
 
-			var palette = new ImmutablePalette(args[2], shadowIndex);
+			var palette = new ImmutablePalette(args[2], new[] { 0 }, shadowIndex);
 			var palColors = new Color[Palette.Size];
 			for (var i = 0; i < Palette.Size; i++)
 				palColors[i] = palette.GetColor(i);
 
-			var frames = FrameLoader.GetFrames(File.OpenRead(src), modData.SpriteLoaders, out _);
+			var frames = FrameLoader.GetFrames(File.OpenRead(src), modData.SpriteLoaders, src, out _);
 
 			var usePadding = !args.Contains("--nopadding");
 			var count = 0;
@@ -78,16 +78,8 @@ namespace OpenRA.Mods.Common.UtilityCommands
 							frame.Size.Width);
 				}
 
-				if (frame.Type == SpriteFrameType.BGRA)
-				{
-					var png = new Png(pngData, frameSize.Width, frameSize.Height);
-					png.Save("{0}-{1:D4}.png".F(prefix, count++));
-				}
-				else
-				{
-					var png = new Png(pngData, frameSize.Width, frameSize.Height, palColors);
-					png.Save("{0}-{1:D4}.png".F(prefix, count++));
-				}
+				var png = new Png(pngData, SpriteFrameType.Indexed8, frameSize.Width, frameSize.Height, palColors);
+				png.Save($"{prefix}-{(count++):D4}.png");
 			}
 
 			Console.WriteLine("Saved {0}-[0..{1}].png", prefix, count - 1);

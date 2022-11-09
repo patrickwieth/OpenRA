@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -42,11 +42,14 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		readonly ActorSelectorActor[] allActors;
 		readonly EditorCursorLayer editorCursor;
 
+		[TranslationReference]
+		static readonly string Type = "type";
+
 		PlayerReference selectedOwner;
 
 		[ObjectCreator.UseCtor]
-		public ActorSelectorLogic(Widget widget, World world, WorldRenderer worldRenderer)
-			: base(widget, world, worldRenderer, "ACTORTEMPLATE_LIST", "ACTORPREVIEW_TEMPLATE")
+		public ActorSelectorLogic(Widget widget, ModData modData, World world, WorldRenderer worldRenderer)
+			: base(widget, modData, world, worldRenderer, "ACTORTEMPLATE_LIST", "ACTORPREVIEW_TEMPLATE")
 		{
 			mapRules = world.Map.Rules;
 			ownersDropDown = widget.Get<DropDownButtonWidget>("OWNERS_DROPDOWN");
@@ -80,7 +83,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			ownersDropDown.Text = selectedOwner.Name;
 			ownersDropDown.TextColor = selectedOwner.Color;
 
-			var tileSetId = world.Map.Rules.TileSet.Id;
+			var tileSetId = world.Map.Rules.TerrainInfo.Id;
 			var allActorsTemp = new List<ActorSelectorActor>();
 			foreach (var a in mapRules.Actors.Values)
 			{
@@ -112,7 +115,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				if (tooltip != null)
 					searchTerms.Add(tooltip.Name);
 
-				var tooltipText = (tooltip == null ? "Type: " : tooltip.Name + "\nType: ") + a.Name;
+				var type = modData.Translation.GetString(Type);
+				var tooltipText = (tooltip == null ? $"{type}: " : tooltip.Name + $"\n{type}: ") + a.Name;
 				allActorsTemp.Add(new ActorSelectorActor(a, editorData.Categories, searchTerms.ToArray(), tooltipText));
 			}
 
@@ -156,12 +160,20 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			ownersDropDown.Text = option.Name;
 			ownersDropDown.TextColor = option.Color;
 			InitializePreviews();
+
+			var actor = editorCursor.Actor;
+			if (actor != null)
+			{
+				actor.Owner = option;
+				actor.ReplaceInit(new OwnerInit(option.Name));
+				actor.ReplaceInit(new FactionInit(option.Faction));
+			}
 		}
 
 		protected override void InitializePreviews()
 		{
 			Panel.RemoveChildren();
-			if (!SelectedCategories.Any())
+			if (SelectedCategories.Count == 0)
 				return;
 
 			foreach (var a in allActors)
@@ -173,9 +185,11 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					continue;
 
 				var actor = a.Actor;
-				var td = new TypeDictionary();
-				td.Add(new OwnerInit(selectedOwner.Name));
-				td.Add(new FactionInit(selectedOwner.Faction));
+				var td = new TypeDictionary
+				{
+					new OwnerInit(selectedOwner.Name),
+					new FactionInit(selectedOwner.Faction)
+				};
 				foreach (var api in actor.TraitInfos<IActorPreviewInitInfo>())
 					foreach (var o in api.ActorPreviewInits(actor, ActorPreviewType.MapEditorSidebar))
 						td.Add(o);
@@ -209,7 +223,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				catch
 				{
 					Log.Write("debug", "Map editor ignoring actor {0}, because of missing sprites for tileset {1}.",
-						actor.Name, World.Map.Rules.TileSet.Id);
+						actor.Name, World.Map.Rules.TerrainInfo.Id);
 					continue;
 				}
 			}

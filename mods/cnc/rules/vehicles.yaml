@@ -7,13 +7,12 @@ MCV:
 		Name: Mobile Construction Vehicle
 	Buildable:
 		BuildPaletteOrder: 100
-		Prerequisites: anyhq, ~techlevel.medium, fix
 		Queue: Vehicle.GDI, Vehicle.Nod
 		Description: Deploys into another Construction Yard.\n  Unarmed
 	Selectable:
-		DecorationBounds: 36,36
+		DecorationBounds: 1536, 1536
 	Mobile:
-		Speed: 71
+		Speed: 60
 		Locomotor: heavywheeled
 	Health:
 		HP: 120000
@@ -29,6 +28,8 @@ MCV:
 		Facing: 432
 		TransformSounds: constru2.aud, hvydoor1.aud
 		NoTransformNotification: BuildingCannotPlaceAudio
+		NoTransformTextNotification: Cannot deploy here.
+		Voice: Unload
 	MustBeDestroyed:
 		RequiredForShortGame: true
 	BaseBuilding:
@@ -52,7 +53,7 @@ HARV:
 		Queue: Vehicle.GDI, Vehicle.Nod
 		Description: Collects Tiberium for processing.\n  Unarmed
 	Selectable:
-		DecorationBounds: 36,36
+		DecorationBounds: 1536, 1536
 	Harvester:
 		Resources: Tiberium, BlueTiberium
 		Capacity: 20
@@ -63,7 +64,7 @@ HARV:
 		HarvestFacings: 8
 		EmptyCondition: no-tiberium
 	Mobile:
-		Speed: 85
+		Speed: 72
 	Health:
 		HP: 62500
 	Repairable:
@@ -74,6 +75,7 @@ HARV:
 		Range: 4c0
 	ActorLostNotification:
 		Notification: HarvesterLost
+		TextNotification: Harvester lost.
 	SpawnActorOnDeath:
 		Actor: HARV.Husk
 		OwnerType: InternalName
@@ -114,7 +116,7 @@ APC:
 		Description: Armed infantry transport.\nCan attack Aircraft.\n  Strong vs Vehicles\n  Weak vs Infantry
 	Mobile:
 		TurnSpeed: 20
-		Speed: 132
+		Speed: 128
 		PauseOnCondition: notmobile
 	Health:
 		HP: 19000
@@ -152,7 +154,10 @@ APC:
 		RevokeDelay: 18
 		RevokeOnNewTarget: False
 		RevokeAll: True
+	AttackMove:
+		Voice: Attack
 	AttackTurreted:
+		Voice: Attack
 	WithMuzzleOverlay:
 	WithSpriteTurret:
 		RequiresCondition: !attack-air
@@ -162,6 +167,7 @@ APC:
 	Cargo:
 		Types: Infantry
 		MaxWeight: 5
+		UnloadVoice: Unload
 		LoadingCondition: notmobile
 	Explodes:
 		Weapon: UnitExplodeBig
@@ -189,7 +195,7 @@ ARTY:
 		Description: Long-range artillery.\n  Strong vs Infantry, Vehicles and Buildings
 	Mobile:
 		TurnSpeed: 16
-		Speed: 85
+		Speed: 72
 	Health:
 		HP: 7500
 	Repairable:
@@ -205,6 +211,10 @@ ARTY:
 	AttackFrontal:
 		TargetFrozenActors: True
 		ForceFireIgnoresActors: True
+		Voice: Attack
+		FacingTolerance: 0
+	AttackMove:
+		Voice: Attack
 	WithMuzzleOverlay:
 	AutoTarget:
 		InitialStanceAI: Defend
@@ -214,8 +224,7 @@ ARTY:
 		EffectiveOwnerFromOwner: true
 	Explodes:
 		Weapon: ArtilleryShell
-		EmptyWeapon: UnitExplode
-		LoadedChance: 75
+		EmptyWeapon: ArtilleryShell
 
 FTNK:
 	Inherits: ^Tank
@@ -235,7 +244,7 @@ FTNK:
 		Description: Heavily armored flame-throwing vehicle.\n  Strong vs Infantry, Buildings and Vehicles\n  Weak vs Tanks
 	Mobile:
 		TurnSpeed: 28
-		Speed: 99
+		Speed: 92
 	Health:
 		HP: 27000
 	Repairable:
@@ -249,6 +258,10 @@ FTNK:
 		LocalOffset: 512,128,42, 512,-128,42
 		MuzzleSequence: muzzle
 	AttackFrontal:
+		Voice: Attack
+		FacingTolerance: 0
+	AttackMove:
+		Voice: Attack
 	WithMuzzleOverlay:
 	Explodes:
 		Weapon: FlametankExplode
@@ -292,7 +305,10 @@ BGGY:
 		Weapon: MachineGun
 		LocalOffset: 171,0,43
 		MuzzleSequence: muzzle
+	AttackMove:
+		Voice: Attack
 	AttackTurreted:
+		Voice: Attack
 	WithMuzzleOverlay:
 	WithSpriteTurret:
 	SpawnActorOnDeath:
@@ -318,7 +334,7 @@ BIKE:
 		Description: Fast scout vehicle, armed with\nrockets.\nCan attack Aircraft.\n  Strong vs Vehicles, Tanks\n  Weak vs Infantry
 	Mobile:
 		TurnSpeed: 40
-		Speed: 184
+		Speed: 192
 		Locomotor: wheeled
 	Health:
 		HP: 11000
@@ -333,6 +349,10 @@ BIKE:
 		LocalOffset: -128, -170, 170, -128, 170, 170
 		LocalYaw: 100, -100
 	AttackFrontal:
+		Voice: Attack
+		FacingTolerance: 0
+	AttackMove:
+		Voice: Attack
 	SpawnActorOnDeath:
 		Actor: BIKE.Husk
 		OwnerType: InternalName
@@ -356,7 +376,7 @@ JEEP:
 		Description: Fast scout and anti-infantry vehicle.\n  Strong vs Infantry\n  Weak vs Tanks
 	Mobile:
 		TurnSpeed: 40
-		Speed: 156
+		Speed: 145
 	Health:
 		HP: 16000
 	Repairable:
@@ -372,7 +392,10 @@ JEEP:
 		Weapon: MachineGunH
 		LocalOffset: 171,0,85
 		MuzzleSequence: muzzle
+	AttackMove:
+		Voice: Attack
 	AttackTurreted:
+		Voice: Attack
 	WithMuzzleOverlay:
 	WithSpriteTurret:
 	SpawnActorOnDeath:
@@ -398,9 +421,9 @@ LTNK:
 		Description: Fast, light tank.\n  Strong vs Vehicles, Tanks\n  Weak vs Infantry
 	Mobile:
 		TurnSpeed: 28
-		Speed: 110
+		Speed: 102
 	Health:
-		HP: 34000
+		HP: 32000
 	Repairable:
 		HpPerStep: 2062
 	Armor:
@@ -415,7 +438,10 @@ LTNK:
 		RecoilRecovery: 17
 		LocalOffset: 720,0,90
 		MuzzleSequence: muzzle
+	AttackMove:
+		Voice: Attack
 	AttackTurreted:
+		Voice: Attack
 	WithMuzzleOverlay:
 	WithSpriteTurret:
 	SpawnActorOnDeath:
@@ -440,7 +466,7 @@ MTNK:
 		Queue: Vehicle.GDI
 		Description: General-Purpose GDI Tank.\n  Strong vs Tanks, Vehicles\n  Weak vs Infantry
 	Mobile:
-		Speed: 85
+		Speed: 72
 	Health:
 		HP: 45000
 	Repairable:
@@ -457,7 +483,10 @@ MTNK:
 		RecoilRecovery: 26
 		LocalOffset: 768,0,90
 		MuzzleSequence: muzzle
+	AttackMove:
+		Voice: Attack
 	AttackTurreted:
+		Voice: Attack
 	WithMuzzleOverlay:
 	WithSpriteTurret:
 	Explodes:
@@ -468,7 +497,7 @@ MTNK:
 		OwnerType: InternalName
 		EffectiveOwnerFromOwner: true
 	Selectable:
-		DecorationBounds: 28,28
+		DecorationBounds: 1194, 1194
 
 HTNK:
 	Inherits: ^Tank
@@ -488,8 +517,8 @@ HTNK:
 		Description: Heavily armored GDI Tank.\nCan attack Aircraft.\n  Strong vs Everything
 	Mobile:
 		Locomotor: heavytracked
-		Speed: 56
-		TurnSpeed: 12
+		Speed: 46
+		TurnSpeed: 14
 	Health:
 		HP: 87000
 	Repairable:
@@ -500,7 +529,7 @@ HTNK:
 		Range: 6c0
 	WithSpriteTurret:
 	Turreted:
-		TurnSpeed: 12
+		TurnSpeed: 14
 	Armament@PRIMARY:
 		Weapon: 120mmDual
 		LocalOffset: 900,180,340, 900,-180,340
@@ -514,7 +543,10 @@ HTNK:
 		LocalYaw: -100, 100
 		Recoil: 10
 		MuzzleSequence: muzzle
+	AttackMove:
+		Voice: Attack
 	AttackTurreted:
+		Voice: Attack
 	WithMuzzleOverlay:
 	ChangesHealth:
 		Step: 500
@@ -529,7 +561,7 @@ HTNK:
 		OwnerType: InternalName
 		EffectiveOwnerFromOwner: true
 	Selectable:
-		DecorationBounds: 34,34,0,-3
+		DecorationBounds: 1450, 1450, 0, -128
 
 MSAM:
 	Inherits: ^Tank
@@ -548,7 +580,7 @@ MSAM:
 		Queue: Vehicle.GDI
 		Description: Long range rocket artillery.\n  Strong vs all Ground units.
 	Mobile:
-		Speed: 85
+		Speed: 72
 		TurnSpeed: 16
 	Health:
 		HP: 12000
@@ -557,7 +589,7 @@ MSAM:
 	Armor:
 		Type: Light
 	RevealsShroud:
-		Range: 5c0
+		Range: 6c0
 	Turreted:
 		TurnSpeed: 512
 		Offset: -256,0,128
@@ -571,6 +603,10 @@ MSAM:
 	AttackFrontal:
 		TargetFrozenActors: True
 		ForceFireIgnoresActors: True
+		Voice: Attack
+		FacingTolerance: 0
+	AttackMove:
+		Voice: Attack
 	WithSpriteTurret:
 	Explodes:
 		Weapon: UnitExplodeMech
@@ -599,7 +635,7 @@ MLRS:
 		Queue: Vehicle.Nod
 		Description: Powerful anti-air unit.\nCannot attack Ground units.
 	Mobile:
-		Speed: 99
+		Speed: 92
 		TurnSpeed: 28
 	Health:
 		HP: 18000
@@ -657,7 +693,7 @@ STNK:
 	Mobile:
 		Locomotor: heavywheeled
 		TurnSpeed: 40
-		Speed: 142
+		Speed: 127
 	Targetable:
 		TargetTypes: Ground, Vehicle, StealthTank
 	Health:
@@ -669,8 +705,8 @@ STNK:
 	RevealsShroud:
 		Range: 7c0
 	Cloak:
-		InitialDelay: 90
-		CloakDelay: 90
+		InitialDelay: 85
+		CloakDelay: 85
 		CloakSound: trans1.aud
 		UncloakSound: trans1.aud
 		UncloakOn: Attack, Unload, Dock, Damage, Heal
@@ -685,6 +721,10 @@ STNK:
 		Weapon: 227mm.stnkAA
 		LocalOffset: 213,43,128, 213,-43,128
 	AttackFrontal:
+		Voice: Attack
+		FacingTolerance: 0
+	AttackMove:
+		Voice: Attack
 	AutoTarget:
 		InitialStance: HoldFire
 		InitialStanceAI: ReturnFire
@@ -708,7 +748,7 @@ MHQ:
 	Armor:
 		Type: Light
 	Mobile:
-		Speed: 85
+		Speed: 72
 	RevealsShroud:
 		Range: 6c0
 	WithIdleOverlay@SPINNER:
@@ -735,12 +775,12 @@ TRUCK:
 	Armor:
 		Type: Light
 	Mobile:
-		Speed: 128
+		Speed: 113
 	RevealsShroud:
 		Range: 4c0
 	DeliversCash:
 		Payload: 1000
-		PlayerExperience: 100
+		PlayerExperience: 10
 	SpawnActorOnDeath:
 		Actor: TRUCK.Husk
 		OwnerType: InternalName

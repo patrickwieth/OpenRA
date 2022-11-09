@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -17,7 +17,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 {
 	class ExtractFilesCommand : IUtilityCommand
 	{
-		string IUtilityCommand.Name { get { return "--extract"; } }
+		string IUtilityCommand.Name => "--extract";
 
 		bool IUtilityCommand.ValidateArguments(string[] args)
 		{
@@ -33,7 +33,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 			{
 				var src = utility.ModData.DefaultFileSystem.Open(f);
 				if (src == null)
-					throw new InvalidOperationException("File not found: {0}".F(f));
+					throw new InvalidOperationException($"File not found: {f}");
 				var data = src.ReadAllBytes();
 				File.WriteAllBytes(f, data);
 				Console.WriteLine(f + " saved.");

@@ -1,5 +1,5 @@
 --[[
-   Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+   Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
    This file is part of OpenRA, which is free software. It is made
    available to you under the terms of the GNU General Public License
    as published by the Free Software Foundation, either version 3 of
@@ -37,14 +37,6 @@ TanyaTrigger = { CPos.New(59, 43), CPos.New(60, 43), CPos.New(61, 43), CPos.New(
 GreeceHarvestersAreDead = false
 AlloyFacilityDestroyed = false
 
-IdleHunt = function(actor)
-	Trigger.OnIdle(actor, function(a)
-		if a.IsInWorld then
-			a.Hunt()
-		end
-	end)
-end
-
 WorldLoaded = function()
 
 --Players Setup
@@ -61,43 +53,28 @@ WorldLoaded = function()
 --AI Production Setup
 	ProduceArmor()
 
-	if Map.LobbyOption("difficulty") == "easy" then
+	if Difficulty == "easy" then
 		Trigger.AfterDelay(DateTime.Minutes(10), ProduceNavyGuard)
-	elseif Map.LobbyOption("difficulty") == "normal" then
+	elseif Difficulty == "normal" then
 		Trigger.AfterDelay(DateTime.Minutes(5), ProduceNavyGuard)
-	elseif Map.LobbyOption("difficulty") == "hard" then
+	elseif Difficulty == "hard" then
 		ProduceNavyGuard()
 	end
 
 --Objectives Setup
-	Trigger.OnObjectiveAdded(player, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "New " .. string.lower(p.GetObjectiveType(id)) .. " objective")
-	end)
-	Trigger.OnObjectiveCompleted(player, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "Objective completed")
-	end)
-	Trigger.OnObjectiveFailed(player, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "Objective failed")
-	end)
+	InitObjectives(player)
 
-	DestroyControlCenter = player.AddPrimaryObjective("Destroy the Control Center.")
-	KeepTanksAlive = player.AddPrimaryObjective("Your tank division must not be destroyed before\n the alloy facility is dealt with.")
-	KeepVolkovAlive = player.AddPrimaryObjective("Keep Volkov Alive.")
-	KeepChitzkoiAlive = player.AddSecondaryObjective("Keep Chitzkoi Alive.")
-
-	Trigger.OnPlayerWon(player, function()
-		Media.PlaySpeechNotification(player, "MissionAccomplished")
-	end)
-	Trigger.OnPlayerLost(player, function()
-		Media.PlaySpeechNotification(player, "MissionFailed")
-	end)
+	DestroyControlCenter = player.AddObjective("Destroy the Control Center.")
+	KeepTanksAlive = player.AddObjective("Your tank division must not be destroyed before\n the alloy facility is dealt with.")
+	KeepVolkovAlive = player.AddObjective("Keep Volkov Alive.")
+	KeepChitzkoiAlive = player.AddObjective("Keep Chitzkoi Alive.", "Secondary", false)
 
 	Trigger.OnKilled(ControlCenter, function()
 		Utils.Do(HeavyTurrets, function(struc)
 			if not struc.IsDead then struc.Kill() end
 		end)
 		player.MarkCompletedObjective(DestroyControlCenter)
-		DestroyAlloyFacility = player.AddPrimaryObjective("Destroy the Alloy Facility.")
+		DestroyAlloyFacility = player.AddObjective("Destroy the Alloy Facility.")
 		Media.PlaySpeechNotification(player, "FirstObjectiveMet")
 		Media.DisplayMessage("Excellent! The heavy turret control center is destroyed\n and now we can deal with the alloy facility.")
 	end)
@@ -105,7 +82,7 @@ WorldLoaded = function()
 	Trigger.OnKilled(AlloyFacility, function()
 		if not player.IsObjectiveCompleted(DestroyControlCenter) then --Prevent a crash if the player somehow manage to cheese the mission and destroy
 			player.MarkCompletedObjective(DestroyControlCenter) --the Alloy Facility without destroying the Control Center.
-			DestroyAlloyFacility = player.AddPrimaryObjective("Destroy the Alloy Facility.")
+			DestroyAlloyFacility = player.AddObjective("Destroy the Alloy Facility.")
 		end
 		Trigger.AfterDelay(DateTime.Seconds(2), function()
 			player.MarkCompletedObjective(DestroyAlloyFacility)
@@ -342,7 +319,7 @@ WorldLoaded = function()
 			Trigger.AfterDelay(DateTime.Seconds(10), function()
 				if prtcamera.IsInWorld then prtcamera.Destroy() end
 			end)
-			if Map.LobbyOption("difficulty") == "hard" and not RiflemanGuard01.IsDead then
+			if Difficulty == "hard" and not RiflemanGuard01.IsDead then
 				Trigger.ClearAll(RiflemanGuard01)
 				ProduceInfantry() --Greece will start infantry production right away if the difficulty is set to hard
 			end

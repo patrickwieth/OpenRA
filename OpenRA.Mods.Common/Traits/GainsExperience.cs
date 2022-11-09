@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -27,7 +27,7 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly Dictionary<int, string> Conditions = null;
 
 		[GrantedConditionReference]
-		public IEnumerable<string> LinterConditions { get { return Conditions.Values; } }
+		public IEnumerable<string> LinterConditions => Conditions.Values;
 
 		[Desc("Image for the level up sprite.")]
 		public readonly string LevelUpImage = null;
@@ -48,6 +48,8 @@ namespace OpenRA.Mods.Common.Traits
 
 		[NotificationReference("Sounds")]
 		public readonly string LevelUpNotification = null;
+
+		public readonly string LevelUpTextNotification = null;
 
 		public override object Create(ActorInitializer init) { return new GainsExperience(init, this); }
 	}
@@ -89,7 +91,7 @@ namespace OpenRA.Mods.Common.Traits
 				GiveExperience(initialExperience, info.SuppressLevelupAnimation);
 		}
 
-		public bool CanGainLevel { get { return Level < MaxLevel; } }
+		public bool CanGainLevel => Level < MaxLevel;
 
 		public void GiveLevels(int numLevels, bool silent = false)
 		{
@@ -103,7 +105,7 @@ namespace OpenRA.Mods.Common.Traits
 		public void GiveExperience(int amount, bool silent = false)
 		{
 			if (amount < 0)
-				throw new ArgumentException("Revoking experience is not implemented.", "amount");
+				throw new ArgumentException("Revoking experience is not implemented.", nameof(amount));
 
 			if (MaxLevel == 0)
 				return;
@@ -119,6 +121,8 @@ namespace OpenRA.Mods.Common.Traits
 				if (!silent)
 				{
 					Game.Sound.PlayNotification(self.World.Map.Rules, self.Owner, "Sounds", info.LevelUpNotification, self.Owner.Faction.InternalName);
+					TextNotificationsManager.AddTransientLine(info.LevelUpTextNotification, self.Owner);
+
 					if (info.LevelUpImage != null && info.LevelUpSequence != null)
 						self.World.AddFrameEndTask(w => w.Add(new SpriteEffect(self, w, info.LevelUpImage, info.LevelUpSequence, info.LevelUpPalette)));
 				}

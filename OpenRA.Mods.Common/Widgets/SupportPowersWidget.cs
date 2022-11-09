@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -22,10 +22,8 @@ namespace OpenRA.Mods.Common.Widgets
 {
 	public class SupportPowersWidget : Widget
 	{
-		[Translate]
 		public readonly string ReadyText = "";
 
-		[Translate]
 		public readonly string HoldText = "";
 
 		public readonly string OverlayFont = "TinyBold";
@@ -60,16 +58,16 @@ namespace OpenRA.Mods.Common.Widgets
 
 		public SupportPowerIcon TooltipIcon { get; private set; }
 		public Func<SupportPowerIcon> GetTooltipIcon;
-		Lazy<TooltipContainerWidget> tooltipContainer;
+		readonly Lazy<TooltipContainerWidget> tooltipContainer;
 		HotkeyReference[] hotkeys;
 
 		Rectangle eventBounds;
-		public override Rectangle EventBounds { get { return eventBounds; } }
+		public override Rectangle EventBounds => eventBounds;
 		SpriteFont overlayFont;
 		float2 iconOffset, holdOffset, readyOffset, timeOffset;
 
 		[CustomLintableHotkeyNames]
-		public static IEnumerable<string> LinterHotkeyNames(MiniYamlNode widgetNode, Action<string> emitError, Action<string> emitWarning)
+		public static IEnumerable<string> LinterHotkeyNames(MiniYamlNode widgetNode, Action<string> emitError)
 		{
 			var prefix = "";
 			var prefixNode = widgetNode.Value.Nodes.FirstOrDefault(n => n.Key == "HotkeyPrefix");
@@ -82,10 +80,10 @@ namespace OpenRA.Mods.Common.Widgets
 				count = FieldLoader.GetValue<int>("HotkeyCount", countNode.Value.Value);
 
 			if (count == 0)
-				return new string[0];
+				return Array.Empty<string>();
 
 			if (string.IsNullOrEmpty(prefix))
-				emitError("{0} must define HotkeyPrefix if HotkeyCount > 0.".F(widgetNode.Location));
+				emitError($"{widgetNode.Location} must define HotkeyPrefix if HotkeyCount > 0.");
 
 			return Exts.MakeArray(count, i => prefix + (i + 1).ToString("D2"));
 		}
@@ -99,8 +97,6 @@ namespace OpenRA.Mods.Common.Widgets
 			spm = world.LocalPlayer.PlayerActor.Trait<SupportPowerManager>();
 			tooltipContainer = Exts.Lazy(() =>
 				Ui.Root.Get<TooltipContainerWidget>(TooltipContainer));
-
-			clock = new Animation(world, ClockAnimation);
 		}
 
 		public override void Initialize(WidgetArgs args)
@@ -115,6 +111,8 @@ namespace OpenRA.Mods.Common.Widgets
 			iconOffset = 0.5f * IconSize.ToFloat2() + IconSpriteOffset;
 			holdOffset = iconOffset - overlayFont.Measure(HoldText) / 2;
 			readyOffset = iconOffset - overlayFont.Measure(ReadyText) / 2;
+
+			clock = new Animation(worldRenderer.World, ClockAnimation);
 		}
 
 		public class SupportPowerIcon
@@ -175,6 +173,8 @@ namespace OpenRA.Mods.Common.Widgets
 				Game.Sound.PlayToPlayer(SoundType.UI, spm.Self.Owner, clicked.Power.Info.InsufficientPowerSound);
 				Game.Sound.PlayNotification(spm.Self.World.Map.Rules, spm.Self.Owner, "Speech",
 					clicked.Power.Info.InsufficientPowerSpeechNotification, spm.Self.Owner.Faction.InternalName);
+
+				TextNotificationsManager.AddTransientLine(clicked.Power.Info.InsufficientPowerTextNotification, spm.Self.Owner);
 			}
 			else
 				clicked.Power.Target();
@@ -204,7 +204,7 @@ namespace OpenRA.Mods.Common.Widgets
 			Game.Renderer.EnableAntialiasingFilter();
 			foreach (var p in icons.Values)
 			{
-				WidgetUtils.DrawSHPCentered(p.Sprite, p.Pos + iconOffset, p.Palette);
+				WidgetUtils.DrawSpriteCentered(p.Sprite, p.Palette, p.Pos + iconOffset);
 
 				// Charge progress
 				var sp = p.Power;
@@ -213,7 +213,7 @@ namespace OpenRA.Mods.Common.Widgets
 					* (clock.CurrentSequence.Length - 1) / sp.TotalTicks);
 
 				clock.Tick();
-				WidgetUtils.DrawSHPCentered(clock.Image, p.Pos + iconOffset, p.IconClockPalette);
+				WidgetUtils.DrawSpriteCentered(clock.Image, p.IconClockPalette, p.Pos + iconOffset);
 			}
 
 			Game.Renderer.DisableAntialiasingFilter();

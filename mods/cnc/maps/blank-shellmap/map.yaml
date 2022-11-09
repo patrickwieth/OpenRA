@@ -1,4 +1,4 @@
-MapFormat: 11
+MapFormat: 12
 
 RequiresMod: cnc
 
@@ -27,8 +27,8 @@ Actors:
 
 Rules:
 	World:
-		-SpawnMPUnits:
-		-MPStartLocations:
+		-SpawnStartingUnits:
+		-MapStartingLocations:
 		-CrateSpawner:
 		MusicPlaylist:
 			BackgroundMusic: map1

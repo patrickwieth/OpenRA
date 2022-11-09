@@ -1,5 +1,5 @@
 --[[
-   Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+   Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
    This file is part of OpenRA, which is free software. It is made
    available to you under the terms of the GNU General Public License
    as published by the Free Software Foundation, either version 3 of
@@ -32,7 +32,7 @@ ObjectiveTriggers = function()
 			EscapeGoalTrigger = true
 
 			greece.MarkCompletedObjective(ExitBase)
-			if Map.LobbyOption("difficulty") == "hard" then
+			if Difficulty == "hard" then
 				greece.MarkCompletedObjective(NoCasualties)
 			end
 
@@ -51,6 +51,7 @@ ObjectiveTriggers = function()
 	Trigger.OnAllKilled(TanyaTowers, function()
 		TanyaFreed = true
 		if not Tanya.IsDead then
+			Media.PlaySpeechNotification(greece, "TanyaRescued")
 			Tanya.Owner = greece
 		end
 	end)
@@ -355,8 +356,6 @@ SpyTruckDrive = function()
 	end)
 end
 
-IdleHunt = function(actor) if not actor.IsDead then Trigger.OnIdle(actor, actor.Hunt) end end
-
 PrisonEscape = function()
 	local alarmed
 	Trigger.OnEnteredFootprint(PrisonAlarm, function(unit, id)
@@ -445,7 +444,7 @@ Tick = function()
 		greece.MarkFailedObjective(ExitBase)
 	end
 
-	if Map.LobbyOption("difficulty") == "hard" and greece.UnitsLost > AcceptableLosses then
+	if Difficulty == "hard" and greece.UnitsLost > AcceptableLosses then
 		greece.MarkFailedObjective(NoCasualties)
 	end
 end
@@ -458,32 +457,16 @@ WorldLoaded = function()
 	france = Player.GetPlayer("France")
 	germany = Player.GetPlayer("Germany")
 
-	Trigger.OnObjectiveAdded(greece, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "New " .. string.lower(p.GetObjectiveType(id)) .. " objective")
-	end)
+	InitObjectives(greece)
 
-	ussrObj = ussr.AddPrimaryObjective("Defeat the Allies.")
-	ExitBase = greece.AddPrimaryObjective("Reach the eastern exit of the facility.")
-	FreeTanya = greece.AddPrimaryObjective("Free Tanya and keep her alive.")
-	KillVIPs = greece.AddSecondaryObjective("Kill all Soviet officers and scientists.")
-	StealTank = greece.AddSecondaryObjective("Steal a Soviet mammoth tank.")
-	if Map.LobbyOption("difficulty") == "hard" then
+	ussrObj = ussr.AddObjective("Defeat the Allies.")
+	ExitBase = greece.AddObjective("Reach the eastern exit of the facility.")
+	FreeTanya = greece.AddObjective("Free Tanya and keep her alive.")
+	KillVIPs = greece.AddObjective("Kill all Soviet officers and scientists.", "Secondary", false)
+	StealTank = greece.AddObjective("Steal a Soviet mammoth tank.", "Secondary", false)
+	if Difficulty == "hard" then
 		NoCasualties = greece.AddPrimaryObjective("Do not lose a single soldier or civilian\nunder your command.")
 	end
-
-	Trigger.OnObjectiveCompleted(greece, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "Objective completed")
-	end)
-	Trigger.OnObjectiveFailed(greece, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "Objective failed")
-	end)
-
-	Trigger.OnPlayerLost(greece, function()
-		Media.PlaySpeechNotification(greece, "Lose")
-	end)
-	Trigger.OnPlayerWon(greece, function()
-		Media.PlaySpeechNotification(greece, "Win")
-	end)
 
 	StartSpy.DisguiseAsType("e1", ussr)
 	StartAttacker1.AttackMove(start.Location)

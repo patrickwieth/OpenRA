@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -31,10 +31,10 @@ namespace OpenRA.Mods.Common.Traits.Render
 
 			// No queues available - check for classic production queues
 			if (queue == null)
-				queue = rules.Actors["player"].TraitInfos<ProductionQueueInfo>().FirstOrDefault(q => ProductionType == q.Type);
+				queue = rules.Actors[SystemActors.Player].TraitInfos<ProductionQueueInfo>().FirstOrDefault(q => ProductionType == q.Type);
 
 			if (queue == null)
-				throw new YamlException("Can't find a queue with ProductionType '{0}'".F(ProductionType));
+				throw new YamlException($"Can't find a queue with ProductionType '{ProductionType}'");
 
 			base.RulesetLoaded(rules, ai);
 		}
@@ -94,7 +94,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 		}
 
 		Color ISelectionBar.GetColor() { return Info.Color; }
-		bool ISelectionBar.DisplayWhenEmpty { get { return false; } }
+		bool ISelectionBar.DisplayWhenEmpty => false;
 
 		void INotifyOwnerChanged.OnOwnerChanged(Actor self, Player oldOwner, Player newOwner)
 		{

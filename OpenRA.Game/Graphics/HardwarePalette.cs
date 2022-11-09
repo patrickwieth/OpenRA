@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -17,71 +17,92 @@ namespace OpenRA.Graphics
 {
 	public sealed class HardwarePalette : IDisposable
 	{
-		public ITexture Texture { get; private set; }
+		public ITexture Texture { get; }
+		public ITexture ColorShifts { get; }
+
 		public int Height { get; private set; }
 		readonly Dictionary<string, ImmutablePalette> palettes = new Dictionary<string, ImmutablePalette>();
-		readonly Dictionary<string, MutablePalette> modifiablePalettes = new Dictionary<string, MutablePalette>();
-		readonly IReadOnlyDictionary<string, MutablePalette> readOnlyModifiablePalettes;
+		readonly Dictionary<string, MutablePalette> mutablePalettes = new Dictionary<string, MutablePalette>();
 		readonly Dictionary<string, int> indices = new Dictionary<string, int>();
-		byte[] buffer = new byte[0];
+		byte[] buffer = Array.Empty<byte>();
+		float[] colorShiftBuffer = Array.Empty<float>();
 
 		public HardwarePalette()
 		{
 			Texture = Game.Renderer.Context.CreateTexture();
-			readOnlyModifiablePalettes = modifiablePalettes.AsReadOnly();
+			ColorShifts = Game.Renderer.Context.CreateTexture();
 		}
 
 		public bool Contains(string name)
 		{
-			return modifiablePalettes.ContainsKey(name) || palettes.ContainsKey(name);
+			return mutablePalettes.ContainsKey(name) || palettes.ContainsKey(name);
 		}
 
 		public IPalette GetPalette(string name)
 		{
-			if (modifiablePalettes.TryGetValue(name, out var mutable))
+			if (mutablePalettes.TryGetValue(name, out var mutable))
 				return mutable.AsReadOnly();
 			if (palettes.TryGetValue(name, out var immutable))
 				return immutable;
-			throw new InvalidOperationException("Palette `{0}` does not exist".F(name));
+			throw new InvalidOperationException($"Palette `{name}` does not exist");
 		}
 
 		public int GetPaletteIndex(string name)
 		{
 			if (!indices.TryGetValue(name, out var ret))
-				throw new InvalidOperationException("Palette `{0}` does not exist".F(name));
+				throw new InvalidOperationException($"Palette `{name}` does not exist");
 			return ret;
 		}
 
 		public void AddPalette(string name, ImmutablePalette p, bool allowModifiers)
 		{
 			if (palettes.ContainsKey(name))
-				throw new InvalidOperationException("Palette {0} has already been defined".F(name));
+				throw new InvalidOperationException($"Palette {name} has already been defined");
 
-			int index = palettes.Count;
+			// PERF: the first row in the palette textures is reserved as a placeholder for non-indexed sprites
+			// that do not have a color-shift applied. This provides a quick shortcut to avoid querying the
+			// color-shift texture for every pixel only to find that most are not shifted.
+			var index = palettes.Count + 1;
 			indices.Add(name, index);
 			palettes.Add(name, p);
 
-			if (palettes.Count > Height)
+			if (index >= Height)
 			{
-				Height = Exts.NextPowerOf2(palettes.Count);
+				Height = Exts.NextPowerOf2(index + 1);
 				Array.Resize(ref buffer, Height * Palette.Size * 4);
+				Array.Resize(ref colorShiftBuffer, Height * 4);
 			}
 
 			if (allowModifiers)
-				modifiablePalettes.Add(name, new MutablePalette(p));
+				mutablePalettes.Add(name, new MutablePalette(p));
 			else
 				CopyPaletteToBuffer(index, p);
 		}
 
 		public void ReplacePalette(string name, IPalette p)
 		{
-			if (modifiablePalettes.ContainsKey(name))
-				CopyPaletteToBuffer(indices[name], modifiablePalettes[name] = new MutablePalette(p));
+			if (mutablePalettes.ContainsKey(name))
+				CopyPaletteToBuffer(indices[name], mutablePalettes[name] = new MutablePalette(p));
 			else if (palettes.ContainsKey(name))
 				CopyPaletteToBuffer(indices[name], palettes[name] = new ImmutablePalette(p));
 			else
-				throw new InvalidOperationException("Palette `{0}` does not exist".F(name));
+				throw new InvalidOperationException($"Palette `{name}` does not exist");
 			CopyBufferToTexture();
+		}
+
+		public void SetColorShift(string name, float hueOffset, float satOffset, float minHue, float maxHue)
+		{
+			var index = GetPaletteIndex(name);
+			colorShiftBuffer[4 * index + 0] = hueOffset;
+			colorShiftBuffer[4 * index + 1] = satOffset;
+			colorShiftBuffer[4 * index + 2] = minHue;
+			colorShiftBuffer[4 * index + 3] = maxHue;
+		}
+
+		public bool HasColorShift(string name)
+		{
+			var index = GetPaletteIndex(name);
+			return colorShiftBuffer[4 * index + 2] != 0 || colorShiftBuffer[4 * index + 3] != 0;
 		}
 
 		public void Initialize()
@@ -97,26 +118,27 @@ namespace OpenRA.Graphics
 
 		void CopyModifiablePalettesToBuffer()
 		{
-			foreach (var kvp in modifiablePalettes)
+			foreach (var kvp in mutablePalettes)
 				CopyPaletteToBuffer(indices[kvp.Key], kvp.Value);
 		}
 
 		void CopyBufferToTexture()
 		{
 			Texture.SetData(buffer, Palette.Size, Height);
+			ColorShifts.SetFloatData(colorShiftBuffer, 1, Height);
 		}
 
 		public void ApplyModifiers(IEnumerable<IPaletteModifier> paletteMods)
 		{
 			foreach (var mod in paletteMods)
-				mod.AdjustPalette(readOnlyModifiablePalettes);
+				mod.AdjustPalette(mutablePalettes);
 
 			// Update our texture with the changes.
 			CopyModifiablePalettesToBuffer();
 			CopyBufferToTexture();
 
 			// Reset modified palettes back to their original colors, ready for next time.
-			foreach (var kvp in modifiablePalettes)
+			foreach (var kvp in mutablePalettes)
 			{
 				var originalPalette = palettes[kvp.Key];
 				var modifiedPalette = kvp.Value;
@@ -127,6 +149,7 @@ namespace OpenRA.Graphics
 		public void Dispose()
 		{
 			Texture.Dispose();
+			ColorShifts.Dispose();
 		}
 	}
 }

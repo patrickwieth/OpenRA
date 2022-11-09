@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -18,43 +18,46 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 {
 	public class GameTimerLogic : ChromeLogic
 	{
+		[TranslationReference]
+		static readonly string Paused = "paused";
+
+		[TranslationReference]
+		static readonly string MaxSpeed = "max-speed";
+
+		[TranslationReference("percentage")]
+		static readonly string Speed = "speed";
+
+		[TranslationReference("percentage")]
+		static readonly string Complete = "complete";
+
 		[ObjectCreator.UseCtor]
-		public GameTimerLogic(Widget widget, OrderManager orderManager, World world)
+		public GameTimerLogic(Widget widget, ModData modData, OrderManager orderManager, World world)
 		{
 			var timer = widget.GetOrNull<LabelWidget>("GAME_TIMER");
 			var status = widget.GetOrNull<LabelWidget>("GAME_TIMER_STATUS");
 			var tlm = world.WorldActor.TraitOrDefault<TimeLimitManager>();
-			var startTick = Ui.LastTickTime;
+			var startTick = Ui.LastTickTime.Value;
 
-			Func<bool> shouldShowStatus = () => (world.Paused || world.Timestep != world.LobbyInfo.GlobalSettings.Timestep)
-				&& (Ui.LastTickTime - startTick) / 1000 % 2 == 0;
+			Func<bool> shouldShowStatus = () => (world.Paused || world.ReplayTimestep != world.Timestep)
+				&& (Ui.LastTickTime.Value - startTick) / 1000 % 2 == 0;
 
-			Func<string> statusText = () =>
-			{
-				if (world.Paused || world.Timestep == 0)
-					return "Paused";
+			Func<bool> paused = () => world.Paused || world.ReplayTimestep == 0;
 
-				if (world.Timestep == 1)
-					return "Max Speed";
-
-				return "{0}% Speed".F(world.LobbyInfo.GlobalSettings.Timestep * 100 / world.Timestep);
-			};
+			var pausedText = modData.Translation.GetString(Paused);
+			var maxSpeedText = modData.Translation.GetString(MaxSpeed);
+			var speedText = new CachedTransform<int, string>(p =>
+					modData.Translation.GetString(Speed, Translation.Arguments("percentage", p)));
 
 			if (timer != null)
 			{
-				// Timers in replays should be synced to the effective game time, not the playback time.
-				var timestep = world.Timestep;
-				if (world.IsReplay)
-					timestep = world.WorldActor.Trait<MapOptions>().GameSpeed.Timestep;
-
 				timer.GetText = () =>
 				{
-					if (status == null && shouldShowStatus())
-						return statusText();
+					if (status == null && paused() && shouldShowStatus())
+						return pausedText;
 
-					var timeLimit = tlm != null ? tlm.TimeLimit : 0;
+					var timeLimit = tlm?.TimeLimit ?? 0;
 					var displayTick = timeLimit > 0 ? timeLimit - world.WorldTick : world.WorldTick;
-					return WidgetUtils.FormatTime(Math.Max(0, displayTick), timestep);
+					return WidgetUtils.FormatTime(Math.Max(0, displayTick), world.Timestep);
 				};
 			}
 
@@ -62,17 +65,27 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			{
 				// Blink the status line
 				status.IsVisible = shouldShowStatus;
-				status.GetText = statusText;
+				status.GetText = () =>
+				{
+					if (paused())
+						return pausedText;
+
+					if (world.ReplayTimestep == 1)
+						return maxSpeedText;
+
+					return speedText.Update(world.Timestep * 100 / world.ReplayTimestep);
+				};
 			}
 
-			var timerTooltip = timer as LabelWithTooltipWidget;
-			if (timerTooltip != null)
+			var timerText = new CachedTransform<int, string>(p =>
+				modData.Translation.GetString(Complete, Translation.Arguments("percentage", p)));
+			if (timer is LabelWithTooltipWidget timerTooltip)
 			{
 				var connection = orderManager.Connection as ReplayConnection;
 				if (connection != null && connection.FinalGameTick != 0)
-					timerTooltip.GetTooltipText = () => "{0}% complete".F(world.WorldTick * 100 / connection.FinalGameTick);
+					timerTooltip.GetTooltipText = () => timerText.Update(world.WorldTick * 100 / connection.FinalGameTick);
 				else if (connection != null && connection.TickCount != 0)
-					timerTooltip.GetTooltipText = () => "{0}% complete".F(orderManager.NetFrameNumber * 100 / connection.TickCount);
+					timerTooltip.GetTooltipText = () => timerText.Update(orderManager.NetFrameNumber * 100 / connection.TickCount);
 				else
 					timerTooltip.GetTooltipText = null;
 			}

@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -17,11 +17,9 @@ using OpenRA.Primitives;
 
 namespace OpenRA.Platforms.Default
 {
-	[SuppressMessage("Microsoft.StyleCop.CSharp.NamingRules", "SA1307:AccessibleFieldsMustBeginWithUpperCaseLetter",
-		Justification = "C-style naming is kept for consistency with the underlying native API.")]
 	[SuppressMessage("Microsoft.StyleCop.CSharp.NamingRules", "SA1310:FieldNamesMustNotContainUnderscore",
 		Justification = "C-style naming is kept for consistency with the underlying native API.")]
-	internal static class FreeType
+	static class FreeType
 	{
 		internal const uint OK = 0x00;
 		internal const int FT_LOAD_RENDER = 0x04;

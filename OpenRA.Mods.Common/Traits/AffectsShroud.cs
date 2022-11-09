@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -9,6 +9,7 @@
  */
 #endregion
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Traits;
@@ -33,9 +34,9 @@ namespace OpenRA.Mods.Common.Traits
 	}
 
 	public abstract class AffectsShroud : ConditionalTrait<AffectsShroudInfo>, ISync, INotifyAddedToWorld,
-		INotifyRemovedFromWorld, INotifyMoving, INotifyVisualPositionChanged, ITick
+		INotifyRemovedFromWorld, INotifyMoving, INotifyCenterPositionChanged, ITick
 	{
-		static readonly PPos[] NoCells = { };
+		static readonly PPos[] NoCells = Array.Empty<PPos>();
 
 		readonly HashSet<PPos> footprint;
 
@@ -53,7 +54,7 @@ namespace OpenRA.Mods.Common.Traits
 		protected abstract void AddCellsToPlayerShroud(Actor self, Player player, PPos[] uv);
 		protected abstract void RemoveCellsFromPlayerShroud(Actor self, Player player);
 
-		public AffectsShroud(Actor self, AffectsShroudInfo info)
+		public AffectsShroud(AffectsShroudInfo info)
 			: base(info)
 		{
 			if (Info.Type == VisibilityType.Footprint)
@@ -86,7 +87,7 @@ namespace OpenRA.Mods.Common.Traits
 				.ToArray();
 		}
 
-		void INotifyVisualPositionChanged.VisualPositionChanged(Actor self, byte oldLayer, byte newLayer)
+		void INotifyCenterPositionChanged.CenterPositionChanged(Actor self, byte oldLayer, byte newLayer)
 		{
 			if (!self.IsInWorld)
 				return;
@@ -152,11 +153,11 @@ namespace OpenRA.Mods.Common.Traits
 				RemoveCellsFromPlayerShroud(self, p);
 		}
 
-		public virtual WDist Range { get { return CachedTraitDisabled ? WDist.Zero : Info.Range; } }
+		public virtual WDist Range => CachedTraitDisabled ? WDist.Zero : Info.Range;
 
 		void INotifyMoving.MovementTypeChanged(Actor self, MovementType type)
 		{
-			// Recalculate the visiblity at our final stop position
+			// Recalculate the visibility at our final stop position
 			if (type == MovementType.None && self.IsInWorld)
 			{
 				var centerPosition = self.CenterPosition;

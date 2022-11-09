@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -11,16 +11,18 @@
 
 using System;
 using System.Collections.Generic;
-using System.Net;
+using System.Net.Http;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using BeaconLib;
 using OpenRA.Network;
 using OpenRA.Server;
+using OpenRA.Support;
 using S = OpenRA.Server.Server;
 
 namespace OpenRA.Mods.Common.Server
 {
-	public class MasterServerPinger : ServerTrait, ITick, INotifyServerStart, INotifySyncLobbyInfo, IStartGame, IEndGame
+	public class MasterServerPinger : ServerTrait, ITick, INotifyServerStart, INotifyServerShutdown, INotifySyncLobbyInfo, IStartGame, IEndGame
 	{
 		// 3 minutes (in milliseconds). Server has a 5 minute TTL for games, so give ourselves a bit of leeway.
 		const int MasterPingInterval = 60 * 3 * 1000;
@@ -28,11 +30,24 @@ namespace OpenRA.Mods.Common.Server
 		// 1 second (in milliseconds) minimum delay between pings
 		const int RateLimitInterval = 1000;
 
+		[TranslationReference]
+		static readonly string NoPortForward = "no-port-forward";
+		[TranslationReference]
+		static readonly string BlacklistedTitle = "blacklisted-title";
+		[TranslationReference]
+		static readonly string InvalidErrorCode = "invalid-error-code";
+		[TranslationReference]
+		static readonly string Connected = "master-server-connected";
+		[TranslationReference]
+		static readonly string Error = "master-server-error";
+		[TranslationReference]
+		static readonly string GameOffline = "game-offline";
+
 		static readonly Beacon LanGameBeacon;
 		static readonly Dictionary<int, string> MasterServerErrors = new Dictionary<int, string>()
 		{
-			{ 1, "Server port is not accessible from the internet." },
-			{ 2, "Server name contains a blacklisted word." }
+			{ 1, NoPortForward },
+			{ 2, BlacklistedTitle }
 		};
 
 		long lastPing = 0;
@@ -40,7 +55,7 @@ namespace OpenRA.Mods.Common.Server
 		bool isInitialPing = true;
 
 		volatile bool isBusy;
-		Queue<string> masterServerMessages = new Queue<string>();
+		readonly Queue<string> masterServerMessages = new Queue<string>();
 
 		static MasterServerPinger()
 		{
@@ -77,13 +92,25 @@ namespace OpenRA.Mods.Common.Server
 
 			lock (masterServerMessages)
 				while (masterServerMessages.Count > 0)
-					server.SendMessage(masterServerMessages.Dequeue());
+					server.SendLocalizedMessage(masterServerMessages.Dequeue());
 		}
 
-		public void ServerStarted(S server)
+		void INotifyServerStart.ServerStarted(S server)
 		{
 			if (server.Type != ServerType.Local && LanGameBeacon != null)
 				LanGameBeacon.Start();
+		}
+
+		void INotifyServerShutdown.ServerShutdown(S server)
+		{
+			if (server.Settings.AdvertiseOnline)
+			{
+				// Announce that the game has ended to remove it from the list.
+				var gameServer = new GameServer(server);
+				UpdateMasterServer(server, gameServer.ToPOSTData(false));
+			}
+
+			LanGameBeacon?.Stop();
 		}
 
 		public void LobbyInfoSynced(S server)
@@ -107,47 +134,47 @@ namespace OpenRA.Mods.Common.Server
 		{
 			isBusy = true;
 
-			Action a = () =>
+			Task.Run(async () =>
 			{
 				try
 				{
 					var endpoint = server.ModData.Manifest.Get<WebServices>().ServerAdvertise;
-					using (var wc = new WebClient())
+
+					var client = HttpClientFactory.Create();
+					var response = await client.PostAsync(endpoint, new StringContent(postData));
+
+					var masterResponseText = await response.Content.ReadAsStringAsync();
+
+					if (isInitialPing)
 					{
-						wc.Proxy = null;
-						var masterResponseText = wc.UploadString(endpoint, postData);
+						Log.Write("server", "Master server: " + masterResponseText);
+						var errorCode = 0;
+						var errorMessage = string.Empty;
 
-						if (isInitialPing)
+						if (!string.IsNullOrWhiteSpace(masterResponseText))
 						{
-							Log.Write("server", "Master server: " + masterResponseText);
-							var errorCode = 0;
-							var errorMessage = string.Empty;
+							var regex = new Regex(@"^\[(?<code>-?\d+)\](?<message>.*)");
+							var match = regex.Match(masterResponseText);
+							errorMessage = match.Success && int.TryParse(match.Groups["code"].Value, out errorCode) ?
+								match.Groups["message"].Value.Trim() : InvalidErrorCode;
+						}
 
-							if (masterResponseText.Length > 0)
+						isInitialPing = false;
+						lock (masterServerMessages)
+						{
+							masterServerMessages.Enqueue(Connected);
+							if (errorCode != 0)
 							{
-								var regex = new Regex(@"^\[(?<code>-?\d+)\](?<message>.*)");
-								var match = regex.Match(masterResponseText);
-								errorMessage = match.Success && int.TryParse(match.Groups["code"].Value, out errorCode) ?
-									match.Groups["message"].Value.Trim() : "Failed to parse error message";
-							}
+								// Hardcoded error messages take precedence over the server-provided messages
+								if (!MasterServerErrors.TryGetValue(errorCode, out var message))
+									message = errorMessage;
 
-							isInitialPing = false;
-							lock (masterServerMessages)
-							{
-								masterServerMessages.Enqueue("Master server communication established.");
-								if (errorCode != 0)
-								{
-									// Hardcoded error messages take precedence over the server-provided messages
-									if (!MasterServerErrors.TryGetValue(errorCode, out var message))
-										message = errorMessage;
+								masterServerMessages.Enqueue(message);
 
-									masterServerMessages.Enqueue("Warning: " + message);
-
-									// Positive error codes indicate errors that prevent advertisement
-									// Negative error codes are non-fatal warnings
-									if (errorCode > 0)
-										masterServerMessages.Enqueue("Game has not been advertised online.");
-								}
+								// Positive error codes indicate errors that prevent advertisement
+								// Negative error codes are non-fatal warnings
+								if (errorCode > 0)
+									masterServerMessages.Enqueue(GameOffline);
 							}
 						}
 					}
@@ -156,13 +183,11 @@ namespace OpenRA.Mods.Common.Server
 				{
 					Log.Write("server", ex.ToString());
 					lock (masterServerMessages)
-						masterServerMessages.Enqueue("Master server communication failed.");
+						masterServerMessages.Enqueue(Error);
 				}
 
 				isBusy = false;
-			};
-
-			a.BeginInvoke(null, null);
+			});
 		}
 	}
 }

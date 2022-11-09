@@ -1,6 +1,6 @@
 World:
 	LuaScript:
-		Scripts: production-disruption.lua
+		Scripts: campaign.lua, utils.lua, production-disruption.lua
 	MissionData:
 		WinVideo: battle.vqa
 		LossVideo: slntsrvc.vqa
@@ -8,10 +8,11 @@ World:
 	ScriptLobbyDropdown@difficulty:
 		ID: difficulty
 		Label: Difficulty
+		Description: The difficulty of the mission
 		Values:
 			easy: Easy
 			normal: Normal
-		Default: easy
+		Default: normal
 
 CHALK1:
 	ParatroopersPower:

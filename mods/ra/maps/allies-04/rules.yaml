@@ -4,7 +4,7 @@ Player:
 
 World:
 	LuaScript:
-		Scripts: campaign-global.lua, allies04.lua, allies04-AI.lua
+		Scripts: campaign.lua, utils.lua, allies04.lua, allies04-AI.lua
 	MissionData:
 		Briefing: Soviet forces are trying to retake the pass you cleared for our convoys.\n\nDon't let this happen. Hold the pass and prevent the Soviets from taking this vital area.\n\nDestroy all Soviet units and buildings in this region.
 		BriefingVideo: ally4.vqa
@@ -16,12 +16,13 @@ World:
 	ScriptLobbyDropdown@difficulty:
 		ID: difficulty
 		Label: Difficulty
+		Description: The difficulty of the mission
 		Values:
 			easy: Easy
 			normal: Normal
 			hard: Hard
 			tough: Real tough guy
-		Default: easy
+		Default: normal
 
 powerproxy.paratroopers:
 	ParatroopersPower:
@@ -48,8 +49,6 @@ MCV:
 		Prerequisites: ~disabled
 
 TRUK:
-	Buildable:
-		Prerequisites: ~disabled
 	-SpawnActorOnDeath:
 
 SPEN:

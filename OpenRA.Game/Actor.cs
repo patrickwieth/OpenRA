@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -11,6 +11,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using Eluant;
@@ -23,9 +24,18 @@ using OpenRA.Traits;
 
 namespace OpenRA
 {
+	[Flags]
+	public enum SystemActors
+	{
+		Player = 0,
+		EditorPlayer = 1,
+		World = 2,
+		EditorWorld = 4
+	}
+
 	public sealed class Actor : IScriptBindable, IScriptNotifyBind, ILuaTableBinding, ILuaEqualityBinding, ILuaToStringBinding, IEquatable<Actor>, IDisposable
 	{
-		internal struct SyncHash
+		internal readonly struct SyncHash
 		{
 			public readonly ISync Trait;
 			readonly Func<object, int> hashFunction;
@@ -48,30 +58,25 @@ namespace OpenRA
 		Activity currentActivity;
 		public Activity CurrentActivity
 		{
-			get { return Activity.SkipDoneActivities(currentActivity); }
-			private set { currentActivity = value; }
+			get => Activity.SkipDoneActivities(currentActivity);
+			private set => currentActivity = value;
 		}
 
 		public int Generation;
 		public Actor ReplacedByActor;
 
-		public IEffectiveOwner EffectiveOwner { get; private set; }
-		public IOccupySpace OccupiesSpace { get; private set; }
-		public ITargetable[] Targetables { get; private set; }
+		public IEffectiveOwner EffectiveOwner { get; }
+		public IOccupySpace OccupiesSpace { get; }
+		public ITargetable[] Targetables { get; }
+		public IEnumerable<ITargetablePositions> EnabledTargetablePositions { get; private set; }
 
-		public bool IsIdle { get { return CurrentActivity == null; } }
-		public bool IsDead { get { return Disposed || (health != null && health.IsDead); } }
+		public bool IsIdle => CurrentActivity == null;
+		public bool IsDead => Disposed || (health != null && health.IsDead);
 
-		public CPos Location { get { return OccupiesSpace.TopLeft; } }
-		public WPos CenterPosition { get { return OccupiesSpace.CenterPosition; } }
+		public CPos Location => OccupiesSpace.TopLeft;
+		public WPos CenterPosition => OccupiesSpace.CenterPosition;
 
-		public WRot Orientation
-		{
-			get
-			{
-				return facing != null ? facing.Orientation : WRot.None;
-			}
-		}
+		public WRot Orientation => facing?.Orientation ?? WRot.None;
 
 		/// <summary>Value used to represent an invalid token.</summary>
 		public static readonly int InvalidConditionToken = -1;
@@ -98,7 +103,7 @@ namespace OpenRA
 		/// <summary>Read-only version of conditionCache that is passed to IConditionConsumers.</summary>
 		readonly IReadOnlyDictionary<string, int> readOnlyConditionCache;
 
-		internal SyncHash[] SyncHashes { get; private set; }
+		internal SyncHash[] SyncHashes { get; }
 
 		readonly IFacing facing;
 		readonly IHealth health;
@@ -110,10 +115,8 @@ namespace OpenRA
 		readonly IDefaultVisibility defaultVisibility;
 		readonly INotifyBecomingIdle[] becomingIdles;
 		readonly INotifyIdle[] tickIdles;
-		readonly IEnumerable<ITargetablePositions> enabledTargetablePositions;
-		WPos[] staticTargetablePositions;
+		readonly IEnumerable<WPos> enabledTargetableWorldPositions;
 		bool created;
-		bool setStaticTargetablePositions;
 
 		internal Actor(World world, string name, TypeDictionary initDict)
 		{
@@ -121,7 +124,7 @@ namespace OpenRA
 				.FirstOrDefault(i => i.Count() > 1);
 
 			if (duplicateInit != null)
-				throw new InvalidDataException("Duplicate initializer '{0}'".F(duplicateInit.Key.Name));
+				throw new InvalidDataException($"Duplicate initializer '{duplicateInit.Key.Name}'");
 
 			var init = new ActorInitializer(this, initDict);
 
@@ -142,7 +145,6 @@ namespace OpenRA
 
 				Info = world.Map.Rules.Actors[name];
 
-				IPositionable positionable = null;
 				var resolveOrdersList = new List<IResolveOrder>();
 				var renderModifiersList = new List<IRenderModifier>();
 				var rendersList = new List<IRender>();
@@ -164,7 +166,6 @@ namespace OpenRA
 					// performance-sensitive parts of the core game engine, such as pathfinding, visibility and rendering.
 					// Note: The blocks are required to limit the scope of the t's, so we make an exception to our normal style
 					// rules for spacing in order to keep these assignments compact and readable.
-					{ if (trait is IPositionable t) positionable = t; }
 					{ if (trait is IOccupySpace t) OccupiesSpace = t; }
 					{ if (trait is IEffectiveOwner t) EffectiveOwner = t; }
 					{ if (trait is IFacing t) facing = t; }
@@ -191,10 +192,9 @@ namespace OpenRA
 				tickIdles = tickIdlesList.ToArray();
 				Targetables = targetablesList.ToArray();
 				var targetablePositions = targetablePositionsList.ToArray();
-				enabledTargetablePositions = targetablePositions.Where(Exts.IsTraitEnabled);
+				EnabledTargetablePositions = targetablePositions.Where(Exts.IsTraitEnabled);
+				enabledTargetableWorldPositions = EnabledTargetablePositions.SelectMany(tp => tp.TargetablePositions(this));
 				SyncHashes = syncHashesList.ToArray();
-
-				setStaticTargetablePositions = positionable == null && targetablePositions.Any() && targetablePositions.All(tp => tp.AlwaysEnabled);
 			}
 		}
 
@@ -229,11 +229,6 @@ namespace OpenRA
 			foreach (var notify in allObserverNotifiers)
 				notify(this, readOnlyConditionCache);
 
-			// All actors that can move or teleport should have IPositionable, if not it's pretty safe to assume the actor is completely immobile and
-			// all targetable positions can be cached if all ITargetablePositions have no conditional requirements.
-			if (setStaticTargetablePositions)
-				staticTargetablePositions = enabledTargetablePositions.SelectMany(tp => tp.TargetablePositions(this)).ToArray();
-
 			// TODO: Other traits may need initialization after being notified of initial condition state.
 
 			// TODO: A post condition initialization notification phase may allow queueing activities instead.
@@ -246,7 +241,7 @@ namespace OpenRA
 					continue;
 
 				if (creationActivity != null)
-					throw new InvalidOperationException("More than one enabled ICreationActivity trait: {0} and {1}".F(creationActivity.GetType().Name, ica.GetType().Name));
+					throw new InvalidOperationException($"More than one enabled ICreationActivity trait: {creationActivity.GetType().Name} and {ica.GetType().Name}");
 
 				var activity = ica.GetCreationActivity();
 				if (activity == null)
@@ -365,8 +360,7 @@ namespace OpenRA
 
 		public override bool Equals(object obj)
 		{
-			var o = obj as Actor;
-			return o != null && Equals(o);
+			return obj is Actor o && Equals(o);
 		}
 
 		public bool Equals(Actor other)
@@ -487,7 +481,7 @@ namespace OpenRA
 			health.InflictDamage(this, attacker, damage, false);
 		}
 
-		public void Kill(Actor attacker, BitSet<DamageType> damageTypes = default(BitSet<DamageType>))
+		public void Kill(Actor attacker, BitSet<DamageType> damageTypes = default)
 		{
 			if (Disposed || health == null)
 				return;
@@ -528,7 +522,7 @@ namespace OpenRA
 		{
 			// PERF: Avoid LINQ.
 			foreach (var targetable in Targetables)
-				if (targetable.IsTraitEnabled() && targetable.TargetableBy(this, byActor))
+				if (targetable.TargetableBy(this, byActor))
 					return true;
 
 			return false;
@@ -536,11 +530,8 @@ namespace OpenRA
 
 		public IEnumerable<WPos> GetTargetablePositions()
 		{
-			if (staticTargetablePositions != null)
-				return staticTargetablePositions;
-
-			if (enabledTargetablePositions.Any())
-				return enabledTargetablePositions.SelectMany(tp => tp.TargetablePositions(this));
+			if (EnabledTargetablePositions.Any())
+				return enabledTargetableWorldPositions;
 
 			return new[] { CenterPosition };
 		}
@@ -549,7 +540,7 @@ namespace OpenRA
 
 		void UpdateConditionState(string condition, int token, bool isRevoke)
 		{
-			ConditionState conditionState = conditionStates.GetOrAdd(condition);
+			var conditionState = conditionStates.GetOrAdd(condition);
 
 			if (isRevoke)
 				conditionState.Tokens.Remove(token);
@@ -589,7 +580,7 @@ namespace OpenRA
 		public int RevokeCondition(int token)
 		{
 			if (!conditionTokens.TryGetValue(token, out var condition))
-				throw new InvalidOperationException("Attempting to revoke condition with invalid token {0} for {1}.".F(token, this));
+				throw new InvalidOperationException($"Attempting to revoke condition with invalid token {token} for {this}.");
 
 			conditionTokens.Remove(token);
 			UpdateConditionState(condition, token, true);
@@ -615,8 +606,8 @@ namespace OpenRA
 
 		public LuaValue this[LuaRuntime runtime, LuaValue keyValue]
 		{
-			get { return luaInterface.Value[runtime, keyValue]; }
-			set { luaInterface.Value[runtime, keyValue] = value; }
+			get => luaInterface.Value[runtime, keyValue];
+			set => luaInterface.Value[runtime, keyValue] = value;
 		}
 
 		public LuaValue Equals(LuaRuntime runtime, LuaValue left, LuaValue right)
@@ -629,7 +620,7 @@ namespace OpenRA
 
 		public LuaValue ToString(LuaRuntime runtime)
 		{
-			return "Actor ({0})".F(this);
+			return $"Actor ({this})";
 		}
 
 		public bool HasScriptProperty(string name)

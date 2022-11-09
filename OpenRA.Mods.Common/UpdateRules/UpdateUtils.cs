@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -47,7 +47,7 @@ namespace OpenRA.Mods.Common.UpdateRules
 		static YamlFileSet LoadExternalMapYaml(ModData modData, MiniYaml yaml, HashSet<string> externalFilenames)
 		{
 			return FieldLoader.GetValue<string[]>("value", yaml.Value)
-				.Where(f => f.Contains("|"))
+				.Where(f => f.Contains('|'))
 				.SelectMany(f => LoadModYaml(modData, FilterExternalModFiles(modData, new[] { f }, externalFilenames)))
 				.ToList();
 		}
@@ -67,7 +67,7 @@ namespace OpenRA.Mods.Common.UpdateRules
 			foreach (var filename in files)
 			{
 				// Ignore any files that aren't in the map bundle
-				if (!filename.Contains("|") && mapPackage.Contains(filename))
+				if (!filename.Contains('|') && mapPackage.Contains(filename))
 					fileSet.Add((mapPackage, filename, MiniYaml.FromStream(mapPackage.GetStream(filename), filename, false)));
 				else if (modData.ModFiles.Exists(filename))
 					externalFilenames.Add(filename);
@@ -145,7 +145,7 @@ namespace OpenRA.Mods.Common.UpdateRules
 		{
 			foreach (var f in files)
 			{
-				if (f.Contains("|") && modData.DefaultFileSystem.IsExternalModFile(f))
+				if (f.Contains('|') && modData.DefaultFileSystem.IsExternalModFile(f))
 				{
 					externalFilenames.Add(f);
 					continue;
@@ -254,7 +254,7 @@ namespace OpenRA.Mods.Common.UpdateRules
 		public static string FormatMessageList(IEnumerable<string> messages, int indent = 0, string separator = "*")
 		{
 			var prefix = string.Concat(Enumerable.Repeat("   ", indent));
-			return string.Join("\n", messages.Select(m => prefix + " {0} {1}".F(separator, m.Replace("\n", "\n   " + prefix))));
+			return string.Join("\n", messages.Select(m => prefix + $" {separator} {m.Replace("\n", "\n   " + prefix)}"));
 		}
 	}
 

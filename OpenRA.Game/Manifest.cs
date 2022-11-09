@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -11,6 +11,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using OpenRA.FileSystem;
@@ -19,6 +20,17 @@ using OpenRA.Primitives;
 namespace OpenRA
 {
 	public interface IGlobalModData { }
+
+	public sealed class TerrainFormat : IGlobalModData
+	{
+		public readonly string Type;
+		public readonly IReadOnlyDictionary<string, MiniYaml> Metadata;
+		public TerrainFormat(MiniYaml yaml)
+		{
+			Type = yaml.Value;
+			Metadata = new ReadOnlyDictionary<string, MiniYaml>(yaml.ToDictionary());
+		}
+	}
 
 	public sealed class SpriteSequenceFormat : IGlobalModData
 	{
@@ -48,6 +60,7 @@ namespace OpenRA
 		public string Version;
 		public string Website;
 		public string WebIcon32;
+		public string WindowTitle;
 		public bool Hidden;
 	}
 
@@ -66,17 +79,19 @@ namespace OpenRA
 		public readonly IReadOnlyDictionary<string, string> Packages;
 		public readonly IReadOnlyDictionary<string, string> MapFolders;
 		public readonly MiniYaml LoadScreen;
+		public readonly string DefaultOrderGenerator;
 
-		public readonly string[] SoundFormats = { };
-		public readonly string[] SpriteFormats = { };
-		public readonly string[] PackageFormats = { };
+		public readonly string[] SoundFormats = Array.Empty<string>();
+		public readonly string[] SpriteFormats = Array.Empty<string>();
+		public readonly string[] PackageFormats = Array.Empty<string>();
+		public readonly string[] VideoFormats = Array.Empty<string>();
 
 		readonly string[] reservedModuleNames =
 		{
 			"Include", "Metadata", "Folders", "MapFolders", "Packages", "Rules",
 			"Sequences", "ModelSequences", "Cursors", "Chrome", "Assemblies", "ChromeLayout", "Weapons",
 			"Voices", "Notifications", "Music", "Translations", "TileSets", "ChromeMetrics", "Missions", "Hotkeys",
-			"ServerTraits", "LoadScreen", "SupportsMapsFrom", "SoundFormats", "SpriteFormats",
+			"ServerTraits", "LoadScreen", "DefaultOrderGenerator", "SupportsMapsFrom", "SoundFormats", "SpriteFormats", "VideoFormats",
 			"RequiresMods", "PackageFormats"
 		};
 
@@ -100,7 +115,7 @@ namespace OpenRA
 				var filename = nodes[i].Value.Value;
 				var contents = package.GetStream(filename);
 				if (contents == null)
-					throw new YamlException("{0}: File `{1}` not found.".F(nodes[i].Location, filename));
+					throw new YamlException($"{nodes[i].Location}: File `{filename}` not found.");
 
 				nodes.RemoveAt(i);
 				nodes.InsertRange(i, MiniYaml.FromStream(contents, filename));
@@ -115,7 +130,7 @@ namespace OpenRA
 			MapFolders = YamlDictionary(yaml, "MapFolders");
 
 			if (yaml.TryGetValue("Packages", out var packages))
-				Packages = packages.ToDictionary(x => x.Value).AsReadOnly();
+				Packages = packages.ToDictionary(x => x.Value);
 
 			Rules = YamlList(yaml, "Rules");
 			Sequences = YamlList(yaml, "Sequences");
@@ -147,6 +162,9 @@ namespace OpenRA
 
 			MapCompatibility = compat.ToArray();
 
+			if (yaml.ContainsKey("DefaultOrderGenerator"))
+				DefaultOrderGenerator = yaml["DefaultOrderGenerator"].Value;
+
 			if (yaml.ContainsKey("PackageFormats"))
 				PackageFormats = FieldLoader.GetValue<string[]>("PackageFormats", yaml["PackageFormats"].Value);
 
@@ -155,6 +173,9 @@ namespace OpenRA
 
 			if (yaml.ContainsKey("SpriteFormats"))
 				SpriteFormats = FieldLoader.GetValue<string[]>("SpriteFormats", yaml["SpriteFormats"].Value);
+
+			if (yaml.ContainsKey("VideoFormats"))
+				VideoFormats = FieldLoader.GetValue<string[]>("VideoFormats", yaml["VideoFormats"].Value);
 		}
 
 		public void LoadCustomData(ObjectCreator oc)
@@ -166,7 +187,7 @@ namespace OpenRA
 
 				var t = oc.FindType(kv.Key);
 				if (t == null || !typeof(IGlobalModData).IsAssignableFrom(t))
-					throw new InvalidDataException("`{0}` is not a valid mod manifest entry.".F(kv.Key));
+					throw new InvalidDataException($"`{kv.Key}` is not a valid mod manifest entry.");
 
 				IGlobalModData module;
 				var ctor = t.GetConstructor(new[] { typeof(MiniYaml) });
@@ -188,10 +209,10 @@ namespace OpenRA
 			customDataLoaded = true;
 		}
 
-		static string[] YamlList(Dictionary<string, MiniYaml> yaml, string key, bool parsePaths = false)
+		static string[] YamlList(Dictionary<string, MiniYaml> yaml, string key)
 		{
 			if (!yaml.ContainsKey(key))
-				return new string[] { };
+				return Array.Empty<string>();
 
 			return yaml[key].ToDictionary().Keys.ToArray();
 		}
@@ -199,10 +220,9 @@ namespace OpenRA
 		static IReadOnlyDictionary<string, string> YamlDictionary(Dictionary<string, MiniYaml> yaml, string key)
 		{
 			if (!yaml.ContainsKey(key))
-				return new ReadOnlyDictionary<string, string>();
+				return new Dictionary<string, string>();
 
-			var inner = yaml[key].ToDictionary(my => my.Value);
-			return new ReadOnlyDictionary<string, string>(inner);
+			return yaml[key].ToDictionary(my => my.Value);
 		}
 
 		public bool Contains<T>() where T : IGlobalModData

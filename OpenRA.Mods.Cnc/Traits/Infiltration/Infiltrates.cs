@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -22,7 +22,7 @@ namespace OpenRA.Mods.Cnc.Traits
 	public class InfiltratesInfo : ConditionalTraitInfo
 	{
 		[Desc("The `TargetTypes` from `Targetable` that are allowed to enter.")]
-		public readonly BitSet<TargetableType> Types = default(BitSet<TargetableType>);
+		public readonly BitSet<TargetableType> Types = default;
 
 		[VoiceReference]
 		public readonly string Voice = "Action";
@@ -41,9 +41,13 @@ namespace OpenRA.Mods.Cnc.Traits
 		[Desc("Notification to play when a target is infiltrated.")]
 		public readonly string Notification = null;
 
+		[Desc("Text notification to display when a target is infiltrated.")]
+		public readonly string TextNotification = null;
+
 		[Desc("Experience to grant to the infiltrating player.")]
 		public readonly int PlayerExperience = 0;
 
+		[CursorReference]
 		[Desc("Cursor to display when able to infiltrate the target actor.")]
 		public readonly string EnterCursor = "enter";
 
@@ -74,7 +78,7 @@ namespace OpenRA.Mods.Cnc.Traits
 			return new Order(order.OrderID, self, target, queued);
 		}
 
-		bool IsValidOrder(Actor self, Order order)
+		bool IsValidOrder(Order order)
 		{
 			if (IsTraitDisabled)
 				return false;
@@ -91,7 +95,7 @@ namespace OpenRA.Mods.Cnc.Traits
 
 		public string VoicePhraseForOrder(Actor self, Order order)
 		{
-			return order.OrderString == "Infiltrate" && IsValidOrder(self, order)
+			return order.OrderString == "Infiltrate" && IsValidOrder(order)
 				? Info.Voice : null;
 		}
 
@@ -101,10 +105,10 @@ namespace OpenRA.Mods.Cnc.Traits
 			{
 				case TargetType.Actor:
 					return Info.Types.Overlaps(target.Actor.GetEnabledTargetTypes()) &&
-					       Info.ValidRelationships.HasStance(self.Owner.RelationshipWith(target.Actor.Owner));
+						Info.ValidRelationships.HasRelationship(self.Owner.RelationshipWith(target.Actor.Owner));
 				case TargetType.FrozenActor:
 					return target.FrozenActor.IsValid && Info.Types.Overlaps(target.FrozenActor.TargetTypes) &&
-					       Info.ValidRelationships.HasStance(self.Owner.RelationshipWith(target.FrozenActor.Owner));
+						Info.ValidRelationships.HasRelationship(self.Owner.RelationshipWith(target.FrozenActor.Owner));
 				default:
 					return false;
 			}
@@ -112,7 +116,7 @@ namespace OpenRA.Mods.Cnc.Traits
 
 		public void ResolveOrder(Actor self, Order order)
 		{
-			if (order.OrderString != "Infiltrate" || !IsValidOrder(self, order) || IsTraitDisabled)
+			if (order.OrderString != "Infiltrate" || !IsValidOrder(order) || IsTraitDisabled)
 				return;
 
 			if (!CanInfiltrateTarget(self, order.Target))
@@ -136,7 +140,7 @@ namespace OpenRA.Mods.Cnc.Traits
 		public override bool CanTargetActor(Actor self, Actor target, TargetModifiers modifiers, ref string cursor)
 		{
 			var stance = self.Owner.RelationshipWith(target.Owner);
-			if (!info.ValidRelationships.HasStance(stance))
+			if (!info.ValidRelationships.HasRelationship(stance))
 				return false;
 
 			return info.Types.Overlaps(target.GetAllTargetTypes());
@@ -145,7 +149,7 @@ namespace OpenRA.Mods.Cnc.Traits
 		public override bool CanTargetFrozenActor(Actor self, FrozenActor target, TargetModifiers modifiers, ref string cursor)
 		{
 			var stance = self.Owner.RelationshipWith(target.Owner);
-			if (!info.ValidRelationships.HasStance(stance))
+			if (!info.ValidRelationships.HasRelationship(stance))
 				return false;
 
 			return info.Types.Overlaps(target.Info.GetAllTargetTypes());

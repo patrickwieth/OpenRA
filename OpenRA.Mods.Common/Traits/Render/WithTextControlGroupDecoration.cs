@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -39,7 +39,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 		void IRulesetLoaded<ActorInfo>.RulesetLoaded(Ruleset rules, ActorInfo info)
 		{
 			if (!Game.ModData.Manifest.Get<Fonts>().FontList.ContainsKey(Font))
-				throw new YamlException("Font '{0}' is not listed in the mod.yaml's Fonts section".F(Font));
+				throw new YamlException($"Font '{Font}' is not listed in the mod.yaml's Fonts section");
 		}
 
 		public override object Create(ActorInitializer init) { return new WithTextControlGroupDecoration(init.Self, this); }
@@ -49,7 +49,6 @@ namespace OpenRA.Mods.Common.Traits.Render
 	{
 		readonly WithTextControlGroupDecorationInfo info;
 		readonly SpriteFont font;
-		readonly Actor self;
 		readonly CachedTransform<int, string> label;
 
 		Color color;
@@ -57,17 +56,17 @@ namespace OpenRA.Mods.Common.Traits.Render
 		public WithTextControlGroupDecoration(Actor self, WithTextControlGroupDecorationInfo info)
 		{
 			this.info = info;
-			this.self = self;
 			font = Game.Renderer.Fonts[info.Font];
 			color = info.UsePlayerColor ? self.Owner.Color : info.Color;
-			label = new CachedTransform<int, string>(g => g.ToString());
+
+			label = new CachedTransform<int, string>(g => self.World.ControlGroups.Groups[g]);
 		}
 
-		bool IDecoration.RequiresSelection { get { return true; } }
+		bool IDecoration.RequiresSelection => true;
 
 		IEnumerable<IRenderable> IDecoration.RenderDecoration(Actor self, WorldRenderer wr, ISelectionDecorations container)
 		{
-			var group = self.World.Selection.GetControlGroupForActor(self);
+			var group = self.World.ControlGroups.GetControlGroupForActor(self);
 			if (group == null)
 				return Enumerable.Empty<IRenderable>();
 

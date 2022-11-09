@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -60,7 +60,7 @@ namespace OpenRA.Mods.Common.Activities
 			this.minRange = minRange;
 		}
 
-		public static void FlyTick(Actor self, Aircraft aircraft, WAngle desiredFacing, WDist desiredAltitude, WVec moveOverride, bool idleTurn = false)
+		public static void FlyTick(Actor self, Aircraft aircraft, WAngle desiredFacing, WDist desiredAltitude, in WVec moveOverride, bool idleTurn = false)
 		{
 			var dat = self.World.Map.DistanceAboveTerrain(aircraft.CenterPosition);
 			var move = aircraft.Info.CanSlide ? aircraft.FlyStep(desiredFacing) : aircraft.FlyStep(aircraft.Facing);
@@ -68,7 +68,7 @@ namespace OpenRA.Mods.Common.Activities
 				move = moveOverride;
 
 			var oldFacing = aircraft.Facing;
-			var turnSpeed = idleTurn ? aircraft.IdleTurnSpeed ?? aircraft.TurnSpeed : aircraft.TurnSpeed;
+			var turnSpeed = aircraft.GetTurnSpeed(idleTurn);
 			aircraft.Facing = Util.TickFacing(aircraft.Facing, desiredFacing, turnSpeed);
 
 			var roll = idleTurn ? aircraft.Info.IdleRoll ?? aircraft.Info.Roll : aircraft.Info.Roll;
@@ -133,7 +133,7 @@ namespace OpenRA.Mods.Common.Activities
 			var isLanded = dat <= aircraft.LandAltitude;
 
 			// HACK: Prevent paused (for example, EMP'd) aircraft from taking off.
-			// This is necessary until the TODOs in the IsCanceling block below are adressed.
+			// This is necessary until the TODOs in the IsCanceling block below are addressed.
 			if (isLanded && aircraft.IsTraitPaused)
 				return false;
 
@@ -236,7 +236,7 @@ namespace OpenRA.Mods.Common.Activities
 			if (!isSlider)
 			{
 				// Using the turn rate, compute a hypothetical circle traced by a continuous turn.
-				// If it contains the destination point, it's unreachable without more complex manuvering.
+				// If it contains the destination point, it's unreachable without more complex maneuvering.
 				var turnRadius = CalculateTurnRadius(aircraft.MovementSpeed, aircraft.TurnSpeed);
 
 				// The current facing is a tangent of the minimal turn circle.

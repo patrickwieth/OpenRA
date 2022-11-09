@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -59,7 +59,7 @@ namespace OpenRA
 		/// this does not validate whether individual map cells are actually
 		/// projected inside the region.
 		/// </summary>
-		public MapCoordsRegion CandidateMapCoords { get { return new MapCoordsRegion(mapTopLeft, mapBottomRight); } }
+		public MapCoordsRegion CandidateMapCoords => new MapCoordsRegion(mapTopLeft, mapBottomRight);
 
 		public ProjectedCellRegionEnumerator GetEnumerator()
 		{
@@ -119,8 +119,8 @@ namespace OpenRA
 				v = r.TopLeft.V;
 			}
 
-			public PPos Current { get { return current; } }
-			object IEnumerator.Current { get { return Current; } }
+			public PPos Current => current;
+			object IEnumerator.Current => Current;
 			public void Dispose() { }
 		}
 	}

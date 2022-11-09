@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -13,6 +13,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using System.Reflection;
 using OpenRA.GameRules;
 using OpenRA.Mods.Common.Traits;
 using OpenRA.Primitives;
@@ -67,9 +68,26 @@ namespace OpenRA.Mods.Common
 		/// </summary>
 		public static int IndexFacing(WAngle facing, int numFrames)
 		{
+			// 1024 here is the max angle, so we divide the max angle by the total number of facings (numFrames)
 			var step = 1024 / numFrames;
 			var a = (facing.Angle + step / 2) & 1023;
 			return a / step;
+		}
+
+		/// <summary>
+		/// Returns the remainder angle after rounding to the nearest whole step / facing
+		/// </summary>
+		public static WAngle AngleDiffToStep(WAngle facing, int numFrames)
+		{
+			var step = 1024 / numFrames;
+			var a = (facing.Angle + step / 2) & 1023;
+			return new WAngle(a % step - step / 2);
+		}
+
+		public static WAngle GetInterpolatedFacing(WAngle facing, int facings, int interpolatedFacings)
+		{
+			var step = 1024 / interpolatedFacings;
+			return new WAngle(AngleDiffToStep(facing, facings).Angle / step * step);
 		}
 
 		/// <summary>Rounds the given facing value to the nearest quantized step.</summary>
@@ -157,6 +175,11 @@ namespace OpenRA.Mods.Common
 			return Math.Abs(offset.X) < 2 && Math.Abs(offset.Y) < 2;
 		}
 
+		public static IEnumerable<CPos> ExpandFootprint(CPos cell, bool allowDiagonal)
+		{
+			return Neighbours(cell, allowDiagonal);
+		}
+
 		public static IEnumerable<CPos> ExpandFootprint(IEnumerable<CPos> cells, bool allowDiagonal)
 		{
 			return cells.SelectMany(c => Neighbours(c, allowDiagonal)).Distinct();
@@ -193,7 +216,7 @@ namespace OpenRA.Mods.Common
 			}
 		}
 
-		public static int RandomDelay(World world, int[] range)
+		public static int RandomInRange(MersenneTwister random, int[] range)
 		{
 			if (range.Length == 0)
 				return 0;
@@ -201,22 +224,38 @@ namespace OpenRA.Mods.Common
 			if (range.Length == 1)
 				return range[0];
 
-			return world.SharedRandom.Next(range[0], range[1]);
+			return random.Next(range[0], range[1]);
+		}
+
+		public static string InternalTypeName(Type t)
+		{
+			return t.IsGenericType
+				? $"{t.Name.Substring(0, t.Name.IndexOf('`'))}<{string.Join(", ", t.GenericTypeArguments.Select(arg => arg.Name))}>"
+				: t.Name;
 		}
 
 		public static string FriendlyTypeName(Type t)
 		{
+			if (t.IsEnum)
+				return $"{t.Name} (enum)";
+
 			if (t.IsGenericType && t.GetGenericTypeDefinition() == typeof(HashSet<>))
-				return "Set of {0}".F(t.GetGenericArguments().Select(FriendlyTypeName).ToArray());
+				return $"Set of {t.GetGenericArguments().Select(FriendlyTypeName).First()}";
 
 			if (t.IsGenericType && t.GetGenericTypeDefinition() == typeof(Dictionary<,>))
-				return "Mapping of {0} to {1}".F(t.GetGenericArguments().Select(FriendlyTypeName).ToArray());
+			{
+				var args = t.GetGenericArguments().Select(FriendlyTypeName).ToArray();
+				return $"Dictionary with Key: {args[0]}, Value: {args[1]}";
+			}
 
 			if (t.IsSubclassOf(typeof(Array)))
-				return "Collection of {0}".F(FriendlyTypeName(t.GetElementType()));
+				return $"Collection of {FriendlyTypeName(t.GetElementType())}";
 
 			if (t.IsGenericType && t.GetGenericTypeDefinition().GetInterfaces().Any(e => e.IsGenericType && e.GetGenericTypeDefinition() == typeof(IEnumerable<>)))
-				return "Collection of {0}".F(FriendlyTypeName(t.GetGenericArguments().First()));
+				return $"Collection of {FriendlyTypeName(t.GetGenericArguments().First())}";
+
+			if (t.IsGenericType && t.GetGenericTypeDefinition() == typeof(Nullable<>))
+				return $"{t.GetGenericArguments().Select(FriendlyTypeName).First()} (optional)";
 
 			if (t.IsGenericType && t.GetGenericTypeDefinition() == typeof(Nullable<>))
 				return "{0} (optional)".F(t.GetGenericArguments().Select(FriendlyTypeName).First());
@@ -266,6 +305,23 @@ namespace OpenRA.Mods.Common
 			return t.Name;
 		}
 
+		public static string GetAttributeParameterValue(CustomAttributeTypedArgument value)
+		{
+			if (value.ArgumentType.IsEnum)
+				return Enum.Parse(value.ArgumentType, value.Value.ToString()).ToString();
+
+			if (value.ArgumentType == typeof(Type) && value.Value != null)
+				return (value.Value as Type).Name;
+
+			if (value.ArgumentType.IsArray)
+			{
+				var names = (value.Value as IReadOnlyCollection<CustomAttributeTypedArgument>).Select(x => (x.Value as Type).Name);
+				return string.Join(", ", names);
+			}
+
+			return value.Value?.ToString();
+		}
+
 		public static int GetProjectileInaccuracy(int baseInaccuracy, InaccuracyType inaccuracyType, ProjectileArgs args)
 		{
 			var inaccuracy = ApplyPercentageModifiers(baseInaccuracy, args.InaccuracyModifiers);
@@ -279,7 +335,7 @@ namespace OpenRA.Mods.Common
 				case InaccuracyType.Absolute:
 					return inaccuracy;
 				default:
-					throw new InvalidEnumArgumentException("inaccuracyType", (int)inaccuracyType, typeof(InaccuracyType));
+					throw new InvalidEnumArgumentException(nameof(inaccuracyType), (int)inaccuracyType, typeof(InaccuracyType));
 			}
 		}
 	}

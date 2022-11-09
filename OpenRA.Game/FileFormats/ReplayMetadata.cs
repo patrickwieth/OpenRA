@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -28,7 +28,7 @@ namespace OpenRA.FileFormats
 		public ReplayMetadata(GameInformation info)
 		{
 			if (info == null)
-				throw new ArgumentNullException("info");
+				throw new ArgumentNullException(nameof(info));
 
 			GameInfo = info;
 		}
@@ -44,7 +44,7 @@ namespace OpenRA.FileFormats
 			// Read version
 			var version = fs.ReadInt32();
 			if (version != MetaVersion)
-				throw new NotSupportedException("Metadata version {0} is not supported".F(version));
+				throw new NotSupportedException($"Metadata version {version} is not supported");
 
 			// Read game info (max 100K limit as a safeguard against corrupted files)
 			var data = fs.ReadString(Encoding.UTF8, 1024 * 100);

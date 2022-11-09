@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -22,7 +22,7 @@ namespace OpenRA.Network
 	class SyncReport
 	{
 		const int NumSyncReports = 5;
-		static Cache<Type, TypeInfo> typeInfoCache = new Cache<Type, TypeInfo>(t => new TypeInfo(t));
+		static readonly Cache<Type, TypeInfo> TypeInfoCache = new Cache<Type, TypeInfo>(t => new TypeInfo(t));
 
 		readonly OrderManager orderManager;
 
@@ -33,8 +33,8 @@ namespace OpenRA.Network
 		{
 			var type = sync.GetType();
 			TypeInfo typeInfo;
-			lock (typeInfoCache)
-				typeInfo = typeInfoCache[type];
+			lock (TypeInfoCache)
+				typeInfo = TypeInfoCache[type];
 			var values = new Values(typeInfo.Names.Length);
 			var index = 0;
 
@@ -51,19 +51,21 @@ namespace OpenRA.Network
 				syncReports[i] = new Report();
 		}
 
-		internal void UpdateSyncReport()
+		internal void UpdateSyncReport(IEnumerable<OrderManager.ClientOrder> orders)
 		{
-			GenerateSyncReport(syncReports[curIndex]);
+			GenerateSyncReport(syncReports[curIndex], orders);
 			curIndex = ++curIndex % NumSyncReports;
 		}
 
-		void GenerateSyncReport(Report report)
+		void GenerateSyncReport(Report report, IEnumerable<OrderManager.ClientOrder> orders)
 		{
 			report.Frame = orderManager.NetFrameNumber;
 			report.SyncedRandom = orderManager.World.SharedRandom.Last;
 			report.TotalCount = orderManager.World.SharedRandom.TotalCount;
 			report.Traits.Clear();
 			report.Effects.Clear();
+			report.Orders.Clear();
+			report.Orders.AddRange(orders);
 
 			foreach (var actor in orderManager.World.ActorsHavingTrait<ISync>())
 			{
@@ -100,7 +102,7 @@ namespace OpenRA.Network
 			}
 		}
 
-		internal void DumpSyncReport(int frame, IEnumerable<FrameData.ClientOrder> orders)
+		internal void DumpSyncReport(int frame)
 		{
 			var reportName = "syncreport-" + DateTime.UtcNow.ToString("yyyy-MM-ddTHHmmssZ", CultureInfo.InvariantCulture) + ".log";
 			Log.AddChannel("sync", reportName);
@@ -117,12 +119,12 @@ namespace OpenRA.Network
 					Log.Write("sync", "Synced Traits:");
 					foreach (var a in r.Traits)
 					{
-						Log.Write("sync", "\t {0} {1} {2} {3} ({4})".F(a.ActorID, a.Type, a.Owner, a.Trait, a.Hash));
+						Log.Write("sync", $"\t {a.ActorID} {a.Type} {a.Owner} {a.Trait} ({a.Hash})");
 
 						var nvp = a.NamesValues;
 						for (int i = 0; i < nvp.Names.Length; i++)
 							if (nvp.Values[i] != null)
-								Log.Write("sync", "\t\t {0}: {1}".F(nvp.Names[i], nvp.Values[i]));
+								Log.Write("sync", $"\t\t {nvp.Names[i]}: {nvp.Values[i]}");
 					}
 
 					Log.Write("sync", "Synced Effects:");
@@ -133,11 +135,11 @@ namespace OpenRA.Network
 						var nvp = e.NamesValues;
 						for (int i = 0; i < nvp.Names.Length; i++)
 							if (nvp.Values[i] != null)
-								Log.Write("sync", "\t\t {0}: {1}".F(nvp.Names[i], nvp.Values[i]));
+								Log.Write("sync", $"\t\t {nvp.Names[i]}: {nvp.Values[i]}");
 					}
 
 					Log.Write("sync", "Orders Issued:");
-					foreach (var o in orders)
+					foreach (var o in r.Orders)
 						Log.Write("sync", "\t {0}", o.ToString());
 
 					return;
@@ -152,8 +154,9 @@ namespace OpenRA.Network
 			public int Frame;
 			public int SyncedRandom;
 			public int TotalCount;
-			public List<TraitReport> Traits = new List<TraitReport>();
-			public List<EffectReport> Effects = new List<EffectReport>();
+			public readonly List<TraitReport> Traits = new List<TraitReport>();
+			public readonly List<EffectReport> Effects = new List<EffectReport>();
+			public readonly List<OrderManager.ClientOrder> Orders = new List<OrderManager.ClientOrder>();
 		}
 
 		struct TraitReport
@@ -190,7 +193,7 @@ namespace OpenRA.Network
 				var properties = type.GetProperties(Flags).Where(pi => pi.HasAttribute<SyncAttribute>());
 
 				foreach (var prop in properties)
-					if (!prop.CanRead || prop.GetIndexParameters().Any())
+					if (!prop.CanRead || prop.GetIndexParameters().Length > 0)
 						throw new InvalidOperationException(
 							"Properties using the Sync attribute must be readable and must not use index parameters.\n" +
 							"Invalid Property: " + prop.DeclaringType.FullName + "." + prop.Name);
@@ -235,7 +238,7 @@ namespace OpenRA.Network
 			{
 				// The lambda generated is shown below.
 				// TSync is actual type of the ISync object. Foo is a field or property with the Sync attribute applied.
-				var toString = memberType.GetMethod("ToString", Type.EmptyTypes);
+				var toString = memberType.GetMethod(nameof(object.ToString), Type.EmptyTypes);
 				Expression getString;
 				if (memberType.IsValueType)
 				{
@@ -296,7 +299,7 @@ namespace OpenRA.Network
 						case 1: return item2OrSentinel;
 						case 2: return item3;
 						case 3: return item4;
-						default: throw new ArgumentOutOfRangeException("index");
+						default: throw new ArgumentOutOfRangeException(nameof(index));
 					}
 				}
 
@@ -314,7 +317,7 @@ namespace OpenRA.Network
 						case 1: item2OrSentinel = value; break;
 						case 2: item3 = value; break;
 						case 3: item4 = value; break;
-						default: throw new ArgumentOutOfRangeException("index");
+						default: throw new ArgumentOutOfRangeException(nameof(index));
 					}
 				}
 			}

@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -25,7 +25,7 @@ namespace OpenRA.Mods.Common.Widgets
 	public class ViewportControllerWidget : Widget
 	{
 		readonly ModData modData;
-		readonly IEnumerable<ResourceRenderer> resourceRenderers;
+		readonly IEnumerable<IResourceRenderer> resourceRenderers;
 
 		public readonly HotkeyReference ZoomInKey = new HotkeyReference();
 		public readonly HotkeyReference ZoomOutKey = new HotkeyReference();
@@ -52,7 +52,7 @@ namespace OpenRA.Mods.Common.Widgets
 		public ITooltip ActorTooltip { get; private set; }
 		public IProvideTooltipInfo[] ActorTooltipExtra { get; private set; }
 		public FrozenActor FrozenActorTooltip { get; private set; }
-		public ResourceType ResourceTooltip { get; private set; }
+		public string ResourceTooltip { get; private set; }
 
 		static readonly Dictionary<ScrollDirection, string> ScrollCursors = new Dictionary<ScrollDirection, string>
 		{
@@ -102,7 +102,7 @@ namespace OpenRA.Mods.Common.Widgets
 		WPos?[] bookmarkPositions;
 
 		[CustomLintableHotkeyNames]
-		public static IEnumerable<string> LinterHotkeyNames(MiniYamlNode widgetNode, Action<string> emitError, Action<string> emitWarning)
+		public static IEnumerable<string> LinterHotkeyNames(MiniYamlNode widgetNode, Action<string> emitError)
 		{
 			var savePrefix = "";
 			var savePrefixNode = widgetNode.Value.Nodes.FirstOrDefault(n => n.Key == "BookmarkSaveKeyPrefix");
@@ -123,10 +123,10 @@ namespace OpenRA.Mods.Common.Widgets
 				yield break;
 
 			if (string.IsNullOrEmpty(savePrefix))
-				emitError("{0} must define BookmarkSaveKeyPrefix if BookmarkKeyCount > 0.".F(widgetNode.Location));
+				emitError($"{widgetNode.Location} must define BookmarkSaveKeyPrefix if BookmarkKeyCount > 0.");
 
 			if (string.IsNullOrEmpty(restorePrefix))
-				emitError("{0} must define BookmarkRestoreKeyPrefix if BookmarkKeyCount > 0.".F(widgetNode.Location));
+				emitError($"{widgetNode.Location} must define BookmarkRestoreKeyPrefix if BookmarkKeyCount > 0.");
 
 			for (var i = 0; i < count; i++)
 			{
@@ -145,7 +145,7 @@ namespace OpenRA.Mods.Common.Widgets
 			tooltipContainer = Exts.Lazy(() =>
 				Ui.Root.Get<TooltipContainerWidget>(TooltipContainer));
 
-			resourceRenderers = world.WorldActor.TraitsImplementing<ResourceRenderer>().ToArray();
+			resourceRenderers = world.WorldActor.TraitsImplementing<IResourceRenderer>().ToArray();
 		}
 
 		public override void Initialize(WidgetArgs args)
@@ -269,11 +269,11 @@ namespace OpenRA.Mods.Common.Widgets
 
 			foreach (var resourceRenderer in resourceRenderers)
 			{
-				var resource = resourceRenderer.GetRenderedResourceType(cell);
-				if (resource != null)
+				var resourceTooltip = resourceRenderer.GetRenderedResourceTooltip(cell);
+				if (resourceTooltip != null)
 				{
 					TooltipType = WorldTooltipType.Resource;
-					ResourceTooltip = resource;
+					ResourceTooltip = resourceTooltip;
 					break;
 				}
 			}
@@ -302,14 +302,9 @@ namespace OpenRA.Mods.Common.Widgets
 			return null;
 		}
 
-		bool IsJoystickScrolling
-		{
-			get
-			{
-				return joystickScrollStart.HasValue && joystickScrollEnd.HasValue &&
-					(joystickScrollStart.Value - joystickScrollEnd.Value).Length > Game.Settings.Game.MouseScrollDeadzone;
-			}
-		}
+		bool IsJoystickScrolling =>
+			joystickScrollStart.HasValue && joystickScrollEnd.HasValue &&
+			(joystickScrollStart.Value - joystickScrollEnd.Value).Length > Game.Settings.Game.MouseScrollDeadzone;
 
 		public override bool HandleMouseInput(MouseInput mi)
 		{

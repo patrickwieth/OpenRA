@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -39,11 +39,15 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				portField.Text = text.Substring(last + 1);
 			}
 
-			panel.Get<ButtonWidget>("JOIN_BUTTON").OnClick = () =>
+			var joinButton = panel.Get<ButtonWidget>("JOIN_BUTTON");
+
+			joinButton.IsDisabled = () => string.IsNullOrEmpty(ipField.Text);
+
+			joinButton.OnClick = () =>
 			{
 				var port = Exts.WithDefault(1234, () => Exts.ParseIntegerInvariant(portField.Text));
 
-				Game.Settings.Player.LastServer = "{0}:{1}".F(ipField.Text, port);
+				Game.Settings.Player.LastServer = $"{ipField.Text}:{port}";
 				Game.Settings.Save();
 
 				ConnectionLogic.Connect(new ConnectionTarget(ipField.Text, port), "", () => { Ui.CloseWindow(); openLobby(); }, DoNothing);

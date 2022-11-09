@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -16,7 +16,7 @@ using OpenRA.Widgets;
 
 namespace OpenRA.Mods.Common.Widgets
 {
-	public class HotkeyEntryWidget : Widget
+	public class HotkeyEntryWidget : InputWidget
 	{
 		public Hotkey Key;
 
@@ -24,10 +24,9 @@ namespace OpenRA.Mods.Common.Widgets
 		public int LeftMargin = 5;
 		public int RightMargin = 5;
 
-		public Action OnEscKey = () => { };
+		public Action<KeyInput> OnEscKey = _ => { };
 		public Action OnLoseFocus = () => { };
 
-		public Func<bool> IsDisabled = () => false;
 		public Func<bool> IsValid = () => false;
 		public string Font = ChromeMetrics.Get<string>("HotkeyFont");
 		public Color TextColor = ChromeMetrics.Get<Color>("HotkeyColor");
@@ -88,7 +87,6 @@ namespace OpenRA.Mods.Common.Widgets
 			Keycode.RCTRL, Keycode.LCTRL,
 			Keycode.RALT, Keycode.LALT,
 			Keycode.RGUI, Keycode.LGUI,
-			Keycode.RETURN, Keycode.KP_ENTER
 		};
 
 		public override bool HandleKeyPress(KeyInput e)
@@ -102,7 +100,7 @@ namespace OpenRA.Mods.Common.Widgets
 			switch (e.Key)
 			{
 				case Keycode.ESCAPE:
-					OnEscKey();
+					OnEscKey(e);
 					break;
 
 				default:

@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -11,13 +11,30 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
+using OpenRA.FileSystem;
 using OpenRA.GameRules;
+using OpenRA.Server;
 
 namespace OpenRA.Mods.Common.Lint
 {
-	class CheckUnknownWeaponFields : ILintPass, ILintMapPass
+	class CheckUnknownWeaponFields : ILintPass, ILintMapPass, ILintServerMapPass
 	{
+		void ILintPass.Run(Action<string> emitError, Action<string> emitWarning, ModData modData)
+		{
+			foreach (var f in modData.Manifest.Weapons)
+				CheckWeapons(MiniYaml.FromStream(modData.DefaultFileSystem.Open(f), f), emitError, emitWarning, modData);
+		}
+
+		void ILintMapPass.Run(Action<string> emitError, Action<string> emitWarning, ModData modData, Map map)
+		{
+			CheckMapYaml(emitError, emitWarning, modData, map, map.WeaponDefinitions);
+		}
+
+		void ILintServerMapPass.Run(Action<string> emitError, Action<string> emitWarning, ModData modData, MapPreview map, Ruleset mapRules)
+		{
+			CheckMapYaml(emitError, emitWarning, modData, map, map.WeaponDefinitions);
+		}
+
 		string NormalizeName(string key)
 		{
 			var name = key.Split('@')[0];
@@ -37,11 +54,11 @@ namespace OpenRA.Mods.Common.Lint
 					// Removals can never define children or values
 					if (field.Key.StartsWith("-", StringComparison.Ordinal))
 					{
-						if (field.Value.Nodes.Any())
-							emitError("{0} {1} defines child nodes, which is not valid for removals.".F(field.Location, field.Key));
+						if (field.Value.Nodes.Count > 0)
+							emitError($"{field.Location} {field.Key} defines child nodes, which is not valid for removals.");
 
 						if (!string.IsNullOrEmpty(field.Value.Value))
-							emitError("{0} {1} defines a value, which is not valid for removals.".F(field.Location, field.Key));
+							emitError($"{field.Location} {field.Key} defines a value, which is not valid for removals.");
 
 						continue;
 					}
@@ -51,53 +68,59 @@ namespace OpenRA.Mods.Common.Lint
 					{
 						var projectileName = NormalizeName(field.Value.Value);
 						var projectileInfo = modData.ObjectCreator.FindType(projectileName + "Info");
+						if (projectileInfo == null)
+						{
+							emitError($"{field.Location} defines unknown projectile `{projectileName}`.");
+							continue;
+						}
+
 						foreach (var projectileField in field.Value.Nodes)
 						{
 							var projectileFieldName = NormalizeName(projectileField.Key);
 							if (projectileInfo.GetField(projectileFieldName) == null)
-								emitError("{0} refers to a projectile field `{1}` that does not exist on `{2}`.".F(projectileField.Location, projectileFieldName, projectileName));
+								emitError($"{projectileField.Location} refers to a projectile field `{projectileFieldName}` that does not exist on `{projectileName}`.");
 						}
 					}
 					else if (fieldName == "Warhead")
 					{
 						if (string.IsNullOrEmpty(field.Value.Value))
 						{
-							emitWarning("{0} does not define a warhead type. Skipping unknown field check.".F(field.Location));
+							emitWarning($"{field.Location} does not define a warhead type. Skipping unknown field check.");
 							continue;
 						}
 
 						var warheadName = NormalizeName(field.Value.Value);
 						var warheadInfo = modData.ObjectCreator.FindType(warheadName + "Warhead");
+						if (warheadInfo == null)
+						{
+							emitError($"{field.Location} defines unknown warhead `{warheadName}`.");
+							continue;
+						}
+
 						foreach (var warheadField in field.Value.Nodes)
 						{
 							var warheadFieldName = NormalizeName(warheadField.Key);
 							if (warheadInfo.GetField(warheadFieldName) == null)
-								emitError("{0} refers to a warhead field `{1}` that does not exist on `{2}`.".F(warheadField.Location, warheadFieldName, warheadName));
+								emitError($"{warheadField.Location} refers to a warhead field `{warheadFieldName}` that does not exist on `{warheadName}`.");
 						}
 					}
 					else if (fieldName != "Inherits" && weaponInfo.GetField(fieldName) == null)
-						emitError("{0} refers to a weapon field `{1}` that does not exist.".F(field.Location, fieldName));
+						emitError($"{field.Location} refers to a weapon field `{fieldName}` that does not exist.");
 				}
 			}
 		}
 
-		void ILintPass.Run(Action<string> emitError, Action<string> emitWarning, ModData modData)
+		void CheckMapYaml(Action<string> emitError, Action<string> emitWarning, ModData modData, IReadOnlyFileSystem fileSystem, MiniYaml weaponDefinitions)
 		{
-			foreach (var f in modData.Manifest.Weapons)
-				CheckWeapons(MiniYaml.FromStream(modData.DefaultFileSystem.Open(f), f), emitError, emitWarning, modData);
-		}
+			if (weaponDefinitions == null)
+				return;
 
-		void ILintMapPass.Run(Action<string> emitError, Action<string> emitWarning, ModData modData, Map map)
-		{
-			if (map.WeaponDefinitions != null && map.WeaponDefinitions.Value != null)
-			{
-				var mapFiles = FieldLoader.GetValue<string[]>("value", map.WeaponDefinitions.Value);
-				foreach (var f in mapFiles)
-					CheckWeapons(MiniYaml.FromStream(map.Open(f), f), emitError, emitWarning, modData);
+			var mapFiles = FieldLoader.GetValue<string[]>("value", weaponDefinitions.Value);
+			foreach (var f in mapFiles)
+				CheckWeapons(MiniYaml.FromStream(fileSystem.Open(f), f), emitError, emitWarning, modData);
 
-				if (map.WeaponDefinitions.Nodes.Any())
-					CheckWeapons(map.WeaponDefinitions.Nodes, emitError, emitWarning, modData);
-			}
+			if (weaponDefinitions.Nodes.Count > 0)
+				CheckWeapons(weaponDefinitions.Nodes, emitError, emitWarning, modData);
 		}
 	}
 }

@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -9,7 +9,6 @@
  */
 #endregion
 
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Traits;
@@ -42,6 +41,9 @@ namespace OpenRA.Mods.Common.Traits
 
 		[Desc("Tells the AI what building types are considered silos (resource storage).")]
 		public readonly HashSet<string> SiloTypes = new HashSet<string>();
+
+		[Desc("Tells the AI what building types are considered defenses.")]
+		public readonly HashSet<string> DefenseTypes = new HashSet<string>();
 
 		[Desc("Production queues AI uses for buildings.")]
 		public readonly HashSet<string> BuildingQueues = new HashSet<string> { "Building" };
@@ -78,8 +80,8 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly int StructureProductionInactiveDelay = 125;
 
 		[Desc("Additional delay (in ticks) added between structure production checks when actively building things.",
-			"Note: The total delay is gamespeed OrderLatency x 4 + this + StructureProductionRandomBonusDelay.")]
-		public readonly int StructureProductionActiveDelay = 0;
+			"Note: this should be at least as large as the typical order latency to avoid duplicated build choices.")]
+		public readonly int StructureProductionActiveDelay = 25;
 
 		[Desc("A random delay (in ticks) of up to this is added to active/inactive production delays.")]
 		public readonly int StructureProductionRandomBonusDelay = 10;
@@ -141,21 +143,21 @@ namespace OpenRA.Mods.Common.Traits
 				Info.ConstructionYardTypes.Contains(a.Info.Name))
 				.RandomOrDefault(world.LocalRandom);
 
-			return randomConstructionYard != null ? randomConstructionYard.Location : initialBaseCenter;
+			return randomConstructionYard?.Location ?? initialBaseCenter;
 		}
 
-		public CPos DefenseCenter { get { return defenseCenter; } }
+		public CPos DefenseCenter => defenseCenter;
 
 		readonly World world;
 		readonly Player player;
 		PowerManager playerPower;
 		PlayerResources playerResources;
+		IResourceLayer resourceLayer;
 		IBotPositionsUpdated[] positionsUpdatedModules;
-		BitArray resourceTypeIndices;
 		CPos initialBaseCenter;
 		CPos defenseCenter;
 
-		List<BaseBuilderQueueManager> builders = new List<BaseBuilderQueueManager>();
+		readonly List<BaseBuilderQueueManager> builders = new List<BaseBuilderQueueManager>();
 
 		public BaseBuilderBotModule(Actor self, BaseBuilderBotModuleInfo info)
 			: base(info)
@@ -168,20 +170,16 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			playerPower = self.Owner.PlayerActor.TraitOrDefault<PowerManager>();
 			playerResources = self.Owner.PlayerActor.Trait<PlayerResources>();
+			resourceLayer = self.World.WorldActor.TraitOrDefault<IResourceLayer>();
 			positionsUpdatedModules = self.Owner.PlayerActor.TraitsImplementing<IBotPositionsUpdated>().ToArray();
 		}
 
 		protected override void TraitEnabled(Actor self)
 		{
-			var tileset = world.Map.Rules.TileSet;
-			resourceTypeIndices = new BitArray(tileset.TerrainInfo.Length); // Big enough
-			foreach (var t in world.Map.Rules.Actors["world"].TraitInfos<ResourceTypeInfo>())
-				resourceTypeIndices.Set(tileset.GetTerrainIndex(t.TerrainType), true);
-
 			foreach (var building in Info.BuildingQueues)
-				builders.Add(new BaseBuilderQueueManager(this, building, player, playerPower, playerResources, resourceTypeIndices));
+				builders.Add(new BaseBuilderQueueManager(this, building, player, playerPower, playerResources, resourceLayer));
 			foreach (var defense in Info.DefenseQueues)
-				builders.Add(new BaseBuilderQueueManager(this, defense, player, playerPower, playerResources, resourceTypeIndices));
+				builders.Add(new BaseBuilderQueueManager(this, defense, player, playerPower, playerResources, resourceLayer));
 		}
 
 		void IBotPositionsUpdated.UpdatedBaseCenter(CPos newLocation)
@@ -194,10 +192,7 @@ namespace OpenRA.Mods.Common.Traits
 			defenseCenter = newLocation;
 		}
 
-		bool IBotRequestPauseUnitProduction.PauseUnitProduction
-		{
-			get { return !IsTraitDisabled && !HasAdequateRefineryCount; }
-		}
+		bool IBotRequestPauseUnitProduction.PauseUnitProduction => !IsTraitDisabled && !HasAdequateRefineryCount;
 
 		void IBotTick.BotTick(IBot bot)
 		{
@@ -261,25 +256,14 @@ namespace OpenRA.Mods.Common.Traits
 			return info != null && world.IsCellBuildable(x, null, info);
 		}
 
-		public bool HasAdequateRefineryCount
-		{
-			get
-			{
-				// Require at least one refinery, unless we can't build it.
-				return !Info.RefineryTypes.Any() ||
-					AIUtils.CountBuildingByCommonName(Info.RefineryTypes, player) >= MinimumRefineryCount ||
-					AIUtils.CountBuildingByCommonName(Info.PowerTypes, player) == 0 ||
-					AIUtils.CountBuildingByCommonName(Info.ConstructionYardTypes, player) == 0;
-			}
-		}
+		// Require at least one refinery, unless we can't build it.
+		public bool HasAdequateRefineryCount =>
+			Info.RefineryTypes.Count == 0 ||
+			AIUtils.CountBuildingByCommonName(Info.RefineryTypes, player) >= MinimumRefineryCount ||
+			AIUtils.CountBuildingByCommonName(Info.PowerTypes, player) == 0 ||
+			AIUtils.CountBuildingByCommonName(Info.ConstructionYardTypes, player) == 0;
 
-		int MinimumRefineryCount
-		{
-			get
-			{
-				return AIUtils.CountBuildingByCommonName(Info.BarracksTypes, player) > 0 ? Info.InititalMinimumRefineryCount + Info.AdditionalMinimumRefineryCount : Info.InititalMinimumRefineryCount;
-			}
-		}
+		int MinimumRefineryCount => AIUtils.CountBuildingByCommonName(Info.BarracksTypes, player) > 0 ? Info.InititalMinimumRefineryCount + Info.AdditionalMinimumRefineryCount : Info.InititalMinimumRefineryCount;
 
 		List<MiniYamlNode> IGameSaveTraitData.IssueTraitData(Actor self)
 		{

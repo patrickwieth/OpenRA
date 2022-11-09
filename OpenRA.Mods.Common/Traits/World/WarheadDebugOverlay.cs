@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -17,7 +17,8 @@ using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
 {
-	[Desc("Part of the combat overlay from DeveloperMode. Attach this to the world actor.")]
+	[TraitLocation(SystemActors.World)]
+	[Desc("Part of the combat overlay from `" + nameof(DeveloperMode) + "`. Attach this to the world actor.")]
 	public class WarheadDebugOverlayInfo : TraitInfo
 	{
 		public readonly int DisplayDuration = 25;
@@ -34,10 +35,7 @@ namespace OpenRA.Mods.Common.Traits
 			public readonly Color Color;
 			public int Time;
 
-			public WDist OuterRange
-			{
-				get { return Range[Range.Length - 1]; }
-			}
+			public WDist OuterRange => Range[Range.Length - 1];
 
 			public WHImpact(WPos pos, WDist[] range, int time, Color color)
 			{
@@ -83,6 +81,6 @@ namespace OpenRA.Mods.Common.Traits
 			impacts.RemoveAll(i => i.Time == 0);
 		}
 
-		bool IRenderAnnotations.SpatiallyPartitionable { get { return false; } }
+		bool IRenderAnnotations.SpatiallyPartitionable => false;
 	}
 }

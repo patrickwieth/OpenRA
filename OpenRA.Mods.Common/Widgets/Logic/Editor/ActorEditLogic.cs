@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -25,6 +25,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		enum ActorIDStatus { Normal = 0, Duplicate = 1, Empty = 3 }
 
 		readonly WorldRenderer worldRenderer;
+		readonly ModData modData;
 		readonly EditorActorLayer editorActorLayer;
 		readonly EditorActionManager editorActionManager;
 		readonly EditorViewportControllerWidget editor;
@@ -42,6 +43,16 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 		readonly int editPanelPadding; // Padding between right edge of actor and the edit panel.
 		readonly long scrollVisibleTimeout = 100; // Delay after scrolling map before edit widget becomes visible again.
+
+		[TranslationReference]
+		static readonly string DuplicateActorId = "duplicate-actor-id";
+
+		[TranslationReference]
+		static readonly string EnterActorId = "enter-actor-id";
+
+		[TranslationReference]
+		static readonly string Owner = "owner";
+
 		long lastScrollTime = 0;
 		int2 lastScrollPosition = int2.Zero;
 
@@ -54,10 +65,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 		EditorActorPreview CurrentActor
 		{
-			get
-			{
-				return currentActorInner;
-			}
+			get => currentActorInner;
 
 			set
 			{
@@ -77,9 +85,11 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		}
 
 		[ObjectCreator.UseCtor]
-		public ActorEditLogic(Widget widget, World world, WorldRenderer worldRenderer, Dictionary<string, MiniYaml> logicArgs)
+		public ActorEditLogic(Widget widget, ModData modData, World world, WorldRenderer worldRenderer, Dictionary<string, MiniYaml> logicArgs)
 		{
+			this.modData = modData;
 			this.worldRenderer = worldRenderer;
+
 			editorActorLayer = world.WorldActor.Trait<EditorActorLayer>();
 			editorActionManager = world.WorldActor.Trait<EditorActionManager>();
 
@@ -104,7 +114,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			actorIDErrorLabel = actorEditPanel.Get<LabelWidget>("ACTOR_ID_ERROR_LABEL");
 			actorIDErrorLabel.IsVisible = () => actorIDStatus != ActorIDStatus.Normal;
 			actorIDErrorLabel.GetText = () => actorIDStatus == ActorIDStatus.Duplicate ?
-				"Duplicate Actor ID" : "Enter an Actor ID";
+				modData.Translation.GetString(DuplicateActorId)
+					: modData.Translation.GetString(EnterActorId);
 
 			if (logicArgs.TryGetValue("EditPanelPadding", out var yaml))
 				editPanelPadding = FieldLoader.GetValue<int>("EditPanelPadding", yaml.Value);
@@ -117,11 +128,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				&& editor.CurrentBrush == editor.DefaultBrush
 				&& Game.RunTime > lastScrollTime + scrollVisibleTimeout;
 
-			actorIDField.OnEscKey = () =>
-			{
-				actorIDField.YieldKeyboardFocus();
-				return true;
-			};
+			actorIDField.OnEscKey = _ => actorIDField.YieldKeyboardFocus();
 
 			actorIDField.OnTextEdited = () =>
 			{
@@ -133,11 +140,13 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				}
 
 				// Check for duplicate actor ID
-				if (CurrentActor.ID.Equals(actorId, StringComparison.OrdinalIgnoreCase))
+				if (!CurrentActor.ID.Equals(actorId, StringComparison.OrdinalIgnoreCase))
 				{
 					if (editorActorLayer[actorId] != null)
 					{
 						nextActorIDStatus = ActorIDStatus.Duplicate;
+						actorIDErrorLabel.Text = modData.Translation.GetString(DuplicateActorId);
+						actorIDErrorLabel.Visible = true;
 						return;
 					}
 				}
@@ -220,7 +229,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 					// Add owner dropdown
 					var ownerContainer = dropdownOptionTemplate.Clone();
-					ownerContainer.Get<LabelWidget>("LABEL").GetText = () => "Owner";
+					var owner = modData.Translation.GetString(Owner);
+					ownerContainer.Get<LabelWidget>("LABEL").GetText = () => owner;
 					var ownerDropdown = ownerContainer.Get<DropDownButtonWidget>("OPTION");
 					var selectedOwner = actor.Owner;
 
@@ -265,9 +275,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 					foreach (var o in options)
 					{
-						if (o is EditorActorCheckbox)
+						if (o is EditorActorCheckbox co)
 						{
-							var co = (EditorActorCheckbox)o;
 							var checkboxContainer = checkboxOptionTemplate.Clone();
 							checkboxContainer.Bounds.Y = initContainer.Bounds.Height;
 							initContainer.Bounds.Height += checkboxContainer.Bounds.Height;
@@ -288,9 +297,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 							initContainer.AddChild(checkboxContainer);
 						}
-						else if (o is EditorActorSlider)
+						else if (o is EditorActorSlider so)
 						{
-							var so = (EditorActorSlider)o;
 							var sliderContainer = sliderOptionTemplate.Clone();
 							sliderContainer.Bounds.Y = initContainer.Bounds.Height;
 							initContainer.Bounds.Height += sliderContainer.Bounds.Height;
@@ -324,9 +332,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 							initContainer.AddChild(sliderContainer);
 						}
-						else if (o is EditorActorDropdown)
+						else if (o is EditorActorDropdown ddo)
 						{
-							var ddo = (EditorActorDropdown)o;
 							var dropdownContainer = dropdownOptionTemplate.Clone();
 							dropdownContainer.Bounds.Y = initContainer.Bounds.Height;
 							initContainer.Bounds.Height += dropdownContainer.Bounds.Height;
@@ -438,7 +445,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		}
 
 		public bool IsDirty { get; private set; }
-		public bool ShouldDoOnSave { get { return false; } }
+		public bool ShouldDoOnSave => false;
 	}
 
 	public interface IEditActorHandle
@@ -451,7 +458,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 	class EditActorEditorAction : IEditorAction
 	{
-		public string Text { get; private set; }
+		public string Text { get; }
 
 		readonly IEnumerable<IEditActorHandle> handles;
 		readonly EditorActorLayer editorActorLayer;
@@ -464,7 +471,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			actorId = actor.ID;
 			this.actor = actor;
 			this.handles = handles;
-			Text = "Edited {0} ({1})".F(actor.Info.Name, actor.ID);
+			Text = $"Edited {actor.Info.Name} ({actor.ID})";
 		}
 
 		public void Execute()
@@ -554,6 +561,6 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		}
 
 		public bool IsDirty { get; private set; }
-		public bool ShouldDoOnSave { get { return true; } }
+		public bool ShouldDoOnSave => true;
 	}
 }

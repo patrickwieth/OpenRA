@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -15,16 +15,11 @@ namespace OpenRA.Mods.Common.UpdateRules.Rules
 {
 	public class RemoveYesNo : UpdateRule
 	{
-		public override string Name { get { return "Remove 'yes' and 'no' in favor of 'true' and 'false'."; } }
+		public override string Name => "Remove 'yes' and 'no' in favor of 'true' and 'false'.";
 
-		public override string Description
-		{
-			get
-			{
-				return "'Yes' and 'no' are no longer valid values for booleans. " +
-					"Use 'true' and 'false' instead.";
-			}
-		}
+		public override string Description =>
+			"'Yes' and 'no' are no longer valid values for booleans. " +
+			"Use 'true' and 'false' instead.";
 
 		public override IEnumerable<string> UpdateActorNode(ModData modData, MiniYamlNode actorNode)
 		{
@@ -36,9 +31,9 @@ namespace OpenRA.Mods.Common.UpdateRules.Rules
 					if (value == null)
 						continue;
 
-					if (value.ToLowerInvariant() == "yes")
+					if (string.Equals(value, "yes", System.StringComparison.InvariantCultureIgnoreCase))
 						n.ReplaceValue("true");
-					else if (value.ToLowerInvariant() == "no")
+					else if (string.Equals(value, "no", System.StringComparison.InvariantCultureIgnoreCase))
 						n.ReplaceValue("false");
 				}
 			}

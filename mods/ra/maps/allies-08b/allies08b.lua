@@ -1,5 +1,5 @@
 --[[
-   Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+   Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
    This file is part of OpenRA, which is free software. It is made
    available to you under the terms of the GNU General Public License
    as published by the Free Software Foundation, either version 3 of
@@ -119,28 +119,11 @@ WorldLoaded = function()
 	ussr = Player.GetPlayer("USSR")
 	england = Player.GetPlayer("England")
 
-	DefendChronosphere = greece.AddPrimaryObjective("Defend the Chronosphere and the Tech Center\nat all costs.")
-	KeepBasePowered = greece.AddPrimaryObjective("The Chronosphere must have power when the\ntimer runs out.")
-	EvacuateScientists = greece.AddSecondaryObjective("Evacuate all scientists from the island to\nthe east.")
-	BeatAllies = ussr.AddPrimaryObjective("Defeat the Allied forces.")
-
-	Trigger.OnObjectiveCompleted(greece, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "Objective completed")
-	end)
-	Trigger.OnObjectiveFailed(greece, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "Objective failed")
-	end)
-
-	Trigger.OnPlayerLost(greece, function()
-		Trigger.AfterDelay(DateTime.Seconds(1), function()
-			Media.PlaySpeechNotification(greece, "MissionFailed")
-		end)
-	end)
-	Trigger.OnPlayerWon(greece, function()
-		Trigger.AfterDelay(DateTime.Seconds(1), function()
-			Media.PlaySpeechNotification(greece, "MissionAccomplished")
-		end)
-	end)
+	InitObjectives(greece)
+	DefendChronosphere = greece.AddObjective("Defend the Chronosphere and the Tech Center\nat all costs.")
+	KeepBasePowered = greece.AddObjective("The Chronosphere must have power when the\ntimer runs out.")
+	EvacuateScientists = greece.AddObjective("Evacuate all scientists from the island to\nthe east.", "Secondary", false)
+	BeatAllies = ussr.AddObjective("Defeat the Allied forces.")
 
 	Trigger.AfterDelay(DateTime.Minutes(1), function()
 		Media.PlaySpeechNotification(greece, "TwentyMinutesRemaining")

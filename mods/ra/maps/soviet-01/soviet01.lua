@@ -1,5 +1,5 @@
 --[[
-   Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+   Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
    This file is part of OpenRA, which is free software. It is made
    available to you under the terms of the GNU General Public License
    as published by the Free Software Foundation, either version 3 of
@@ -72,17 +72,9 @@ WorldLoaded = function()
 	france = Player.GetPlayer("France")
 	germany = Player.GetPlayer("Germany")
 
-	Trigger.OnObjectiveAdded(player, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "New " .. string.lower(p.GetObjectiveType(id)) .. " objective")
-	end)
-	Trigger.OnObjectiveCompleted(player, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "Objective completed")
-	end)
-	Trigger.OnObjectiveFailed(player, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "Objective failed")
-	end)
+	InitObjectives(player)
 
-	VillageRaidObjective = player.AddPrimaryObjective("Raze the village.")
+	VillageRaidObjective = player.AddObjective("Raze the village.")
 
 	Trigger.OnAllRemovedFromWorld(Airfields, function()
 		player.MarkFailedObjective(VillageRaidObjective)
@@ -90,18 +82,20 @@ WorldLoaded = function()
 
 	JeepDemolishingBridge()
 
-	Trigger.OnPlayerWon(player, function()
-		Media.PlaySpeechNotification(player, "MissionAccomplished")
-	end)
-
-	Trigger.OnPlayerLost(player, function()
-		Media.PlaySpeechNotification(player, "MissionFailed")
-	end)
-
 	Paradrop = Actor.Create("powerproxy.paratroopers", false, { Owner = player })
 	Trigger.AfterDelay(DateTime.Seconds(2), InsertYaks)
 	Paratroopers()
 	Trigger.OnDamaged(HayHouse, PanicAttack)
+	Trigger.OnKilled(PillboxBarrel1, function()
+		if not Pillbox1.IsDead then
+			Pillbox1.Kill()
+		end
+	end)
+	Trigger.OnKilled(PillboxBarrel2, function()
+		if not Pillbox2.IsDead then
+			Pillbox2.Kill()
+		end
+	end)
 end
 
 Tick = function()

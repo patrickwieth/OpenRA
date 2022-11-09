@@ -1,5 +1,5 @@
 --[[
-   Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+   Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
    This file is part of OpenRA, which is free software. It is made
    available to you under the terms of the GNU General Public License
    as published by the Free Software Foundation, either version 3 of
@@ -11,8 +11,6 @@ Squad1 = { FirstSquad1, FirstSquad2, FirstSquad3 }
 Squad2 = { SecondSquad1, SecondSquad2, SecondSquad3 }
 PatrolMammothPath = { Patrol1.Location, Patrol2.Location, Patrol3.Location, Patrol4.Location, Patrol5.Location, Patrol6.Location, Patrol7.Location }
 ConvoyEscape = { CPos.New(113, 42), CPos.New(117, 71) }
-
-IdleHunt = function(actor) if not actor.IsDead then Trigger.OnIdle(actor, actor.Hunt) end end
 
 ConvoyUnits =
 {
@@ -65,7 +63,7 @@ AttackWaveDelays =
 }
 
 AttackWaves = function()
-	local attackpath = Utils.Random(AttackPaths)	
+	local attackpath = Utils.Random(AttackPaths)
 	local attackers = Reinforcements.Reinforce(USSR, Utils.Random(AttackWaveUnits), { attackpath[1] })
 	Utils.Do(attackers, function(unit)
 		Trigger.OnAddedToWorld(unit, function()
@@ -77,7 +75,7 @@ AttackWaves = function()
 	Trigger.AfterDelay(Utils.RandomInteger(AttackWaveDelay[1], AttackWaveDelay[2]), AttackWaves)
 end
 
-ConvoyWaves = 
+ConvoyWaves =
 {
 	easy = 2,
 	normal = 3,
@@ -111,7 +109,7 @@ SendConvoys = function()
 	end)
 
 	ConvoysPassed = ConvoysPassed + 1
-	if ConvoysPassed <= ConvoyWaves[Map.LobbyOption("difficulty")] then
+	if ConvoysPassed <= ConvoyWaves[Difficulty] then
 		Trigger.AfterDelay(DateTime.Seconds(90), SendConvoys)
 	else
 		FinalTrucks()
@@ -242,22 +240,7 @@ WorldLoaded = function()
 	StopTrucks = Allies.AddObjective("Destroy all Soviet convoy trucks.")
 	DestroyBridges = Allies.AddObjective("Destroy the nearby bridges to slow the\nconvoys down.", "Secondary", false)
 
-	Trigger.OnObjectiveAdded(Allies, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "New " .. string.lower(p.GetObjectiveType(id)) .. " objective")
-	end)
-
-	Trigger.OnObjectiveCompleted(Allies, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "Objective completed")
-	end)
-	Trigger.OnObjectiveFailed(Allies, function(p, id)
-		Media.DisplayMessage(p.GetObjectiveDescription(id), "Objective failed")
-	end)
-	Trigger.OnPlayerLost(Allies, function()
-		Media.PlaySpeechNotification(Allies, "Lose")
-	end)
-	Trigger.OnPlayerWon(Allies, function()
-		Media.PlaySpeechNotification(Allies, "Win")
-	end)
+	InitObjectives(Allies)
 
 	Trigger.AfterDelay(DateTime.Minutes(3), function()
 		Media.PlaySpeechNotification(Allies, "WarningFiveMinutesRemaining")
@@ -276,7 +259,6 @@ WorldLoaded = function()
 	ConvoyExit()
 	BridgeTriggers()
 
-	local difficulty = Map.LobbyOption("difficulty")
-	ConvoyUnits = ConvoyUnits[difficulty]
-	AttackWaveDelay = AttackWaveDelays[difficulty]
+	ConvoyUnits = ConvoyUnits[Difficulty]
+	AttackWaveDelay = AttackWaveDelays[Difficulty]
 end

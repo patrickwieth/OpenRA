@@ -1,6 +1,6 @@
 World:
 	LuaScript:
-		Scripts: campaign-global.lua, gdi05a.lua
+		Scripts: campaign.lua, utils.lua, gdi05a.lua
 	MusicPlaylist:
 		StartingMusic: rain
 	MissionData:
@@ -29,12 +29,12 @@ World:
 	ScriptLobbyDropdown@difficulty:
 		ID: difficulty
 		Label: Difficulty
+		Description: The difficulty of the mission
 		Values:
 			easy: Easy
 			normal: Normal
 			hard: Hard
-		Default: easy
-		Locked: false
+		Default: normal
 
 Player:
 	EnemyWatcher:
@@ -75,10 +75,6 @@ RMBO:
 HARV:
 	Buildable:
 		Prerequisites: ~disabled
-
-LTNK:
-	Buildable:
-		Prerequisites: ~afld
 
 MCV:
 	Buildable:

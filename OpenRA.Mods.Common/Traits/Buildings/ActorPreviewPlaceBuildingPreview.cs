@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -15,7 +15,6 @@ using OpenRA.Graphics;
 using OpenRA.Mods.Common.Graphics;
 using OpenRA.Mods.Common.Orders;
 using OpenRA.Primitives;
-using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
 {
@@ -25,12 +24,8 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Enable the building's idle animation.")]
 		public readonly bool Animated = true;
 
-		[PaletteReference(nameof(OverridePaletteIsPlayerPalette))]
-		[Desc("Custom palette name.")]
-		public readonly string OverridePalette = null;
-
-		[Desc("Custom palette is a player palette BaseName.")]
-		public readonly bool OverridePaletteIsPlayerPalette = true;
+		[Desc("Custom opacity to apply to the actor preview.")]
+		public readonly float PreviewAlpha = 1f;
 
 		[Desc("Footprint types to draw underneath the actor preview.")]
 		public readonly PlaceBuildingCellType FootprintUnderPreview = PlaceBuildingCellType.Valid | PlaceBuildingCellType.LineBuild;
@@ -54,23 +49,16 @@ namespace OpenRA.Mods.Common.Traits
 	public class ActorPreviewPlaceBuildingPreviewPreview : FootprintPlaceBuildingPreviewPreview
 	{
 		readonly ActorPreviewPlaceBuildingPreviewInfo info;
-		readonly PaletteReference palette;
 		readonly IActorPreview[] preview;
 
 		public ActorPreviewPlaceBuildingPreviewPreview(WorldRenderer wr, ActorInfo ai, ActorPreviewPlaceBuildingPreviewInfo info, TypeDictionary init)
-			: base(wr, ai, info, init)
+			: base(wr, ai, info)
 		{
 			this.info = info;
-			var previewInit = new ActorPreviewInitializer(actorInfo, wr, init);
-			preview = actorInfo.TraitInfos<IRenderActorPreviewInfo>()
+			var previewInit = new ActorPreviewInitializer(ActorInfo, wr, init);
+			preview = ActorInfo.TraitInfos<IRenderActorPreviewInfo>()
 				.SelectMany(rpi => rpi.RenderPreview(previewInit))
 				.ToArray();
-
-			if (!string.IsNullOrEmpty(info.OverridePalette))
-			{
-				var ownerName = init.Get<OwnerInit>().InternalName;
-				palette = wr.Palette(info.OverridePaletteIsPlayerPalette ? info.OverridePalette + ownerName : info.OverridePalette);
-			}
 		}
 
 		protected override void TickInner()
@@ -84,19 +72,21 @@ namespace OpenRA.Mods.Common.Traits
 
 		protected override IEnumerable<IRenderable> RenderInner(WorldRenderer wr, CPos topLeft, Dictionary<CPos, PlaceBuildingCellType> footprint)
 		{
-			var centerPosition = wr.World.Map.CenterOfCell(topLeft) + centerOffset;
+			var centerPosition = wr.World.Map.CenterOfCell(topLeft) + CenterOffset;
 			var previewRenderables = preview
 				.SelectMany(p => p.Render(wr, centerPosition));
-
-			if (palette != null)
-				previewRenderables = previewRenderables.Select(a => a.IsDecoration ? a : a.WithPalette(palette));
 
 			if (info.FootprintUnderPreview != PlaceBuildingCellType.None)
 				foreach (var r in RenderFootprint(wr, topLeft, footprint, info.FootprintUnderPreview))
 					yield return r;
 
 			foreach (var r in previewRenderables.OrderBy(WorldRenderer.RenderableZPositionComparisonKey))
-				yield return r;
+			{
+				if (info.PreviewAlpha < 1f && r is IModifyableRenderable mr)
+					yield return mr.WithAlpha(mr.Alpha * info.PreviewAlpha);
+				else
+					yield return r;
+			}
 
 			if (info.FootprintOverPreview != PlaceBuildingCellType.None)
 				foreach (var r in RenderFootprint(wr, topLeft, footprint, info.FootprintOverPreview))

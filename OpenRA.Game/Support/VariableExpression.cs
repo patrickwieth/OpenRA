@@ -1,6 +1,6 @@
 #region Copyright & License Information
 /*
- * Copyright 2007-2020 The OpenRA Developers (see AUTHORS)
+ * Copyright 2007-2022 The OpenRA Developers (see AUTHORS)
  * This file is part of OpenRA, which is free software. It is made
  * available to you under the terms of the GNU General Public License
  * as published by the Free Software Foundation, either version 3 of
@@ -11,6 +11,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
@@ -24,7 +25,7 @@ namespace OpenRA.Support
 
 		public readonly string Expression;
 		readonly HashSet<string> variables = new HashSet<string>();
-		public IEnumerable<string> Variables { get { return variables; } }
+		public IEnumerable<string> Variables => variables;
 
 		enum CharClass { Whitespace, Operator, Mixed, Id, Digit }
 
@@ -157,7 +158,7 @@ namespace OpenRA.Support
 			Invalid = ~0
 		}
 
-		struct TokenTypeInfo
+		readonly struct TokenTypeInfo
 		{
 			public readonly string Symbol;
 			public readonly Precedence Precedence;
@@ -286,8 +287,7 @@ namespace OpenRA.Support
 						continue;
 				}
 
-				throw new InvalidProgramException("CreateTokenTypeInfoEnumeration is missing a TokenTypeInfo entry for TokenType.{0}".F(
-					Enum<TokenType>.GetValues()[i]));
+				throw new InvalidProgramException($"CreateTokenTypeInfoEnumeration is missing a TokenTypeInfo entry for TokenType.{Enum<TokenType>.GetValues()[i]}");
 			}
 		}
 
@@ -323,16 +323,16 @@ namespace OpenRA.Support
 			public readonly TokenType Type;
 			public readonly int Index;
 
-			public virtual string Symbol { get { return TokenTypeInfos[(int)Type].Symbol; } }
+			public virtual string Symbol => TokenTypeInfos[(int)Type].Symbol;
 
-			public int Precedence { get { return (int)TokenTypeInfos[(int)Type].Precedence; } }
-			public Sides OperandSides { get { return TokenTypeInfos[(int)Type].OperandSides; } }
-			public Associativity Associativity { get { return TokenTypeInfos[(int)Type].Associativity; } }
-			public bool LeftOperand { get { return ((int)TokenTypeInfos[(int)Type].OperandSides & (int)Sides.Left) != 0; } }
-			public bool RightOperand { get { return ((int)TokenTypeInfos[(int)Type].OperandSides & (int)Sides.Right) != 0; } }
+			public int Precedence => (int)TokenTypeInfos[(int)Type].Precedence;
+			public Sides OperandSides => TokenTypeInfos[(int)Type].OperandSides;
+			public Associativity Associativity => TokenTypeInfos[(int)Type].Associativity;
+			public bool LeftOperand => ((int)TokenTypeInfos[(int)Type].OperandSides & (int)Sides.Left) != 0;
+			public bool RightOperand => ((int)TokenTypeInfos[(int)Type].OperandSides & (int)Sides.Right) != 0;
 
-			public Grouping Opens { get { return TokenTypeInfos[(int)Type].Opens; } }
-			public Grouping Closes { get { return TokenTypeInfos[(int)Type].Closes; } }
+			public Grouping Opens => TokenTypeInfos[(int)Type].Opens;
+			public Grouping Closes => TokenTypeInfos[(int)Type].Closes;
 
 			public Token(TokenType type, int index)
 			{
@@ -354,8 +354,7 @@ namespace OpenRA.Support
 						if (cc != CharClass.Digit)
 						{
 							if (cc != CharClass.Whitespace && cc != CharClass.Operator && cc != CharClass.Mixed)
-								throw new InvalidDataException("Number {0} and variable merged at index {1}".F(
-									int.Parse(expression.Substring(start, i - start)), start));
+								throw new InvalidDataException($"Number {int.Parse(expression.Substring(start, i - start))} and variable merged at index {start}");
 
 							return true;
 						}
@@ -370,8 +369,7 @@ namespace OpenRA.Support
 			static TokenType VariableOrKeyword(string expression, int start, ref int i)
 			{
 				if (CharClassOf(expression[i - 1]) == CharClass.Mixed)
-					throw new InvalidDataException("Invalid identifier end character at index {0} for `{1}`".F(
-						i - 1, expression.Substring(start, i - start)));
+					throw new InvalidDataException($"Invalid identifier end character at index {i - 1} for `{expression.Substring(start, i - start)}`");
 
 				return VariableOrKeyword(expression, start, i - start);
 			}
@@ -434,7 +432,7 @@ namespace OpenRA.Support
 							return TokenType.Equals;
 						}
 
-						throw new InvalidDataException("Unexpected character '=' at index {0} - should it be `==`?".F(start));
+						throw new InvalidDataException($"Unexpected character '=' at index {start} - should it be `==`?");
 
 					case '&':
 						i++;
@@ -444,7 +442,7 @@ namespace OpenRA.Support
 							return TokenType.And;
 						}
 
-						throw new InvalidDataException("Unexpected character '&' at index {0} - should it be `&&`?".F(start));
+						throw new InvalidDataException($"Unexpected character '&' at index {start} - should it be `&&`?");
 
 					case '|':
 						i++;
@@ -454,7 +452,7 @@ namespace OpenRA.Support
 							return TokenType.Or;
 						}
 
-						throw new InvalidDataException("Unexpected character '|' at index {0} - should it be `||`?".F(start));
+						throw new InvalidDataException($"Unexpected character '|' at index {start} - should it be `||`?");
 
 					case '(':
 						i++;
@@ -499,7 +497,7 @@ namespace OpenRA.Support
 				var cc = CharClassOf(expression[start]);
 
 				if (cc != CharClass.Id)
-					throw new InvalidDataException("Invalid character '{0}' at index {1}".F(expression[i], start));
+					throw new InvalidDataException($"Invalid character '{expression[i]}' at index {start}");
 
 				// Scan forwards until we find an invalid name character
 				for (i = start; i < expression.Length; i++)
@@ -531,15 +529,13 @@ namespace OpenRA.Support
 				else if (lastType == TokenType.Invalid)
 					whitespaceBefore = true;
 				else if (RequiresWhitespaceAfter(lastType))
-					throw new InvalidDataException("Missing whitespace at index {0}, after `{1}` operator."
-						.F(i, GetTokenSymbol(lastType)));
+					throw new InvalidDataException($"Missing whitespace at index {i}, after `{GetTokenSymbol(lastType)}` operator.");
 
 				var start = i;
 
 				var type = GetNextType(expression, ref i, lastType);
 				if (!whitespaceBefore && RequiresWhitespaceBefore(type))
-					throw new InvalidDataException("Missing whitespace at index {0}, before `{1}` operator."
-						.F(i, GetTokenSymbol(type)));
+					throw new InvalidDataException($"Missing whitespace at index {i}, before `{GetTokenSymbol(type)}` operator.");
 
 				switch (type)
 				{
@@ -559,7 +555,7 @@ namespace OpenRA.Support
 		{
 			public readonly string Name;
 
-			public override string Symbol { get { return Name; } }
+			public override string Symbol => Name;
 
 			public VariableToken(int index, string symbol)
 				: base(TokenType.Variable, index) { Name = symbol; }
@@ -570,7 +566,7 @@ namespace OpenRA.Support
 			public readonly int Value;
 			readonly string symbol;
 
-			public override string Symbol { get { return symbol; } }
+			public override string Symbol => symbol;
 
 			public NumberToken(int index, string symbol)
 				: base(TokenType.Number, index)
@@ -592,7 +588,7 @@ namespace OpenRA.Support
 			Token lastToken = null;
 			for (var i = 0; ;)
 			{
-				var token = Token.GetNext(Expression, ref i, lastToken != null ? lastToken.Type : TokenType.Invalid);
+				var token = Token.GetNext(Expression, ref i, lastToken?.Type ?? TokenType.Invalid);
 				if (token == null)
 				{
 					// Sanity check parsed tree
@@ -601,7 +597,7 @@ namespace OpenRA.Support
 
 					// Expressions can't end with a binary or unary prefix operation
 					if (lastToken.RightOperand)
-						throw new InvalidDataException("Missing value or sub-expression at end for `{0}` operator".F(lastToken.Symbol));
+						throw new InvalidDataException($"Missing value or sub-expression at end for `{lastToken.Symbol}` operator");
 
 					break;
 				}
@@ -609,7 +605,7 @@ namespace OpenRA.Support
 				if (token.Closes != Grouping.None)
 				{
 					if (currentOpeners.Count == 0)
-						throw new InvalidDataException("Unmatched closing parenthesis at index {0}".F(token.Index));
+						throw new InvalidDataException($"Unmatched closing parenthesis at index {token.Index}");
 
 					currentOpeners.Pop();
 				}
@@ -621,22 +617,20 @@ namespace OpenRA.Support
 				{
 					// Expressions can't start with a binary or unary postfix operation or closer
 					if (token.LeftOperand)
-						throw new InvalidDataException("Missing value or sub-expression at beginning for `{0}` operator".F(token.Symbol));
+						throw new InvalidDataException($"Missing value or sub-expression at beginning for `{token.Symbol}` operator");
 				}
 				else
 				{
 					// Disallow empty parentheses
 					if (lastToken.Opens != Grouping.None && token.Closes != Grouping.None)
-						throw new InvalidDataException("Empty parenthesis at index {0}".F(lastToken.Index));
+						throw new InvalidDataException($"Empty parenthesis at index {lastToken.Index}");
 
-					// Exactly one of two consective tokens must take the other's sub-expression evaluation as an operand
+					// Exactly one of two consecutive tokens must take the other's sub-expression evaluation as an operand
 					if (lastToken.RightOperand == token.LeftOperand)
 					{
 						if (lastToken.RightOperand)
-							throw new InvalidDataException(
-								"Missing value or sub-expression or there is an extra operator `{0}` at index {1} or `{2}` at index {3}".F(
-									lastToken.Symbol, lastToken.Index, token.Symbol, token.Index));
-						throw new InvalidDataException("Missing binary operation before `{0}` at index {1}".F(token.Symbol, token.Index));
+							throw new InvalidDataException($"Missing value or sub-expression or there is an extra operator `{lastToken.Symbol}` at index {lastToken.Index} or `{token.Symbol}` at index {token.Index}");
+						throw new InvalidDataException($"Missing binary operation before `{token.Symbol}` at index {token.Index}");
 					}
 				}
 
@@ -648,7 +642,7 @@ namespace OpenRA.Support
 			}
 
 			if (currentOpeners.Count > 0)
-				throw new InvalidDataException("Unclosed opening parenthesis at index {0}".F(currentOpeners.Peek().Index));
+				throw new InvalidDataException($"Unclosed opening parenthesis at index {currentOpeners.Peek().Index}");
 
 			return new Compiler().Build(ToPostfix(tokens).ToArray(), resultType);
 		}
@@ -742,8 +736,7 @@ namespace OpenRA.Support
 						return IfThenElse(expression, One, Zero);
 				}
 
-				throw new InvalidProgramException("Unable to convert ExpressionType.{0} to ExpressionType.{1}".F(
-					Enum<ExpressionType>.GetValues()[(int)fromType], Enum<ExpressionType>.GetValues()[(int)toType]));
+				throw new InvalidProgramException($"Unable to convert ExpressionType.{Enum<ExpressionType>.GetValues()[(int)fromType]} to ExpressionType.{Enum<ExpressionType>.GetValues()[(int)toType]}");
 			}
 
 			public Expression Pop(ExpressionType type)
@@ -759,11 +752,11 @@ namespace OpenRA.Support
 				expressions.Add(expression);
 				if (type == ExpressionType.Int)
 					if (expression.Type != typeof(int))
-						throw new InvalidOperationException("Expected System.Int type instead of {0} for {1}".F(expression.Type, expression));
+						throw new InvalidOperationException($"Expected System.Int type instead of {expression.Type} for {expression}");
 
 				if (type == ExpressionType.Bool)
 					if (expression.Type != typeof(bool))
-						throw new InvalidOperationException("Expected System.Boolean type instead of {0} for {1}".F(expression.Type, expression));
+						throw new InvalidOperationException($"Expected System.Boolean type instead of {expression.Type} for {expression}");
 				types.Add(type);
 			}
 
@@ -775,7 +768,7 @@ namespace OpenRA.Support
 				else if (expression.Type == typeof(bool))
 					types.Add(ExpressionType.Bool);
 				else
-					throw new InvalidOperationException("Unhandled result type {0} for {1}".F(expression.Type, expression));
+					throw new InvalidOperationException($"Unhandled result type {expression.Type} for {expression}");
 			}
 		}
 
@@ -942,9 +935,7 @@ namespace OpenRA.Support
 						}
 
 						default:
-							throw new InvalidProgramException(
-								"ConditionExpression.Compiler.Compile() is missing an expression builder for TokenType.{0}".F(
-									Enum<TokenType>.GetValues()[(int)t.Type]));
+							throw new InvalidProgramException($"ConditionExpression.Compiler.Compile() is missing an expression builder for TokenType.{Enum<TokenType>.GetValues()[(int)t.Type]}");
 					}
 				}
 
