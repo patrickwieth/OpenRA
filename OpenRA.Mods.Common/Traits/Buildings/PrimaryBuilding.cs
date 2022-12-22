@@ -19,10 +19,15 @@ namespace OpenRA.Mods.Common.Traits
 {
 	static class PrimaryExts
 	{
-		public static bool IsPrimaryBuilding(this Actor a)
+		public static int IsPrimaryBuilding(this Actor a)
 		{
 			var pb = a.TraitOrDefault<PrimaryBuilding>();
-			return pb != null && pb.IsPrimary;
+			if (pb != null && pb.IsPrimary)
+				return pb.Info.BasePriority + pb.Info.PrimaryPriority;
+			else if (pb != null)
+				return pb.Info.BasePriority;
+			else
+				return 0;
 		}
 	}
 
@@ -48,6 +53,12 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Cursor to display when setting the primary building.")]
 		public readonly string Cursor = "deploy";
 
+		[Desc("Value defining the base priority of this actor.")]
+		public readonly int BasePriority = 0;
+
+		[Desc("Value defining the priority increase if this actor is the primary.")]
+		public readonly int PrimaryPriority = 0;
+		
 		public override object Create(ActorInitializer init) { return new PrimaryBuilding(this); }
 	}
 
