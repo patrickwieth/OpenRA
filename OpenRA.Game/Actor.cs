@@ -491,6 +491,9 @@ namespace OpenRA
 
 		public bool CanBeViewedByPlayer(Player player)
 		{
+			if (defaultVisibility == null)
+				return false;
+
 			// PERF: Avoid LINQ.
 			foreach (var visibilityModifier in visibilityModifiers)
 				if (!visibilityModifier.IsVisible(this, player))
