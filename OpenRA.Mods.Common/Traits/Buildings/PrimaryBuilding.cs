@@ -57,8 +57,8 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly int BasePriority = 0;
 
 		[Desc("Value defining the priority increase if this actor is the primary.")]
-		public readonly int PrimaryPriority = 0;
-		
+		public readonly int PrimaryPriority = 5;
+
 		public override object Create(ActorInitializer init) { return new PrimaryBuilding(this); }
 	}
 
