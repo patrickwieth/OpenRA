@@ -68,7 +68,7 @@ namespace OpenRA.Mods.Common.Widgets
 					var c = (int*)cc;
 					for (var s = 0; s < 256; s++)
 					for (var h = 0; h < 256; h++)
-						(*(c + s * 256 + h)) = Color.FromAhsv(h / 255f, 1 - s / 255f, V).ToArgb();
+						(*(c + s * 256 + h)) = Color.FromAhsv(h / 255f, Math.Clamp(2f - s / 128f, 0, 1f), Math.Clamp(s / 128f, 0, 1f)).ToArgb();
 				}
 			}
 
@@ -100,16 +100,22 @@ namespace OpenRA.Mods.Common.Widgets
 		{
 			var rb = RenderBounds;
 			var h = xy.X * 1f / rb.Width;
-			var s = float2.Lerp(minSat, maxSat, 1 - xy.Y * 1f / rb.Height);
+			var s = float2.Lerp(minSat, maxSat, 2 - xy.Y * 2f / rb.Height);
+			var v = float2.Lerp(minSat, maxSat, xy.Y * 2f / rb.Height);
 			H = h.Clamp(0, 1f);
 			S = s.Clamp(minSat, maxSat);
+			V = v.Clamp(minSat, maxSat);
 		}
 
 		int2 PxFromValue()
 		{
 			var rb = RenderBounds;
 			var x = RenderBounds.Width * H;
-			var y = RenderBounds.Height * (1 - (S - minSat) / (maxSat - minSat));
+			var y = 0.0f;
+			if (S < maxSat)
+				y = RenderBounds.Height * ( 1.5f - ( (S - minSat) / (maxSat - minSat)) );
+			else
+				y = RenderBounds.Height * ( 1/2 + ( (V - minSat) / (maxSat - minSat))/2);
 			return new int2((int)x.Clamp(0, rb.Width), (int)y.Clamp(0, rb.Height));
 		}
 
@@ -158,12 +164,13 @@ namespace OpenRA.Mods.Common.Widgets
 		/// </summary>
 		public void Set(Color color)
 		{
-			var (_, h, s, _) = color.ToAhsv();
+			var (_, h, s, v) = color.ToAhsv();
 
-			if (H != h || S != s)
+			if (H != h || S != s || V != v)
 			{
 				H = h;
 				S = s.Clamp(minSat, maxSat);
+				V = v.Clamp(minSat, maxSat);
 				OnChange();
 			}
 		}

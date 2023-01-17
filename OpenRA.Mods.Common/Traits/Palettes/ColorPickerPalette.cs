@@ -57,8 +57,8 @@ namespace OpenRA.Mods.Common.Traits
 		void ILoadsPalettes.LoadPalettes(WorldRenderer wr)
 		{
 			color = colorManager.Color;
-			var (_, h, s, _) = color.ToAhsv();
-			var remap = new PlayerColorRemap(info.RemapIndex.Length == 0 ? Enumerable.Range(0, 256).ToArray() : info.RemapIndex, h, s);
+			var (_, h, s, v) = color.ToAhsv();
+			var remap = new PlayerColorRemap(info.RemapIndex.Length == 0 ? Enumerable.Range(0, 256).ToArray() : info.RemapIndex, h, s, v);
 			wr.AddPalette(info.Name, new ImmutablePalette(wr.Palette(info.BasePalette).Palette, remap), info.AllowModifiers);
 		}
 
@@ -70,8 +70,8 @@ namespace OpenRA.Mods.Common.Traits
 				return;
 
 			color = colorManager.Color;
-			var (_, h, s, _) = color.ToAhsv();
-			var remap = new PlayerColorRemap(info.RemapIndex.Length == 0 ? Enumerable.Range(0, 256).ToArray() : info.RemapIndex, h, s);
+			var (_, h, s, v) = color.ToAhsv();
+			var remap = new PlayerColorRemap(info.RemapIndex.Length == 0 ? Enumerable.Range(0, 256).ToArray() : info.RemapIndex, h, s, v);
 			wr.ReplacePalette(info.Name, new ImmutablePalette(wr.Palette(info.BasePalette).Palette, remap));
 		}
 	}

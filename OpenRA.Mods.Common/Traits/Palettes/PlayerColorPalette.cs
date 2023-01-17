@@ -49,9 +49,9 @@ namespace OpenRA.Mods.Common.Traits
 
 		public void LoadPlayerPalettes(WorldRenderer wr, string playerName, Color color, bool replaceExisting)
 		{
-			var (_, h, s, _) = color.ToAhsv();
+			var (_, h, s, v) = color.ToAhsv();
 
-			var remap = new PlayerColorRemap(info.RemapIndex.Length == 0 ? Enumerable.Range(0, 256).ToArray() : info.RemapIndex, h, s);
+			var remap = new PlayerColorRemap(info.RemapIndex.Length == 0 ? Enumerable.Range(0, 256).ToArray() : info.RemapIndex, h, s, v);
 			var pal = new ImmutablePalette(wr.Palette(info.BasePalette).Palette, remap);
 			wr.AddPalette(info.BaseName + playerName, pal, info.AllowModifiers, replaceExisting);
 		}
