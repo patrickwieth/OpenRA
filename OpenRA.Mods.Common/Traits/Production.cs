@@ -242,6 +242,12 @@ namespace OpenRA.Mods.Common.Traits
 				DoProduction(self, producee, exit?.Info, productionType, inits);
 				return true;
 			}
+			// Here we check if production should go into the cargo of the producer and if so, if cargo trait exists and if there is space to do so
+			else if (info.ProduceIntoCargo && producee.HasTraitInfo<PassengerInfo>() && self.TraitOrDefault<Cargo>() != null && self.TraitOrDefault<Cargo>().HasSpace(producee.TraitInfo<PassengerInfo>().Weight))
+			{
+				DoProduction(self, producee, exit?.Info, productionType, inits);
+				return true;
+			}
 
 			return false;
 		}
@@ -254,6 +260,12 @@ namespace OpenRA.Mods.Common.Traits
 			// Pick a spawn/exit point pair
 			var exit = SelectExit(self, producee, productionType);
 			if (exit != null || self.OccupiesSpace == null || !producee.HasTraitInfo<IOccupySpaceInfo>())
+			{
+				DoProduction(self, producee, exit?.Info, productionType, inits, onSpawnCallback);
+				return true;
+			}
+			// Here we check if production should go into the cargo of the producer and if so, if cargo trait exists and if there is space to do so
+			else if (info.ProduceIntoCargo && producee.HasTraitInfo<PassengerInfo>() && self.TraitOrDefault<Cargo>() != null && self.TraitOrDefault<Cargo>().HasSpace(producee.TraitInfo<PassengerInfo>().Weight))
 			{
 				DoProduction(self, producee, exit?.Info, productionType, inits, onSpawnCallback);
 				return true;
