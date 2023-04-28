@@ -93,7 +93,7 @@ namespace OpenRA.Mods.Common.Traits
 			prevPosition = self.CenterPosition;
 		}
 
-		void ActorEntered(Actor other)
+		public virtual void ActorEntered(Actor other)
 		{
 			if (skipTriggerUpdate || !CanBeCapturedBy(other))
 				return;
