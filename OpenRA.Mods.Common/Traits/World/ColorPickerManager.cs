@@ -118,31 +118,33 @@ namespace OpenRA.Mods.Common.Traits
 			// Fall back to a random non-preset color
 			var randomHue = random.NextFloat();
 			var randomSat = float2.Lerp(HsvSaturationRange[0], HsvSaturationRange[1], random.NextFloat());
-			return MakeValid(randomHue, randomSat, random, terrainLinear, playerLinear, null);
+			var randomV = random.NextFloat();
+			return MakeValid(randomHue, randomSat, randomV, random, terrainLinear, playerLinear, null);
 		}
 
 		public Color RandomValidColor(MersenneTwister random, IEnumerable<Color> terrainColors, IEnumerable<Color> playerColors)
 		{
 			var h = random.NextFloat();
 			var s = float2.Lerp(HsvSaturationRange[0], HsvSaturationRange[1], random.NextFloat());
-			return MakeValid(h, s, random, terrainColors, playerColors, null);
+			var v = random.NextFloat();
+			return MakeValid(h, s, v, random, terrainColors, playerColors, null);
 		}
 
 		public Color MakeValid(Color color, MersenneTwister random, IEnumerable<Color> terrainColors, IEnumerable<Color> playerColors, Action<string> onError = null)
 		{
-			var (_, h, s, _) = color.ToAhsv();
-			return MakeValid(h, s, random, terrainColors, playerColors, onError);
+			var (_, h, s, v) = color.ToAhsv();
+			return MakeValid(h, s, v, random, terrainColors, playerColors, onError);
 		}
 
-		Color MakeValid(float hue, float sat, MersenneTwister random, IEnumerable<Color> terrainColors, IEnumerable<Color> playerColors, Action<string> onError)
+		Color MakeValid(float hue, float sat, float v, MersenneTwister random, IEnumerable<Color> terrainColors, IEnumerable<Color> playerColors, Action<string> onError)
 		{
 			var terrainLinear = terrainColors.Select(c => c.ToLinear()).ToList();
 			var playerLinear = playerColors.Select(c => c.ToLinear()).ToList();
 
-			return MakeValid(hue, sat, random, terrainLinear, playerLinear, onError);
+			return MakeValid(hue, sat, v, random, terrainLinear, playerLinear, onError);
 		}
 
-		Color MakeValid(float hue, float sat, MersenneTwister random, List<(float R, float G, float B)> terrainLinear, List<(float R, float G, float B)> playerLinear, Action<string> onError)
+		Color MakeValid(float hue, float sat, float v, MersenneTwister random, List<(float R, float G, float B)> terrainLinear, List<(float R, float G, float B)> playerLinear, Action<string> onError)
 		{
 			// Clamp saturation without triggering a warning
 			// This can only happen due to rounding errors (common) or modified clients (rare)
@@ -163,7 +165,7 @@ namespace OpenRA.Mods.Common.Traits
 					if (errorMessage != null)
 						onError?.Invoke(errorMessage);
 
-					return Color.FromAhsv(hue, sat, V);
+					return Color.FromAhsv(hue, sat, v);
 				}
 
 				// Pick a direction based on the first blocking color and step in hue
@@ -177,7 +179,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			// Failed to find a solution within a reasonable time: return a random color without any validation
 			onError?.Invoke(InvalidPlayerColor);
-			return Color.FromAhsv(random.NextFloat(), float2.Lerp(HsvSaturationRange[0], HsvSaturationRange[1], random.NextFloat()), V);
+			return Color.FromAhsv(random.NextFloat(), float2.Lerp(HsvSaturationRange[0], HsvSaturationRange[1], random.NextFloat()), v);
 		}
 	}
 
