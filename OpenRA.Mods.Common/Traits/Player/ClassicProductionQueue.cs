@@ -87,7 +87,7 @@ namespace OpenRA.Mods.Common.Traits
 				.Where(x => x.Actor.Owner == self.Owner
 					&& !x.Trait.IsTraitDisabled && x.Trait.Info.Produces.Contains(Info.Type))
 				.OrderByDescending(x => x.Actor.IsPrimaryBuilding())
-				.ThenByDescending(x => Guid.NewGuid())
+				.ThenByDescending(x => self.World.SharedRandom.Next(100))
 				.ToList();
 
 			var unpaused = productionActors.FirstOrDefault(a => !a.Trait.IsTraitPaused);
@@ -107,7 +107,7 @@ namespace OpenRA.Mods.Common.Traits
 					&& !x.Trait.IsTraitDisabled
 					&& x.Trait.Info.Produces.Contains(type))
 					.OrderByDescending(x => x.Actor.IsPrimaryBuilding())
-					.ThenByDescending(x => Guid.NewGuid());
+					.ThenByDescending(x => self.World.SharedRandom.Next(100));
 
 			if (!producers.Any())
 			{
