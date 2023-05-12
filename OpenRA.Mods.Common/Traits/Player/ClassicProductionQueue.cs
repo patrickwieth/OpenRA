@@ -93,7 +93,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			if (!primaries.Any())
 			{
-				TraitPair<Production>[] rotation = new TraitPair<Production>[productionActors.Count()];
+				TraitPair<Production>[] rotation = productionActors.ToArray();
 
 				int index = 0;
 				foreach (var producer in productionActors)
@@ -101,9 +101,10 @@ namespace OpenRA.Mods.Common.Traits
 					rotation[unitsProduced % (index+1)] = producer;
 					index++;
 				}
-				productionActors = rotation.ToList();
+				primaries = rotation.ToList();
 			}
-			var unpaused = productionActors.FirstOrDefault(a => !a.Trait.IsTraitPaused);
+
+			var unpaused = primaries.FirstOrDefault(a => !a.Trait.IsTraitPaused);
 			return unpaused.Trait != null ? unpaused : productionActors.FirstOrDefault();
 		}
 
@@ -124,7 +125,7 @@ namespace OpenRA.Mods.Common.Traits
 
 			if (!primaries.Any())
 			{
-				TraitPair<Production>[] rotation = new TraitPair<Production>[producers.Count()];
+				TraitPair<Production>[] rotation = producers.ToArray();
 
 				int index = 0;
 				foreach (var producer in producers)
@@ -132,16 +133,16 @@ namespace OpenRA.Mods.Common.Traits
 					rotation[unitsProduced % (index+1)] = producer;
 					index++;
 				}
-				producers = rotation.ToList();
+				primaries = rotation.ToList();
 			}
 
-			if (!producers.Any())
+			if (!primaries.Any())
 			{
 				CancelProduction(unit.Name, 1);
 				return false;
 			}
 
-			foreach (var p in producers)
+			foreach (var p in primaries)
 			{
 				if (p.Trait.IsTraitPaused)
 					continue;
