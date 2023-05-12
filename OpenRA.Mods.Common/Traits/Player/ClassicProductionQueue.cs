@@ -93,12 +93,17 @@ namespace OpenRA.Mods.Common.Traits
 
 			if (!primaries.Any())
 			{
-				primaries = productionActors.ToList()
-				.Select((x, index) => new KeyValuePair<int, TraitPair<Production>>(index, x))
-					.OrderBy(x => unitsProduced % (x.Key + 1))
-				.Select(x => x.Value).ToList();
+				TraitPair<Production>[] rotation = new TraitPair<Production>[productionActors.Count()];
+
+				int index = 0;
+				foreach (var producer in productionActors)
+				{
+					rotation[unitsProduced % (index+1)] = producer;
+					index++;
+				}
+				productionActors = rotation.ToList();
 			}
-			var unpaused = primaries.FirstOrDefault(a => !a.Trait.IsTraitPaused);
+			var unpaused = productionActors.FirstOrDefault(a => !a.Trait.IsTraitPaused);
 			return unpaused.Trait != null ? unpaused : productionActors.FirstOrDefault();
 		}
 
@@ -119,19 +124,24 @@ namespace OpenRA.Mods.Common.Traits
 
 			if (!primaries.Any())
 			{
-				primaries = producers.ToList()
-				.Select((x, index) => new KeyValuePair<int, TraitPair<Production>>(index, x))
-					.OrderBy(x => unitsProduced % (x.Key + 1))
-				.Select(x => x.Value).ToList();
+				TraitPair<Production>[] rotation = new TraitPair<Production>[producers.Count()];
+
+				int index = 0;
+				foreach (var producer in producers)
+				{
+					rotation[unitsProduced % (index+1)] = producer;
+					index++;
+				}
+				producers = rotation.ToList();
 			}
 
-			if (!primaries.Any())
+			if (!producers.Any())
 			{
 				CancelProduction(unit.Name, 1);
 				return false;
 			}
 
-			foreach (var p in primaries)
+			foreach (var p in producers)
 			{
 				if (p.Trait.IsTraitPaused)
 					continue;
