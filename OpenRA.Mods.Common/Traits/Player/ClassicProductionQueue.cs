@@ -40,6 +40,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		readonly Actor self;
 		readonly ClassicProductionQueueInfo info;
+		int unitsProduced = 0;
 
 		public ClassicProductionQueue(ActorInitializer init, ClassicProductionQueueInfo info)
 			: base(init, info)
@@ -85,12 +86,25 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			var productionActors = self.World.ActorsWithTrait<Production>()
 				.Where(x => x.Actor.Owner == self.Owner
-					&& !x.Trait.IsTraitDisabled && x.Trait.Info.Produces.Contains(Info.Type))
-				.OrderByDescending(x => x.Actor.IsPrimaryBuilding())
-				.ThenByDescending(x => Guid.NewGuid())
-				.ToList();
+					&& !x.Trait.IsTraitDisabled
+					&& x.Trait.Info.Produces.Contains(Info.Type));
 
-			var unpaused = productionActors.FirstOrDefault(a => !a.Trait.IsTraitPaused);
+			var primaries = productionActors.Where(x => x.Actor.IsPrimaryBuilding() > 0);
+
+			if (!primaries.Any())
+			{
+				TraitPair<Production>[] rotation = productionActors.ToArray();
+
+				int index = 0;
+				foreach (var producer in productionActors)
+				{
+					rotation[unitsProduced % (index+1)] = producer;
+					index++;
+				}
+				primaries = rotation.ToList();
+			}
+
+			var unpaused = primaries.FirstOrDefault(a => !a.Trait.IsTraitPaused);
 			return unpaused.Trait != null ? unpaused : productionActors.FirstOrDefault();
 		}
 
@@ -105,17 +119,30 @@ namespace OpenRA.Mods.Common.Traits
 			var producers = self.World.ActorsWithTrait<Production>()
 				.Where(x => x.Actor.Owner == self.Owner
 					&& !x.Trait.IsTraitDisabled
-					&& x.Trait.Info.Produces.Contains(type))
-					.OrderByDescending(x => x.Actor.IsPrimaryBuilding())
-					.ThenByDescending(x => Guid.NewGuid());
+					&& x.Trait.Info.Produces.Contains(type));
 
-			if (!producers.Any())
+			var primaries = producers.Where(x => x.Actor.IsPrimaryBuilding() > 0);
+
+			if (!primaries.Any())
+			{
+				TraitPair<Production>[] rotation = producers.ToArray();
+
+				int index = 0;
+				foreach (var producer in producers)
+				{
+					rotation[unitsProduced % (index+1)] = producer;
+					index++;
+				}
+				primaries = rotation.ToList();
+			}
+
+			if (!primaries.Any())
 			{
 				CancelProduction(unit.Name, 1);
 				return false;
 			}
 
-			foreach (var p in producers)
+			foreach (var p in primaries)
 			{
 				if (p.Trait.IsTraitPaused)
 					continue;
@@ -130,10 +157,10 @@ namespace OpenRA.Mods.Common.Traits
 				if (p.Trait.Produce(p.Actor, unit, type, inits, item.TotalCost))
 				{
 					EndProduction(item);
+					unitsProduced++;
 					return true;
 				}
 			}
-
 			return false;
 		}
 
