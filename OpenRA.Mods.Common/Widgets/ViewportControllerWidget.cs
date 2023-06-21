@@ -146,6 +146,9 @@ namespace OpenRA.Mods.Common.Widgets
 				Ui.Root.Get<TooltipContainerWidget>(TooltipContainer));
 
 			resourceRenderers = world.WorldActor.TraitsImplementing<IResourceRenderer>().ToArray();
+
+			// Enable zooming out to fractional zoom levels
+			worldRenderer.Viewport.UnlockMinimumZoom(0.25f);
 		}
 
 		public override void Initialize(WidgetArgs args)

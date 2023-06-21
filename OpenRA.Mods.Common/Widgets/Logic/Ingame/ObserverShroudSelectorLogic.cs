@@ -183,7 +183,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			selected.OnClick();
 
 			// Enable zooming out to fractional zoom levels
-			worldRenderer.Viewport.UnlockMinimumZoom(0.5f);
+			worldRenderer.Viewport.UnlockMinimumZoom(0.25f);
 		}
 
 		public bool HandleKeyPress(KeyInput e)
