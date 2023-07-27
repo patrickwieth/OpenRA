@@ -68,6 +68,11 @@ namespace OpenRA.Mods.Common.Traits
 
 		void INotifyAddedToWorld.AddedToWorld(Actor self)
 		{
+			AddedToWorldTasks(self)
+		}
+
+		public void AddedToWorldTasks(Actor self)
+		{
 			if (skipTriggerUpdate)
 				return;
 
