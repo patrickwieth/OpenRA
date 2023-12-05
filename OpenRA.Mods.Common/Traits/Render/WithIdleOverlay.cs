@@ -113,7 +113,7 @@ namespace OpenRA.Mods.Common.Traits.Render
 
 			var anim = new AnimationWithOffset(overlay,
 				() => {
-						if(info.IgnoreHover) {
+						if(info.IgnoreHover && self.IsInWorld) {
 							var hover = self.TraitOrDefault<Hovers>();
 
 							if (hover != null)
