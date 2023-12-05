@@ -43,6 +43,9 @@ namespace OpenRA.Mods.Common.Traits.Render
 
 		public readonly bool IsDecoration = false;
 
+		[Desc("Hover units will not have this animation hover (bob) with it")]
+		public readonly bool IgnoreHover = false;
+
 		public override object Create(ActorInitializer init) { return new WithIdleOverlay(init.Self, this); }
 
 		public IEnumerable<IActorPreview> RenderPreviewSprites(ActorPreviewInitializer init, string image, int facings, PaletteReference p)
@@ -109,7 +112,19 @@ namespace OpenRA.Mods.Common.Traits.Render
 				overlay.PlayRepeating(RenderSprites.NormalizeSequence(overlay, self.GetDamageState(), info.Sequence));
 
 			var anim = new AnimationWithOffset(overlay,
-				() => body.LocalToWorld(info.Offset.Rotate(body.QuantizeOrientation(self.Orientation))),
+				() => {
+						if(info.IgnoreHover) {
+							var hover = self.TraitOrDefault<Hovers>();
+
+							if (hover != null)
+								return body.LocalToWorld(info.Offset.Rotate(body.QuantizeOrientation(self.Orientation)) -hover.getWorldVisualOffset()) ;
+							else
+								return body.LocalToWorld(info.Offset.Rotate(body.QuantizeOrientation(self.Orientation)) );
+						}
+						else {
+							return body.LocalToWorld(info.Offset.Rotate(body.QuantizeOrientation(self.Orientation)) );
+						}
+					},
 				() => IsTraitDisabled,
 				p => RenderUtils.ZOffsetFromCenter(self, p, 1));
 

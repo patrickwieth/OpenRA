@@ -95,6 +95,10 @@ namespace OpenRA.Mods.Common.Traits.Render
 				ticks++;
 		}
 
+		public WVec getWorldVisualOffset() {
+			return worldVisualOffset;
+		}
+
 		IEnumerable<IRenderable> IRenderModifier.ModifyRender(Actor self, WorldRenderer wr, IEnumerable<IRenderable> r)
 		{
 			if (!IsTraitDisabled)
