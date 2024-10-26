@@ -42,8 +42,10 @@ namespace OpenRA.Graphics
 			// Calculate the brightness (i.e HSV value) of the original colour
 			var value = Math.Min(v, Math.Max(Math.Max(r, g), b));
 
+			// this is a HACK (TODO) to make voxel units as saturated as the others
+			var newSaturation = Math.Min(1, saturation * 1.3f);
 			// Construct the new RGB color
-			(r, g, b) = Color.HsvToRgb(hue, saturation, value);
+			(r, g, b) = Color.HsvToRgb(hue, newSaturation, value);
 
 			// Convert linear back to SRGB and pre-multiply by the alpha
 			return Color.FromLinear(original.A, r, g, b);
