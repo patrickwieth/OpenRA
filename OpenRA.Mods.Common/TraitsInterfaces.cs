@@ -60,7 +60,7 @@ namespace OpenRA.Mods.Common.Traits
 	[RequireExplicitImplementation]
 	public interface INotifyOrderIssued
 	{
-		bool OrderIssued(World world, Target target);
+		bool OrderIssued(World world, string orderString, Target target);
 	}
 
 	[RequireExplicitImplementation]
@@ -227,14 +227,14 @@ namespace OpenRA.Mods.Common.Traits
 		/// Does not check if <see cref="Traits.DockClientManager"/> is enabled.
 		/// Function should only be called from within <see cref="IDockClient"/> or <see cref="Traits.DockClientManager"/>.
 		/// </remarks>
-		bool IsDockingPossible(BitSet<DockType> type, bool? forceEnter = false);
+		bool CanDock(BitSet<DockType> type, bool forceEnter = false);
 
 		/// <summary>Is this client allowed to dock to <paramref name="host"/>.</summary>
 		/// <remarks>
 		/// Does not check if <see cref="Traits.DockClientManager"/> is enabled.
 		/// Function should only be called from within <see cref="IDockClient"/> or <see cref="Traits.DockClientManager"/>.
 		/// </remarks>
-		bool CanDockAt(Actor hostActor, IDockHost host, bool? forceEnter = false, bool ignoreOccupancy = false);
+		bool CanDockAt(Actor hostActor, IDockHost host, bool forceEnter = false, bool ignoreOccupancy = false);
 	}
 
 	public interface IDockHostInfo : ITraitInfoInterface { }
@@ -248,8 +248,6 @@ namespace OpenRA.Mods.Common.Traits
 		int ReservationCount { get; }
 		bool CanBeReserved { get; }
 		WPos DockPosition { get; }
-		int DockWait { get; }
-		WAngle DockAngle { get; }
 
 		/// <summary>Can this <paramref name="client"/> dock at this <see cref="IDockHost"/>.</summary>
 		/// <remarks>
@@ -269,13 +267,6 @@ namespace OpenRA.Mods.Common.Traits
 
 		/// <summary>Should be called when in range of <see cref="IDockHost"/>.</summary>
 		void QueueDockActivity(Activity moveToDockActivity, Actor self, Actor clientActor, DockClientManager client);
-	}
-
-	public interface IDockHostDrag
-	{
-		bool IsDragRequired { get; }
-		WVec DragOffset { get; }
-		int DragLength { get; }
 	}
 
 	public interface IDockClientManagerInfo : ITraitInfoInterface { }
@@ -709,17 +700,20 @@ namespace OpenRA.Mods.Common.Traits
 
 	public class EditorActorDropdown : EditorActorOption
 	{
-		public readonly Dictionary<string, string> Labels;
-		public readonly Func<EditorActorPreview, string> GetValue;
+		public readonly Func<EditorActorPreview, Dictionary<string, string>> GetLabels;
+		public readonly Func<EditorActorPreview, Dictionary<string, string>, string> GetValue;
 		public readonly Action<EditorActorPreview, string> OnChange;
 
+		/// <summary>
+		/// Creates dropdown for editing actor's metadata with dynamically created items.
+		/// </summary>
 		public EditorActorDropdown(string name, int displayOrder,
-			Dictionary<string, string> labels,
-			Func<EditorActorPreview, string> getValue,
+			Func<EditorActorPreview, Dictionary<string, string>> getLabels,
+			Func<EditorActorPreview, Dictionary<string, string>, string> getValue,
 			Action<EditorActorPreview, string> onChange)
 			: base(name, displayOrder)
 		{
-			Labels = labels;
+			GetLabels = getLabels;
 			GetValue = getValue;
 			OnChange = onChange;
 		}

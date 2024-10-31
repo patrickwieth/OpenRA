@@ -49,7 +49,7 @@ namespace OpenRA.Mods.Common.Traits
 	}
 
 	public class DockHost : ConditionalTrait<DockHostInfo>,
-		IDockHost, IDockHostDrag, ITick, INotifySold, INotifyCapture, INotifyOwnerChanged, ISync, INotifyKilled, INotifyActorDisposing
+		IDockHost, ITick, INotifySold, INotifyCapture, INotifyOwnerChanged, ISync, INotifyKilled, INotifyActorDisposing
 	{
 		readonly Actor self;
 
@@ -60,12 +60,6 @@ namespace OpenRA.Mods.Common.Traits
 		protected readonly List<DockClientManager> ReservedDockClients = new();
 
 		public WPos DockPosition => self.CenterPosition + Info.DockOffset;
-		public int DockWait => Info.DockWait;
-		public WAngle DockAngle => Info.DockAngle;
-
-		bool IDockHostDrag.IsDragRequired => Info.IsDragRequired;
-		WVec IDockHostDrag.DragOffset => Info.DragOffset;
-		int IDockHostDrag.DragLength => Info.DragLength;
 
 		[Sync]
 		bool preventDock = false;
@@ -143,7 +137,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (move is Mobile ? clientActor.Location != clientActor.World.Map.CellContaining(DockPosition) : clientActor.CenterPosition != DockPosition)
 			{
 				moveCooldownHelper.NotifyMoveQueued();
-				moveToDockActivity.QueueChild(move.MoveOntoTarget(clientActor, Target.FromActor(self), DockPosition - self.CenterPosition, DockAngle));
+				moveToDockActivity.QueueChild(move.MoveOntoTarget(clientActor, Target.FromActor(self), DockPosition - self.CenterPosition, Info.DockAngle));
 				return true;
 			}
 
@@ -152,7 +146,15 @@ namespace OpenRA.Mods.Common.Traits
 
 		public virtual void QueueDockActivity(Activity moveToDockActivity, Actor self, Actor clientActor, DockClientManager client)
 		{
-			moveToDockActivity.QueueChild(new GenericDockSequence(clientActor, client, self, this));
+			moveToDockActivity.QueueChild(new GenericDockSequence(
+				clientActor,
+				client,
+				self,
+				this,
+				Info.DockWait,
+				Info.IsDragRequired,
+				Info.DragOffset,
+				Info.DragLength));
 		}
 
 		protected override void TraitDisabled(Actor self) { UnreserveAll(); }
