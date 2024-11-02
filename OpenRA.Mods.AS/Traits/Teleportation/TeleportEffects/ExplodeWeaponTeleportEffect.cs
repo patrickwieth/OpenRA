@@ -9,11 +9,12 @@
 #endregion
 
 using OpenRA.GameRules;
+using OpenRA.Mods.Common.Traits;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.AS.Traits
 {
-	class ExplodeWeaponTeleportEffectInfo : TraitInfo, IRulesetLoaded
+	class ExplodeWeaponTeleportEffectInfo : ConditionalTraitInfo, IRulesetLoaded
 	{
 		[Desc("Effect only works when teleport with this teleport type.")]
 		public readonly string TeleportType = "RA2ChronoPower";
@@ -36,7 +37,7 @@ namespace OpenRA.Mods.AS.Traits
 
 		public override object Create(ActorInitializer init) { return new ExplodeWeaponTeleportEffect(init.Self, this); }
 
-		public void RulesetLoaded(Ruleset rules, ActorInfo ai)
+		public override void RulesetLoaded(Ruleset rules, ActorInfo ai)
 		{
 			if (!string.IsNullOrEmpty(ImpactWeapon))
 			{
@@ -53,28 +54,29 @@ namespace OpenRA.Mods.AS.Traits
 					throw new YamlException($"Weapons Ruleset does not contain an entry '{weaponToLower}'");
 				TeleportWeaponInfo = weapon;
 			}
+
+			base.RulesetLoaded(rules, ai);
 		}
 	}
 
-	sealed class ExplodeWeaponTeleportEffect : IOnSuccessfulTeleportRA2
+	sealed class ExplodeWeaponTeleportEffect : ConditionalTrait<ExplodeWeaponTeleportEffectInfo>, IOnSuccessfulTeleportRA2
 	{
-		readonly ExplodeWeaponTeleportEffectInfo info;
 		readonly Actor self;
 
 		public ExplodeWeaponTeleportEffect(Actor self, ExplodeWeaponTeleportEffectInfo info)
+			: base(info)
 		{
-			this.info = info;
 			this.self = self;
 		}
 
 		void IOnSuccessfulTeleportRA2.OnSuccessfulTeleport(string type, WPos oldPos, WPos newPos)
 		{
-			if (type != info.TeleportType)
+			if (type != Info.TeleportType || IsTraitDisabled)
 				return;
 
 			// Generate a weapon on the place of impact, Generate a weapon on the place of teleport
-			var weapon = info.TeleportWeaponInfo;
-			var weapon2 = info.ImpactWeaponInfo;
+			var weapon = Info.TeleportWeaponInfo;
+			var weapon2 = Info.ImpactWeaponInfo;
 			var firer = self;
 
 			self.World.AddFrameEndTask(w =>
