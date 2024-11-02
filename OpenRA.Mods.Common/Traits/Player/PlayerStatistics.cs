@@ -284,7 +284,10 @@ namespace OpenRA.Mods.Common.Traits
 
 		void INotifyOwnerChanged.OnOwnerChanged(Actor self, Player oldOwner, Player newOwner)
 		{
-			var newOwnerStats = newOwner.PlayerActor.Trait<PlayerStatistics>();
+			var newOwnerActor = newOwner.PlayerActor;
+			if (newOwnerActor.Disposed)
+				return;
+			var newOwnerStats = newOwnerActor.Trait<PlayerStatistics>();
 			if (includedInArmyValue)
 			{
 				playerStats.ArmyValue -= cost;
