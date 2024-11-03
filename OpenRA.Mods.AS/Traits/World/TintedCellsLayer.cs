@@ -46,6 +46,9 @@ namespace OpenRA.Mods.AS.Traits
 		[Desc("Z offset of the visualization.")]
 		public readonly int ZOffset = 512;
 
+		[Desc("Offset of the visualization.")]
+		public readonly WVec Offset = new(0, 0, 512);
+
 		[Desc("Name of the layer.")]
 		public readonly string Name = "radioactivity";
 
