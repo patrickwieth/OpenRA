@@ -43,8 +43,10 @@ namespace OpenRA.Mods.Common.Traits
 		[SequenceReference(nameof(EffectImage), allowNullImage: true)]
 		public readonly string EffectSequence = null;
 
-		[PaletteReference]
+		[PaletteReference(nameof(EffectPaletteIsPlayerPalette))]
 		public readonly string EffectPalette = null;
+
+		public readonly bool EffectPaletteIsPlayerPalette = false;
 
 		public readonly Dictionary<int, WDist> TargetCircleRanges;
 		public readonly Color TargetCircleColor = Color.White;
@@ -85,8 +87,14 @@ namespace OpenRA.Mods.Common.Traits
 				PlayLaunchSounds();
 				Game.Sound.Play(SoundType.World, Info.DeploySound, position);
 
-				if (!string.IsNullOrEmpty(Info.EffectSequence) && !string.IsNullOrEmpty(Info.EffectPalette))
-					w.Add(new SpriteEffect(position, w, Info.EffectImage, Info.EffectSequence, Info.EffectPalette));
+				if (!string.IsNullOrEmpty(info.EffectSequence) && !string.IsNullOrEmpty(info.EffectPalette))
+				{
+					var palette = info.EffectPalette;
+					if (info.EffectPaletteIsPlayerPalette)
+						palette += self.Owner.InternalName;
+
+					w.Add(new SpriteEffect(position, w, info.EffectImage, info.EffectSequence, palette));
+				}
 
 				var actor = w.CreateActor(Info.Actors.First(a => a.Key == level).Value, new TypeDictionary
 				{

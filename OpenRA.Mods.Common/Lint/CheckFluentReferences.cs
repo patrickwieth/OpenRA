@@ -21,6 +21,7 @@ using OpenRA.Mods.Common.Scripting;
 using OpenRA.Mods.Common.Scripting.Global;
 using OpenRA.Mods.Common.Traits;
 using OpenRA.Mods.Common.Warheads;
+using OpenRA.Mods.Common.Widgets.Logic;
 using OpenRA.Scripting;
 using OpenRA.Traits;
 using OpenRA.Widgets;
@@ -29,11 +30,9 @@ namespace OpenRA.Mods.Common.Lint
 {
 	sealed class CheckFluentReferences : ILintPass, ILintMapPass
 	{
-		static readonly Regex FilenameRegex = new(@"(?<language>[^\/\\]+)\.ftl$");
-
 		void ILintMapPass.Run(Action<string> emitError, Action<string> emitWarning, ModData modData, Map map)
 		{
-			if (map.TranslationDefinitions == null)
+			if (map.FluentMessageDefinitions == null)
 				return;
 
 			var usedKeys = GetUsedFluentKeysInMap(map, emitWarning);
@@ -41,67 +40,63 @@ namespace OpenRA.Mods.Common.Lint
 			foreach (var context in usedKeys.EmptyKeyContexts)
 				emitWarning($"Empty key in map ftl files required by {context}");
 
-			var mapTranslations = FieldLoader.GetValue<string[]>("value", map.TranslationDefinitions.Value);
+			var mapMessages = FieldLoader.GetValue<string[]>("value", map.FluentMessageDefinitions.Value);
+			var modMessages = modData.Manifest.FluentMessages;
 
-			var allModTranslations = modData.Manifest.Translations.Append(modData.Manifest.Get<ModContent>().Translation).ToArray();
-			foreach (var language in GetModLanguages(allModTranslations))
+			// For maps we don't warn on unused keys. They might be unused on *this* map,
+			// but the mod or another map may use them and we don't have sight of that.
+			CheckKeys(modMessages.Concat(mapMessages), map.Open, usedKeys,
+				_ => false, emitError, emitWarning);
+
+			var modFluentBundle = new FluentBundle(modData.Manifest.FluentCulture, modMessages, modData.DefaultFileSystem, _ => { });
+			var mapFluentBundle = new FluentBundle(modData.Manifest.FluentCulture, mapMessages, map, error => emitError(error.Message));
+
+			foreach (var group in usedKeys.KeysWithContext)
 			{
-				// Check keys and variables are not missing across all language files.
-				// But for maps we don't warn on unused keys. They might be unused on *this* map,
-				// but the mod or another map may use them and we don't have sight of that.
-				CheckKeys(
-					allModTranslations.Concat(mapTranslations), map.Open, usedKeys,
-					language, _ => false, emitError, emitWarning);
-
-				var modFluentBundle = new FluentBundle(language, allModTranslations, modData.DefaultFileSystem, _ => { });
-				var mapFluentBundle = new FluentBundle(language, mapTranslations, map, error => emitError(error.Message));
-
-				foreach (var group in usedKeys.KeysWithContext)
+				if (modFluentBundle.HasMessage(group.Key))
 				{
-					if (modFluentBundle.HasMessage(group.Key))
-					{
-						if (mapFluentBundle.HasMessage(group.Key))
-							emitWarning($"Key `{group.Key}` in `{language}` language in map ftl files already exists in mod translations and will not be used.");
-					}
-					else if (!mapFluentBundle.HasMessage(group.Key))
-					{
-						foreach (var context in group)
-							emitWarning($"Missing key `{group.Key}` in `{language}` language in map ftl files required by {context}");
-					}
+					if (mapFluentBundle.HasMessage(group.Key))
+						emitWarning($"Key `{group.Key}` in map ftl files already exists in mod translations and will not be used.");
+				}
+				else if (!mapFluentBundle.HasMessage(group.Key))
+				{
+					foreach (var context in group)
+						emitWarning($"Missing key `{group.Key}` in map ftl files required by {context}");
 				}
 			}
+
+			if (map.FluentMessageDefinitions.Nodes.Length > 0)
+				emitWarning(
+					$"Lint pass ({nameof(CheckFluentReferences)}) lacks the know-how to test inline map fluent messages " +
+					"- previous warnings may be incorrect");
 		}
 
 		void ILintPass.Run(Action<string> emitError, Action<string> emitWarning, ModData modData)
 		{
+			Console.WriteLine("Testing Fluent references");
 			var (usedKeys, testedFields) = GetUsedFluentKeysInMod(modData);
 
 			foreach (var context in usedKeys.EmptyKeyContexts)
 				emitWarning($"Empty key in mod translation files required by {context}");
 
-			var allModTranslations = modData.Manifest.Translations.Append(modData.Manifest.Get<ModContent>().Translation).ToArray();
-			foreach (var language in GetModLanguages(allModTranslations))
+			var modMessages = modData.Manifest.FluentMessages.ToArray();
+			CheckModWidgets(modData, usedKeys, testedFields);
+
+			// With the fully populated keys, check keys and variables are not missing and not unused across all language files.
+			var keyWithAttrs = CheckKeys(
+				modMessages, modData.DefaultFileSystem.Open, usedKeys,
+				file =>
+					!modData.Manifest.AllowUnusedFluentMessagesInExternalPackages ||
+					!modData.DefaultFileSystem.IsExternalFile(file),
+				emitError, emitWarning);
+
+			foreach (var group in usedKeys.KeysWithContext)
 			{
-				Console.WriteLine($"Testing language: {language}");
-				CheckModWidgets(modData, usedKeys, testedFields);
+				if (keyWithAttrs.Contains(group.Key))
+					continue;
 
-				// With the fully populated keys, check keys and variables are not missing and not unused across all language files.
-				var keyWithAttrs = CheckKeys(
-					allModTranslations, modData.DefaultFileSystem.Open, usedKeys,
-					language,
-					file =>
-						!modData.Manifest.AllowUnusedTranslationsInExternalPackages ||
-						!modData.DefaultFileSystem.IsExternalFile(file),
-					emitError, emitWarning);
-
-				foreach (var group in usedKeys.KeysWithContext)
-				{
-					if (keyWithAttrs.Contains(group.Key))
-						continue;
-
-					foreach (var context in group)
-						emitWarning($"Missing key `{group.Key}` in `{language}` language in mod ftl files required by {context}");
-				}
+				foreach (var context in group)
+					emitWarning($"Missing key `{group.Key}` in mod ftl files required by {context}");
 			}
 
 			// Check if we couldn't test any fields.
@@ -113,14 +108,6 @@ namespace OpenRA.Mods.Common.Lint
 				emitError(
 					$"Lint pass ({nameof(CheckFluentReferences)}) lacks the know-how to test translatable field " +
 					$"`{field.ReflectedType.Name}.{field.Name}` - previous warnings may be incorrect");
-		}
-
-		static IEnumerable<string> GetModLanguages(IEnumerable<string> translations)
-		{
-			return translations
-				.Select(filename => FilenameRegex.Match(filename).Groups["language"].Value)
-				.Distinct()
-				.OrderBy(l => l);
 		}
 
 		static Keys GetUsedFluentKeysInRuleset(Ruleset rules)
@@ -171,22 +158,22 @@ namespace OpenRA.Mods.Common.Lint
 			if (luaScriptInfo != null)
 			{
 				// Matches expressions such as:
-				// UserInterface.Translate("fluent-key")
-				// UserInterface.Translate("fluent-key\"with-escape")
-				// UserInterface.Translate("fluent-key", { ["attribute"] = foo })
-				// UserInterface.Translate("fluent-key", { ["attribute\"-with-escape"] = foo })
-				// UserInterface.Translate("fluent-key", { ["attribute1"] = foo, ["attribute2"] = bar })
-				// UserInterface.Translate("fluent-key", tableVariable)
+				// UserInterface.GetFluentMessage("fluent-key")
+				// UserInterface.GetFluentMessage("fluent-key\"with-escape")
+				// UserInterface.GetFluentMessage("fluent-key", { ["attribute"] = foo })
+				// UserInterface.GetFluentMessage("fluent-key", { ["attribute\"-with-escape"] = foo })
+				// UserInterface.GetFluentMessage("fluent-key", { ["attribute1"] = foo, ["attribute2"] = bar })
+				// UserInterface.GetFluentMessage("fluent-key", tableVariable)
 				// Extracts groups for the 'key' and each 'attr'.
 				// If the table isn't inline like in the last example, extracts it as 'variable'.
-				const string UserInterfaceTranslatePattern =
-					@"UserInterface\s*\.\s*Translate\s*\(" + // UserInterface.Translate(
+				const string UserInterfaceFluentMessagePattern =
+					@"UserInterface\s*\.\s*GetFluentMessage\s*\(" + // UserInterface.GetFluentMessage(
 					@"\s*""(?<key>(?:[^""\\]|\\.)+?)""\s*" + // "fluent-key"
 					@"(,\s*({\s*\[\s*""(?<attr>(?:[^""\\]|\\.)*?)""\s*\]\s*=\s*.*?" + // { ["attribute1"] = foo
 					@"(\s*,\s*\[\s*""(?<attr>(?:[^""\\]|\\.)*?)""\s*\]\s*=\s*.*?)*\s*}\s*)" + // , ["attribute2"] = bar }
 					"|\\s*,\\s*(?<variable>.*?))?" + // tableVariable
 					@"\)"; // )
-				var translateRegex = new Regex(UserInterfaceTranslatePattern);
+				var fluentMessageRegex = new Regex(UserInterfaceFluentMessagePattern);
 
 				// The script in mods/common/scripts/utils.lua defines some helpers which accept a fluent key
 				// Matches expressions such as:
@@ -208,7 +195,7 @@ namespace OpenRA.Mods.Common.Lint
 					using (scriptStream)
 					{
 						var scriptText = scriptStream.ReadAllText();
-						IEnumerable<Match> matches = translateRegex.Matches(scriptText);
+						IEnumerable<Match> matches = fluentMessageRegex.Matches(scriptText);
 						if (luaScriptInfo.Scripts.Contains("utils.lua"))
 							matches = matches.Concat(objectiveRegex.Matches(scriptText));
 
@@ -229,9 +216,9 @@ namespace OpenRA.Mods.Common.Lint
 							if (variable != "")
 							{
 								var userInterface = typeof(UserInterfaceGlobal).GetCustomAttribute<ScriptGlobalAttribute>().Name;
-								const string Translate = nameof(UserInterfaceGlobal.Translate);
+								const string FluentMessage = nameof(UserInterfaceGlobal.GetFluentMessage);
 								emitWarning(
-									$"{context} calls {userInterface}.{Translate} with key `{key}` and translate args passed as `{variable}`." +
+									$"{context} calls {userInterface}.{FluentMessage} with key `{key}` and args passed as `{variable}`." +
 									"Inline the args at the callsite for lint analysis.");
 							}
 						}
@@ -249,41 +236,96 @@ namespace OpenRA.Mods.Common.Lint
 			testedFields.AddRange(
 				modData.ObjectCreator.GetTypes()
 				.Where(t => t.IsSubclassOf(typeof(TraitInfo)) || t.IsSubclassOf(typeof(Warhead)))
-				.SelectMany(t => t.GetFields().Where(f => f.HasAttribute<FluentReferenceAttribute>())));
+				.SelectMany(t => Utility.GetFields(t).Where(Utility.HasAttribute<FluentReferenceAttribute>)));
 
 			// TODO: linter does not work with LoadUsing
-			GetUsedTranslationKeysFromFieldsWithTranslationReferenceAttribute(
-				usedKeys, testedFields, Utility.GetFields(typeof(GameSpeed)), modData.Manifest.Get<GameSpeeds>().Speeds.Values);
+			foreach (var speed in modData.Manifest.Get<GameSpeeds>().Speeds)
+				GetUsedFluentKeys(
+					usedKeys, testedFields,
+					Utility.GetFields(typeof(GameSpeed)),
+					new[] { speed.Value },
+					(obj, field) => $"`GameSpeeds.Speeds.{speed.Key}.{field.Name}` in mod.yaml");
 
 			// TODO: linter does not work with LoadUsing
-			GetUsedTranslationKeysFromFieldsWithTranslationReferenceAttribute(
-				usedKeys, testedFields,
-				Utility.GetFields(typeof(ResourceRendererInfo.ResourceTypeInfo)),
-				modData.DefaultRules.Actors
-					.SelectMany(actorInfo => actorInfo.Value.TraitInfos<ResourceRendererInfo>())
-					.SelectMany(info => info.ResourceTypes.Values));
+			foreach (var resource in modData.DefaultRules.Actors
+				.SelectMany(actorInfo => actorInfo.Value.TraitInfos<ResourceRendererInfo>())
+				.SelectMany(info => info.ResourceTypes))
+				GetUsedFluentKeys(
+					usedKeys, testedFields,
+					Utility.GetFields(typeof(ResourceRendererInfo.ResourceTypeInfo)),
+					new[] { resource.Value },
+					(obj, field) => $"`ResourceRenderer.ResourceTypes.{resource.Key}.{field.Name}` in rules yaml");
 
 			const BindingFlags Binding = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static;
 			var constFields = modData.ObjectCreator.GetTypes().SelectMany(modType => modType.GetFields(Binding)).Where(f => f.IsLiteral);
-			GetUsedTranslationKeysFromFieldsWithTranslationReferenceAttribute(
-				usedKeys, testedFields, constFields, new[] { (object)null });
+			GetUsedFluentKeys(
+				usedKeys, testedFields,
+				constFields,
+				new[] { (object)null },
+				(obj, field) => $"`{field.ReflectedType.Name}.{field.Name}`");
 
 			var modMetadataFields = typeof(ModMetadata).GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
-			GetUsedTranslationKeysFromFieldsWithTranslationReferenceAttribute(
-				usedKeys, testedFields, modMetadataFields, new[] { modData.Manifest.Metadata });
+			GetUsedFluentKeys(
+				usedKeys, testedFields,
+				modMetadataFields,
+				new[] { modData.Manifest.Metadata },
+				(obj, field) => $"`Metadata.{field.Name}` in mod.yaml");
 
 			var modContent = modData.Manifest.Get<ModContent>();
-			GetUsedTranslationKeysFromFieldsWithTranslationReferenceAttribute(
-				usedKeys, testedFields, Utility.GetFields(typeof(ModContent)), new[] { modContent });
-			GetUsedTranslationKeysFromFieldsWithTranslationReferenceAttribute(
-				usedKeys, testedFields, Utility.GetFields(typeof(ModContent.ModPackage)), modContent.Packages.Values);
+			GetUsedFluentKeys(
+				usedKeys, testedFields,
+				Utility.GetFields(typeof(ModContent)),
+				new[] { modContent },
+				(obj, field) => $"`ModContent.{field.Name}` in mod.yaml");
+			GetUsedFluentKeys(
+				usedKeys, testedFields,
+				Utility.GetFields(typeof(ModContent.ModPackage)),
+				modContent.Packages.Values.ToArray(),
+				(obj, field) => $"`ModContent.Packages.ContentPackage.{field.Name}` in mod.yaml");
+
+			GetUsedFluentKeys(
+				usedKeys, testedFields,
+				Utility.GetFields(typeof(HotkeyDefinition)),
+				modData.Hotkeys.Definitions,
+				(obj, field) => $"`{obj.Name}.{field.Name}` in hotkeys yaml");
+
+			// All keycodes and modifiers should be marked as used, as they can all be configured for use at hotkeys at runtime.
+			GetUsedFluentKeys(
+				usedKeys, testedFields,
+				Utility.GetFields(typeof(KeycodeExts)).Concat(Utility.GetFields(typeof(ModifiersExts))),
+				new[] { (object)null },
+				(obj, field) => $"`{field.ReflectedType.Name}.{field.Name}`");
+
+			foreach (var filename in modData.Manifest.ChromeLayout)
+				CheckHotkeysSettingsLogic(usedKeys, MiniYaml.FromStream(modData.DefaultFileSystem.Open(filename), filename));
+
+			static void CheckHotkeysSettingsLogic(Keys usedKeys, IEnumerable<MiniYamlNode> nodes)
+			{
+				foreach (var node in nodes)
+				{
+					if (node.Value.Nodes != null)
+						CheckHotkeysSettingsLogic(usedKeys, node.Value.Nodes);
+
+					if (node.Key != "Logic" || node?.Value.Value != "HotkeysSettingsLogic")
+						continue;
+
+					var hotkeyGroupsNode = node.Value.NodeWithKeyOrDefault("HotkeyGroups");
+					if (hotkeyGroupsNode == null)
+						continue;
+
+					var hotkeyGroupsKeys = hotkeyGroupsNode?.Value.Nodes.Select(n => n.Key);
+					foreach (var key in hotkeyGroupsKeys)
+						usedKeys.Add(key, new FluentReferenceAttribute(), $"`{nameof(HotkeysSettingsLogic)}.HotkeyGroups`");
+				}
+			}
 
 			return (usedKeys, testedFields);
 		}
 
-		static void GetUsedTranslationKeysFromFieldsWithTranslationReferenceAttribute(
+		static void GetUsedFluentKeys<T>(
 			Keys usedKeys, List<FieldInfo> testedFields,
-			IEnumerable<FieldInfo> newFields, IEnumerable<object> objects)
+			IEnumerable<FieldInfo> newFields, IEnumerable<T> objects,
+			Func<T, FieldInfo, string> getContext)
 		{
 			var fieldsWithAttribute =
 				newFields
@@ -297,7 +339,7 @@ namespace OpenRA.Mods.Common.Lint
 				{
 					var keys = LintExts.GetFieldValues(obj, field, fluentReference.DictionaryReference);
 					foreach (var key in keys)
-						usedKeys.Add(key, fluentReference, $"`{field.ReflectedType.Name}.{field.Name}`");
+						usedKeys.Add(key, fluentReference, getContext(obj, field));
 				}
 			}
 		}
@@ -366,15 +408,11 @@ namespace OpenRA.Mods.Common.Lint
 
 		static HashSet<string> CheckKeys(
 			IEnumerable<string> paths, Func<string, Stream> openFile, Keys usedKeys,
-			string language, Func<string, bool> checkUnusedKeysForFile,
-			Action<string> emitError, Action<string> emitWarning)
+			Func<string, bool> checkUnusedKeysForFile, Action<string> emitError, Action<string> emitWarning)
 		{
 			var keyWithAttrs = new HashSet<string>();
 			foreach (var path in paths)
 			{
-				if (!path.EndsWith($"{language}.ftl", StringComparison.Ordinal))
-					continue;
-
 				var stream = openFile(path);
 				using (var reader = new StreamReader(stream))
 				{

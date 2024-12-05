@@ -40,7 +40,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 				.Where(t => t.Name.EndsWith("Widget", StringComparison.InvariantCulture) && t.IsSubclassOf(typeof(Widget)))
 				.ToDictionary(
 					t => t.Name[..^6],
-					t => t.GetFields().Where(f => f.HasAttribute<FluentReferenceAttribute>()).Select(f => f.Name).ToArray())
+					t => Utility.GetFields(t).Where(Utility.HasAttribute<FluentReferenceAttribute>).Select(f => f.Name).ToArray())
 				.Where(t => t.Value.Length > 0)
 				.ToDictionary(t => t.Key, t => t.Value);
 
@@ -50,7 +50,7 @@ namespace OpenRA.Mods.Common.UtilityCommands
 			{
 				var fluentFolder = layout.Key + "|languages";
 				var fluentPackage = modData.ModFiles.OpenPackage(fluentFolder);
-				var fluentPath = Path.Combine(fluentPackage.Name, "chrome/en.ftl");
+				var fluentPath = Path.Combine(fluentPackage.Name, "chrome.ftl");
 
 				var unsortedCandidates = new List<ExtractionCandidate>();
 				var groupedCandidates = new Dictionary<HashSet<string>, List<ExtractionCandidate>>();
