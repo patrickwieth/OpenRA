@@ -87,13 +87,13 @@ namespace OpenRA.Mods.Common.Traits
 				PlayLaunchSounds();
 				Game.Sound.Play(SoundType.World, Info.DeploySound, position);
 
-				if (!string.IsNullOrEmpty(info.EffectSequence) && !string.IsNullOrEmpty(info.EffectPalette))
+				if (!string.IsNullOrEmpty(Info.EffectSequence) && !string.IsNullOrEmpty(Info.EffectPalette))
 				{
-					var palette = info.EffectPalette;
-					if (info.EffectPaletteIsPlayerPalette)
+					var palette = Info.EffectPalette;
+					if (Info.EffectPaletteIsPlayerPalette)
 						palette += self.Owner.InternalName;
 
-					w.Add(new SpriteEffect(position, w, info.EffectImage, info.EffectSequence, palette));
+					w.Add(new SpriteEffect(position, w, Info.EffectImage, Info.EffectSequence, palette));
 				}
 
 				var actor = w.CreateActor(Info.Actors.First(a => a.Key == level).Value, new TypeDictionary
