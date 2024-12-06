@@ -66,14 +66,11 @@ namespace OpenRA.Mods.AS.Widgets.Logic
 			tooltipContainer.BeforeRender = () =>
 			{
 				var tooltipIcon = getTooltipIcon();
-				if (tooltipIcon == null)
-					return;
-
-				var actor = tooltipIcon.Actor;
+				var actor = tooltipIcon?.Actor;
 				if (actor == null)
 					return;
 
-				var hotkey = tooltipIcon.Hotkey != null ? tooltipIcon.Hotkey.GetValue() : Hotkey.Invalid;
+				var hotkey = tooltipIcon.Hotkey?.GetValue() ?? Hotkey.Invalid;
 				if (actor == lastActor && hotkey == lastHotkey && (pm == null || pm.PowerState == lastPowerState))
 					return;
 
