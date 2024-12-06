@@ -21,7 +21,7 @@ namespace OpenRA.Mods.AS.Widgets.Logic
 {
 	public class ProductionTooltipLogicCA : ChromeLogic
 	{
-		[FluentReference("prequisites")]
+		[FluentReference("prerequisites")]
 		const string Requires = "label-requires";
 
 		[ObjectCreator.UseCtor]
@@ -128,7 +128,7 @@ namespace OpenRA.Mods.AS.Widgets.Logic
 				var requiresSize = int2.Zero;
 				if (prereqs.Count > 0)
 				{
-					requiresLabel.Text = FluentProvider.GetMessage(Requires, "prequisites", prereqs.JoinWith(", "));
+					requiresLabel.Text = FluentProvider.GetMessage(Requires, "prerequisites", prereqs.JoinWith(", "));
 					requiresSize = requiresFont.Measure(requiresLabel.Text);
 					requiresLabel.Visible = true;
 					descLabel.Bounds.Y = descLabelY + requiresLabel.Bounds.Height + descLabel.Bounds.X / 2;
