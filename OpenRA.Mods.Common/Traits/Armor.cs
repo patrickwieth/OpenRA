@@ -17,7 +17,6 @@ namespace OpenRA.Mods.Common.Traits
 	[Desc("Used to define weapon efficiency modifiers with different percentages per Type.")]
 	public class ArmorInfo : ConditionalTraitInfo
 	{
-		[FluentReference(optional: true)] // Used by the ActorStatWidget.
 		public readonly string Type = null;
 
 		public override object Create(ActorInitializer init) { return new Armor(this); }

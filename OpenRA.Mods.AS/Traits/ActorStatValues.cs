@@ -60,10 +60,6 @@ namespace OpenRA.Mods.AS.Traits
 		[Desc("Types of stats to show.")]
 		public readonly ActorStatContent[] Stats = { ActorStatContent.Armor, ActorStatContent.Sight };
 
-		[FluentReference]
-		[Desc("Name to use for Armor stat, if no " + nameof(Armor) + "traits is enabled on the actor.")]
-		public readonly string DefaultArmorName = "no-armor";
-
 		[Desc("Armament names to use for weapon stats.")]
 		public readonly string[] Armaments;
 
@@ -117,6 +113,9 @@ namespace OpenRA.Mods.AS.Traits
 
 	public class ActorStatValues : INotifyCreated, INotifyDisguised, INotifyOwnerChanged, INotifyProduction
 	{
+		[FluentReference]
+		const string DefaultArmorName = "label-armor-class.no-armor";
+
 		readonly Actor self;
 		public ActorStatValuesInfo Info;
 
@@ -397,7 +396,7 @@ namespace OpenRA.Mods.AS.Traits
 
 			var activeArmor = Array.Find(Armors, a => !a.IsTraitDisabled);
 			if (activeArmor == null)
-				return FluentProvider.GetMessage("label-armor-class." + Info.DefaultArmorName);
+				return FluentProvider.GetMessage(DefaultArmorName);
 
 			return FluentProvider.GetMessage("label-armor-class." + activeArmor?.Info.Type.Replace('.', '-'));
 		}
