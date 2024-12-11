@@ -536,6 +536,7 @@ label-anonymous-player-tooltip-name = Anonymous Player
 label-bot-player-tooltip-name = Bot
 label-bot-managed-by-tooltip = Bot managed by { $name }
 label-game-admin = Game Admin
+label-support-power-cost = $
 
 ## gamesave-loading.yaml
 label-gamesave-loading-screen-title = Loading Saved Game

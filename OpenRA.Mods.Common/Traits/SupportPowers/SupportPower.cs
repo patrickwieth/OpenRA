@@ -35,13 +35,13 @@ namespace OpenRA.Mods.Common.Traits
 
 		[Desc("An optional list of generic names (i.e. \"Ability\" or \"Superpower\")" +
 			"to be shown to chosen players.")]
-		[FluentReference(optional: true)]
+		[FluentReference(dictionaryReference: LintDictionaryReference.Values)]
 		public readonly Dictionary<int, string> GenericNames = new();
 
 		[Desc("Player stances that the generic names should be shown to.")]
 		public readonly PlayerRelationship GenericVisibility = PlayerRelationship.None;
 
-		[FluentReference(optional: true)]
+		[FluentReference(dictionaryReference: LintDictionaryReference.Values)]
 		public readonly Dictionary<int, string> Descriptions = new();
 
 		[Desc("Allow multiple instances of the same support power.")]
