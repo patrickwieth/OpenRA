@@ -83,10 +83,10 @@ The plugin is maintained by
    > Garrison logic maintainance
    > OpenToppedDamageWarhead
    > Ranged GPS
-   > CPs and Upgrades Observer Tab
+   > Minimal and Upgrades Observer Tabs
    > Selected Actors Widgets
    > Contition Prerequisite
-   > Instant Cash Drain
+   > PlaceBuildingPower
 
  * Sean Hunt (coppro)
    > Chrono Miner implementation (ChronoResourceDelivery)
