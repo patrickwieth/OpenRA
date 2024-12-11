@@ -118,7 +118,7 @@ namespace OpenRA.Mods.Common.Orders
 			this.variants = variants.ToArray();
 		}
 
-		static PlaceBuildingCellType MakeCellType(bool valid, bool lineBuild = false)
+		public static PlaceBuildingCellType MakeCellType(bool valid, bool lineBuild = false)
 		{
 			var cell = valid ? PlaceBuildingCellType.Valid : PlaceBuildingCellType.Invalid;
 			if (lineBuild)
