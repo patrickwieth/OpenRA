@@ -42,6 +42,13 @@ namespace OpenRA.Mods.Common.Scripting
 		}
 
 		[ScriptActorPropertyActivity]
+		[Desc("Queues a landing activity on the specified cell.")]
+		public void LandOnGround(CPos cell)
+		{
+			Self.QueueActivity(new Land(Self, Target.FromCell(Self.World, cell)));
+		}
+
+		[ScriptActorPropertyActivity]
 		[Desc("Queues a landing activity on the specified actor.")]
 		public void Land(Actor landOn)
 		{
