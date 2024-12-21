@@ -36,21 +36,6 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		[FluentReference]
 		const string Joystick = "options-mouse-scroll-type.joystick";
 
-		[FluentReference]
-		const string Alt = "options-zoom-modifier.alt";
-
-		[FluentReference]
-		const string Ctrl = "options-zoom-modifier.ctrl";
-
-		[FluentReference]
-		const string Meta = "options-zoom-modifier.meta";
-
-		[FluentReference]
-		const string Shift = "options-zoom-modifier.shift";
-
-		[FluentReference]
-		const string None = "options-zoom-modifier.none";
-
 		static InputSettingsLogic() { }
 
 		readonly string classic;
@@ -59,8 +44,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		[ObjectCreator.UseCtor]
 		public InputSettingsLogic(Action<string, string, Func<Widget, Func<bool>>, Func<Widget, Action>> registerPanel, string panelID, string label)
 		{
-			classic = FluentProvider.GetString(Classic);
-			modern = FluentProvider.GetString(Modern);
+			classic = FluentProvider.GetMessage(Classic);
+			modern = FluentProvider.GetMessage(Modern);
 
 			registerPanel(panelID, label, InitPanel, ResetPanel);
 		}
@@ -163,8 +148,8 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		{
 			var options = new Dictionary<string, bool>()
 			{
-				{ FluentProvider.GetString(Classic), true },
-				{ FluentProvider.GetString(Modern), false },
+				{ FluentProvider.GetMessage(Classic), true },
+				{ FluentProvider.GetMessage(Modern), false },
 			};
 
 			ScrollItemWidget SetupItem(string o, ScrollItemWidget itemTemplate)
@@ -183,10 +168,10 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		{
 			var options = new Dictionary<string, MouseScrollType>()
 			{
-				{ FluentProvider.GetString(Disabled), MouseScrollType.Disabled },
-				{ FluentProvider.GetString(Standard), MouseScrollType.Standard },
-				{ FluentProvider.GetString(Inverted), MouseScrollType.Inverted },
-				{ FluentProvider.GetString(Joystick), MouseScrollType.Joystick },
+				{ FluentProvider.GetMessage(Disabled), MouseScrollType.Disabled },
+				{ FluentProvider.GetMessage(Standard), MouseScrollType.Standard },
+				{ FluentProvider.GetMessage(Inverted), MouseScrollType.Inverted },
+				{ FluentProvider.GetMessage(Joystick), MouseScrollType.Joystick },
 			};
 
 			ScrollItemWidget SetupItem(string o, ScrollItemWidget itemTemplate)
@@ -205,11 +190,11 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		{
 			var options = new Dictionary<string, Modifiers>()
 			{
-				{ FluentProvider.GetString(Alt), Modifiers.Alt },
-				{ FluentProvider.GetString(Ctrl), Modifiers.Ctrl },
-				{ FluentProvider.GetString(Meta), Modifiers.Meta },
-				{ FluentProvider.GetString(Shift), Modifiers.Shift },
-				{ FluentProvider.GetString(None), Modifiers.None }
+				{ ModifiersExts.DisplayString(Modifiers.Alt), Modifiers.Alt },
+				{ ModifiersExts.DisplayString(Modifiers.Ctrl), Modifiers.Ctrl },
+				{ ModifiersExts.DisplayString(Modifiers.Meta), Modifiers.Meta },
+				{ ModifiersExts.DisplayString(Modifiers.Shift), Modifiers.Shift },
+				{ ModifiersExts.DisplayString(Modifiers.None), Modifiers.None }
 			};
 
 			ScrollItemWidget SetupItem(string o, ScrollItemWidget itemTemplate)

@@ -157,7 +157,7 @@ namespace OpenRA.Mods.Common.Commands
 
 			if (!developerMode.Enabled)
 			{
-				TextNotificationsManager.Debug(FluentProvider.GetString(CheatsDisabled));
+				TextNotificationsManager.Debug(FluentProvider.GetMessage(CheatsDisabled));
 				return;
 			}
 
@@ -185,7 +185,7 @@ namespace OpenRA.Mods.Common.Commands
 				giveCashOrder.ExtraData = (uint)cash;
 			else
 			{
-				TextNotificationsManager.Debug(FluentProvider.GetString(InvalidCashAmount));
+				TextNotificationsManager.Debug(FluentProvider.GetMessage(InvalidCashAmount));
 				return;
 			}
 

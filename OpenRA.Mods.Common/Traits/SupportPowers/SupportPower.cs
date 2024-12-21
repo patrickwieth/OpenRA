@@ -35,13 +35,13 @@ namespace OpenRA.Mods.Common.Traits
 
 		[Desc("An optional list of generic names (i.e. \"Ability\" or \"Superpower\")" +
 			"to be shown to chosen players.")]
-		[FluentReference(optional: true)]
+		[FluentReference(dictionaryReference: LintDictionaryReference.Values)]
 		public readonly Dictionary<int, string> GenericNames = new();
 
 		[Desc("Player stances that the generic names should be shown to.")]
 		public readonly PlayerRelationship GenericVisibility = PlayerRelationship.None;
 
-		[FluentReference(optional: true)]
+		[FluentReference(dictionaryReference: LintDictionaryReference.Values)]
 		public readonly Dictionary<int, string> Descriptions = new();
 
 		[Desc("Allow multiple instances of the same support power.")]
@@ -174,10 +174,10 @@ namespace OpenRA.Mods.Common.Traits
 		public string NameForPlayerStance(PlayerRelationship relationship, int level)
 		{
 			if (relationship == PlayerRelationship.None || !GenericVisibility.HasRelationship(relationship))
-				return FluentProvider.GetString(Names.First(gn => gn.Key == level).Value);
+				return FluentProvider.GetMessage(Names.First(gn => gn.Key == level).Value);
 
 			var genericName = GenericNames.First(gn => gn.Key == level).Value;
-			return string.IsNullOrEmpty(genericName) ? "" : FluentProvider.GetString(genericName);
+			return string.IsNullOrEmpty(genericName) ? "" : FluentProvider.GetMessage(genericName);
 		}
 
 		protected SupportPowerInfo() { OrderName = GetType().Name + "Order"; }

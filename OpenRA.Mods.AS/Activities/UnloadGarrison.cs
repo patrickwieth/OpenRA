@@ -57,8 +57,7 @@ namespace OpenRA.Mods.AS.Activities
 
 			return garrison.CurrentAdjacentCells()
 				.Shuffle(self.World.SharedRandom)
-				.Select(c => (c, pos.GetAvailableSubCell(c)))
-				.Cast<(CPos, SubCell SubCell)?>()
+				.Select(c => ((CPos Cell, SubCell SubCell)?)(c, pos.GetAvailableSubCell(c)))
 				.FirstOrDefault(s => s.Value.SubCell != SubCell.Invalid);
 		}
 

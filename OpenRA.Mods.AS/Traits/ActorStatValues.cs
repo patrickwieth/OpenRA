@@ -101,6 +101,9 @@ namespace OpenRA.Mods.AS.Traits
 
 	public class ActorStatValues : INotifyCreated, INotifyDisguised, INotifyOwnerChanged, INotifyProduction
 	{
+		[FluentReference]
+		const string DefaultArmorName = "label-armor-class.no-armor";
+
 		readonly Actor self;
 		public ActorStatValuesInfo Info;
 
@@ -383,9 +386,9 @@ namespace OpenRA.Mods.AS.Traits
 
 			var activeArmor = Array.Find(Armors, a => !a.IsTraitDisabled);
 			if (activeArmor == null)
-				return FluentProvider.GetString("actor-stats-label-prefix.armor") + " " + FluentProvider.GetString("label-armor-class.no-armor");
+				return FluentProvider.GetMessage("actor-stats-label-prefix.armor") + " " + FluentProvider.GetMessage(DefaultArmorName);
 
-			return FluentProvider.GetString("actor-stats-label-prefix.armor") + " " + FluentProvider.GetString("label-armor-class." + activeArmor?.Info.Type.Replace('.', '-'));
+			return FluentProvider.GetMessage("actor-stats-label-prefix.armor") + " " + FluentProvider.GetMessage("label-armor-class." + activeArmor?.Info.Type.Replace('.', '-'));
 		}
 
 		public string CalculateSight()
@@ -401,19 +404,19 @@ namespace OpenRA.Mods.AS.Traits
 			foreach (var rsm in SightModifiers.Select(rsm => rsm.GetRevealsShroudModifier()))
 				revealsShroudValue = revealsShroudValue * rsm / 100;
 
-			return FluentProvider.GetString("actor-stats-label-prefix.sight") + " " + Math.Round((float)revealsShroudValue.Length / 1024, 2).ToString(NumberFormatInfo.CurrentInfo);
+			return FluentProvider.GetMessage("actor-stats-label-prefix.sight") + " " + Math.Round((float)revealsShroudValue.Length / 1024, 2).ToString(NumberFormatInfo.CurrentInfo);
 		}
 
 		public string CalculateSpeed()
 		{
 			if (Mobile == null && Aircraft == null)
-				return FluentProvider.GetString("actor-stats-label-prefix.speed") + " 0";
+				return FluentProvider.GetMessage("actor-stats-label-prefix.speed") + " 0";
 
 			var speedValue = Speed;
 			foreach (var sm in SpeedModifiers.Select(sm => sm.GetSpeedModifier()))
 				speedValue = speedValue * sm / 100;
 
-			return FluentProvider.GetString("actor-stats-label-prefix.speed") + " " + speedValue.ToString(NumberFormatInfo.CurrentInfo);
+			return FluentProvider.GetMessage("actor-stats-label-prefix.speed") + " " + speedValue.ToString(NumberFormatInfo.CurrentInfo);
 		}
 
 		public string CalculatePower()
@@ -426,15 +429,15 @@ namespace OpenRA.Mods.AS.Traits
 			foreach (var pm in PowerModifiers.Select(pm => pm.GetPowerModifier()))
 				powerValue = powerValue * pm / 100;
 
-			return FluentProvider.GetString("actor-stats-label-prefix.power") + " " + powerValue.ToString(NumberFormatInfo.CurrentInfo);
+			return FluentProvider.GetMessage("actor-stats-label-prefix.power") + " " + powerValue.ToString(NumberFormatInfo.CurrentInfo);
 		}
 
 		public string CalculateMindControl()
 		{
 			if (MindController == null)
-				return FluentProvider.GetString("actor-stats-label-prefix.mindcontrol") + " 0 / 0";
+				return FluentProvider.GetMessage("actor-stats-label-prefix.mindcontrol") + " 0 / 0";
 
-			return FluentProvider.GetString("actor-stats-label-prefix.mindcontrol") + " " + MindController.Slaves.Count().ToString(NumberFormatInfo.CurrentInfo) + " / " + MindController.Info.Capacity.ToString(NumberFormatInfo.CurrentInfo);
+			return FluentProvider.GetMessage("actor-stats-label-prefix.mindcontrol") + " " + MindController.Slaves.Count().ToString(NumberFormatInfo.CurrentInfo) + " / " + MindController.Info.Capacity.ToString(NumberFormatInfo.CurrentInfo);
 		}
 
 		public string CalculateDamage()
@@ -468,7 +471,7 @@ namespace OpenRA.Mods.AS.Traits
 			foreach (var dm in FirepowerModifiers.Select(fm => fm.GetFirepowerModifier(null)))
 				damageValue = damageValue * dm / 100;
 
-			return FluentProvider.GetString("actor-stats-label-prefix.damage") + " " + damageValue.ToString(NumberFormatInfo.CurrentInfo);
+			return FluentProvider.GetMessage("actor-stats-label-prefix.damage") + " " + damageValue.ToString(NumberFormatInfo.CurrentInfo);
 		}
 
 		public string CalculateSpread()
@@ -484,7 +487,7 @@ namespace OpenRA.Mods.AS.Traits
 						spreadValue = spreadValue > sv ? spreadValue : sv;
 					}
 
-			return FluentProvider.GetString("actor-stats-label-prefix.spread") + " " + Math.Round((float)spreadValue.Length / 1024, 2).ToString(NumberFormatInfo.CurrentInfo);
+			return FluentProvider.GetMessage("actor-stats-label-prefix.spread") + " " + Math.Round((float)spreadValue.Length / 1024, 2).ToString(NumberFormatInfo.CurrentInfo);
 		}
 
 		public string CalculateRoF()
@@ -508,7 +511,7 @@ namespace OpenRA.Mods.AS.Traits
 			else
 				rofValue = 0;
 
-			return FluentProvider.GetString("actor-stats-label-prefix.rof") + " " + rofValue.ToString(NumberFormatInfo.CurrentInfo);
+			return FluentProvider.GetMessage("actor-stats-label-prefix.rof") + " " + rofValue.ToString(NumberFormatInfo.CurrentInfo);
 		}
 
 		public string CalculateRange(int slot)
@@ -563,13 +566,13 @@ namespace OpenRA.Mods.AS.Traits
 			if (minimumRangeValue.Length > 100 && minimumRangeValue != WDist.MaxValue)
 				text = Math.Round((float)minimumRangeValue.Length / 1024, 2).ToString(NumberFormatInfo.CurrentInfo) + "-" + text;
 
-			return FluentProvider.GetString("actor-stats-label-prefix.range") + " " + text;
+			return FluentProvider.GetMessage("actor-stats-label-prefix.range") + " " + text;
 		}
 
 		public string CalculateResourceHold()
 		{
 			if (ResourceHold == null)
-				return FluentProvider.GetString("actor-stats-label-prefix.resource") + " $0";
+				return FluentProvider.GetMessage("actor-stats-label-prefix.resource") + " $0";
 
 			var currentContents = ResourceHold.Contents.Values.Sum().ToString(NumberFormatInfo.CurrentInfo);
 			var capacity = ResourceHold.Capacity.ToString(NumberFormatInfo.CurrentInfo);
@@ -578,19 +581,19 @@ namespace OpenRA.Mods.AS.Traits
 			foreach (var content in ResourceHold.Contents)
 				value += playerResources.Info.ResourceValues[content.Key] * content.Value;
 
-			return FluentProvider.GetString("actor-stats-label-prefix.resource") + " " + currentContents + " / " + capacity + " ($" + value.ToString(NumberFormatInfo.CurrentInfo) + ")";
+			return FluentProvider.GetMessage("actor-stats-label-prefix.resource") + " " + currentContents + " / " + capacity + " ($" + value.ToString(NumberFormatInfo.CurrentInfo) + ")";
 		}
 
 		public string CalculateCollector()
 		{
 			if (Collector == null)
-				return FluentProvider.GetString("actor-stats-label-prefix.collector") + " $0";
+				return FluentProvider.GetMessage("actor-stats-label-prefix.collector") + " $0";
 
 			var value = Collector.Amount();
 			foreach (var dm in ResourceValueModifiers.Select(rvm => rvm.GetResourceValueModifier()))
 				value = value * dm / 100;
 
-			return FluentProvider.GetString("actor-stats-label-prefix.collector") + " $" + value.ToString(NumberFormatInfo.CurrentInfo);
+			return FluentProvider.GetMessage("actor-stats-label-prefix.collector") + " $" + value.ToString(NumberFormatInfo.CurrentInfo);
 		}
 
 		public string CalculateCashTrickler()
@@ -600,7 +603,7 @@ namespace OpenRA.Mods.AS.Traits
 				if (!ct.IsTraitDisabled)
 					minTicks = Math.Min(minTicks, ct.Ticks);
 
-			return FluentProvider.GetString("actor-stats-label-prefix.cashtrickler") + " " + WidgetUtils.FormatTime(minTicks == int.MaxValue ? 0 : minTicks, self.World.Timestep);
+			return FluentProvider.GetMessage("actor-stats-label-prefix.cashtrickler") + " " + WidgetUtils.FormatTime(minTicks == int.MaxValue ? 0 : minTicks, self.World.Timestep);
 		}
 
 		public string CalculatePeriodicProducer()
@@ -610,7 +613,7 @@ namespace OpenRA.Mods.AS.Traits
 				if (!pp.IsTraitDisabled)
 					minTicks = Math.Min(minTicks, pp.Ticks);
 
-			return FluentProvider.GetString("actor-stats-label-prefix.periodicproducer") + " " + WidgetUtils.FormatTime(minTicks == int.MaxValue ? 0 : minTicks, self.World.Timestep);
+			return FluentProvider.GetMessage("actor-stats-label-prefix.periodicproducer") + " " + WidgetUtils.FormatTime(minTicks == int.MaxValue ? 0 : minTicks, self.World.Timestep);
 		}
 
 		public string CalculateCargo()
@@ -618,26 +621,26 @@ namespace OpenRA.Mods.AS.Traits
 			if (Cargo != null)
 			{
 				Passengers = Cargo.Passengers.ToList();
-				return FluentProvider.GetString("actor-stats-label-prefix.cargo") + " " + Cargo.TotalWeight + " / " + Cargo.Info.MaxWeight;
+				return FluentProvider.GetMessage("actor-stats-label-prefix.cargo") + " " + Cargo.TotalWeight + " / " + Cargo.Info.MaxWeight;
 			}
 			else if (SharedCargo != null)
 			{
 				Passengers = SharedCargo.Manager.Cargo;
-				return FluentProvider.GetString("actor-stats-label-prefix.sharedcargo") + " " + SharedCargo.Manager.TotalWeight + " / " + SharedCargo.Manager.Info.MaxWeight;
+				return FluentProvider.GetMessage("actor-stats-label-prefix.sharedcargo") + " " + SharedCargo.Manager.TotalWeight + " / " + SharedCargo.Manager.Info.MaxWeight;
 			}
 			else if (Garrisonable != null)
 			{
 				Passengers = Garrisonable.Garrisoners.ToList();
-				return FluentProvider.GetString("actor-stats-label-prefix.garrison") + " " + Garrisonable.TotalWeight + " / " + Garrisonable.Info.MaxWeight;
+				return FluentProvider.GetMessage("actor-stats-label-prefix.garrison") + " " + Garrisonable.TotalWeight + " / " + Garrisonable.Info.MaxWeight;
 			}
 			else
-				return FluentProvider.GetString("actor-stats-label-prefix.cargo") + " 0 / 0";
+				return FluentProvider.GetMessage("actor-stats-label-prefix.cargo") + " 0 / 0";
 		}
 
 		public string CalculateCarrier()
 		{
 			if (CarrierMaster == null)
-				return FluentProvider.GetString("actor-stats-label-prefix.carrier") + " 0 / 0 / 0";
+				return FluentProvider.GetMessage("actor-stats-label-prefix.carrier") + " 0 / 0 / 0";
 
 			var stored = 0;
 			var valid = 0;
@@ -667,7 +670,7 @@ namespace OpenRA.Mods.AS.Traits
 				}
 			}
 
-			return FluentProvider.GetString("actor-stats-label-prefix.mob") + " " + spawned.ToString(NumberFormatInfo.CurrentInfo) + " / " + total.ToString(NumberFormatInfo.CurrentInfo);
+			return FluentProvider.GetMessage("actor-stats-label-prefix.mob") + " " + spawned.ToString(NumberFormatInfo.CurrentInfo) + " / " + total.ToString(NumberFormatInfo.CurrentInfo);
 		}
 
 		public string CalculateDroneSpawner()
@@ -683,23 +686,23 @@ namespace OpenRA.Mods.AS.Traits
 				}
 			}
 
-			return FluentProvider.GetString("actor-stats-label-prefix.drone") + " " + spawned.ToString(NumberFormatInfo.CurrentInfo) + " / " + total.ToString(NumberFormatInfo.CurrentInfo);
+			return FluentProvider.GetMessage("actor-stats-label-prefix.drone") + " " + spawned.ToString(NumberFormatInfo.CurrentInfo) + " / " + total.ToString(NumberFormatInfo.CurrentInfo);
 		}
 
 		public string CalculateKills()
 		{
 			if (GainsExperience == null)
-				return FluentProvider.GetString("actor-stats-label-prefix.kills") + " 0";
+				return FluentProvider.GetMessage("actor-stats-label-prefix.kills") + " 0";
 
-			return FluentProvider.GetString("actor-stats-label-prefix.kills") + " " + GainsExperience.Kills.ToString(NumberFormatInfo.CurrentInfo);
+			return FluentProvider.GetMessage("actor-stats-label-prefix.kills") + " " + GainsExperience.Kills.ToString(NumberFormatInfo.CurrentInfo);
 		}
 
 		public string CalculateExperience()
 		{
 			if (GainsExperience == null)
-				return FluentProvider.GetString("actor-stats-label-prefix.experience") + " 0";
+				return FluentProvider.GetMessage("actor-stats-label-prefix.experience") + " 0";
 
-			return FluentProvider.GetString("actor-stats-label-prefix.experience") + " " + (GainsExperience.Experience / Info.ExperienceDivisor).ToString(NumberFormatInfo.CurrentInfo);
+			return FluentProvider.GetMessage("actor-stats-label-prefix.experience") + " " + (GainsExperience.Experience / Info.ExperienceDivisor).ToString(NumberFormatInfo.CurrentInfo);
 		}
 
 		public List<Actor> GetPassengers()

@@ -303,9 +303,9 @@ namespace OpenRA.Mods.Common.Traits
 					}
 
 					if (actorToProduce == null)
-						TextNotificationsManager.Debug(FluentProvider.GetString(InvalidActorName, "actor", args[0]));
+						TextNotificationsManager.Debug(FluentProvider.GetMessage(InvalidActorName, "actor", args[0]));
 					else if (!buildable)
-						TextNotificationsManager.Debug(FluentProvider.GetString(UnbuildableActorName, "actor", args[0]));
+						TextNotificationsManager.Debug(FluentProvider.GetMessage(UnbuildableActorName, "actor", args[0]));
 
 					break;
 				}
@@ -323,7 +323,7 @@ namespace OpenRA.Mods.Common.Traits
 					return;
 			}
 
-			TextNotificationsManager.Debug(FluentProvider.GetString(CheatUsed,
+			TextNotificationsManager.Debug(FluentProvider.GetMessage(CheatUsed,
 				"cheat", order.OrderString,
 				"player", self.Owner.ResolvedPlayerName,
 				"suffix", debugSuffix));

@@ -15,6 +15,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using OpenRA.Mods.Common.FileSystem;
 using OpenRA.Network;
 using OpenRA.Support;
 using OpenRA.Widgets;
@@ -81,24 +82,16 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			var contentButton = mainMenu.GetOrNull<ButtonWidget>("CONTENT_BUTTON");
 			if (contentButton != null)
 			{
-				var hasContent = modData.Manifest.Contains<ModContent>();
-				contentButton.Disabled = !hasContent;
+				var contentInstaller = modData.FileSystemLoader as ContentInstallerFileSystemLoader;
+				contentButton.Disabled = contentInstaller == null;
 				contentButton.OnClick = () =>
 				{
 					// Switching mods changes the world state (by disposing it),
 					// so we can't do this inside the input handler.
 					Game.RunAfterTick(() =>
 					{
-						if (!hasContent)
-							return;
-
-						var content = modData.Manifest.Get<ModContent>();
-						string translationPath;
-						using (var fs = (FileStream)modData.DefaultFileSystem.Open(content.Translation))
-							translationPath = fs.Name;
-						Game.InitializeMod(
-							content.ContentInstallerMod,
-							new Arguments(new[] { "Content.Mod=" + modData.Manifest.Id, "Content.TranslationFile=" + translationPath }));
+						if (contentInstaller != null)
+							Game.InitializeMod(contentInstaller.ContentInstallerMod, new Arguments());
 					});
 				};
 			}
@@ -239,7 +232,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				newsPanel.RemoveChild(newsTemplate);
 
 				newsStatus = newsPanel.Get<LabelWidget>("NEWS_STATUS");
-				SetNewsStatus(FluentProvider.GetString(LoadingNews));
+				SetNewsStatus(FluentProvider.GetMessage(LoadingNews));
 			}
 
 			Game.OnRemoteDirectConnect += OnRemoteDirectConnect;
@@ -254,16 +247,6 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				updateLabel.IsVisible = () => !newsOpen && menuType != MenuType.None &&
 					menuType != MenuType.StartupPrompts &&
 					webServices.ModVersionStatus == ModVersionStatus.Outdated;
-
-			var playerProfile = widget.GetOrNull("PLAYER_PROFILE_CONTAINER");
-			if (playerProfile != null)
-			{
-				Func<bool> minimalProfile = () => Ui.CurrentWindow() != null;
-				Game.LoadWidget(world, "LOCAL_PROFILE_PANEL", playerProfile, new WidgetArgs()
-				{
-					{ "minimalProfile", minimalProfile }
-				});
-			}
 
 			menuType = MenuType.StartupPrompts;
 
@@ -351,7 +334,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 							catch (Exception e)
 							{
 								Game.RunAfterTick(() => // run on the main thread
-									SetNewsStatus(FluentProvider.GetString(NewsRetrivalFailed, "message", e.Message)));
+									SetNewsStatus(FluentProvider.GetMessage(NewsRetrivalFailed, "message", e.Message)));
 							}
 						});
 					}
@@ -422,7 +405,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			}
 			catch (Exception ex)
 			{
-				SetNewsStatus(FluentProvider.GetString(NewsParsingFailed, "message", ex.Message));
+				SetNewsStatus(FluentProvider.GetMessage(NewsParsingFailed, "message", ex.Message));
 			}
 
 			return null;
@@ -443,7 +426,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				titleLabel.GetText = () => item.Title;
 
 				var authorDateTimeLabel = newsItem.Get<LabelWidget>("AUTHOR_DATETIME");
-				var authorDateTime = FluentProvider.GetString(AuthorDateTime,
+				var authorDateTime = FluentProvider.GetMessage(AuthorDateTime,
 					"author", item.Author,
 					"datetime", item.DateTime.ToLocalTime().ToString(CultureInfo.CurrentCulture));
 

@@ -52,6 +52,10 @@ namespace OpenRA.Mods.Common.Traits
 
 		public virtual WAngle QuantizeFacing(WAngle facing, int facings)
 		{
+			// Quantization disabled
+			if (facings == 0)
+				return facing;
+
 			return Util.QuantizeFacing(facing, facings);
 		}
 

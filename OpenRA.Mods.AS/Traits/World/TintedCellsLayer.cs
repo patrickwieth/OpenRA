@@ -44,7 +44,10 @@ namespace OpenRA.Mods.AS.Traits
 		public readonly int FadeoutDelay = 150;
 
 		[Desc("Z offset of the visualization.")]
-		public readonly int ZOffset = 512;
+		public readonly int ZOffset = 0;
+
+		[Desc("Offset of the visualization.")]
+		public readonly WVec Offset = WVec.Zero;
 
 		[Desc("Name of the layer.")]
 		public readonly string Name = "radioactivity";

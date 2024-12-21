@@ -62,8 +62,8 @@ namespace OpenRA.Mods.Common.Widgets
 				var owner = self.Owner;
 				var viewer = owner.World.RenderPlayer ?? owner.World.LocalPlayer;
 				var time = WidgetUtils.FormatTime(p.RemainingTicks, false, self.World.Timestep);
-				var supportPowerName = FluentProvider.GetString(p.Info.NameForPlayerStance(owner.RelationshipWith(viewer), level));
-				var text = FluentProvider.GetString(Format,
+				var supportPowerName = FluentProvider.GetMessage(p.Info.NameForPlayerStance(owner.RelationshipWith(viewer), level));
+				var text = FluentProvider.GetMessage(Format,
 					"player", owner.ResolvedPlayerName,
 					"support-power", supportPowerName,
 					"time", time);
