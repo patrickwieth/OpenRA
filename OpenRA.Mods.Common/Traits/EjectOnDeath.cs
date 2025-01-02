@@ -46,7 +46,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		void INotifyKilled.Killed(Actor self, AttackInfo e)
 		{
-			if (IsTraitDisabled || self.Owner.WinState == WinState.Lost || !self.World.Map.Contains(self.Location))
+			if (IsTraitDisabled || self.Owner.WinState == WinState.Lost || self.World.Disposing || !self.World.Map.Contains(self.Location))
 				return;
 
 			if (self.World.SharedRandom.Next(100) >= Info.SuccessRate)
