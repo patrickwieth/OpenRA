@@ -52,7 +52,6 @@ label-save-map-panel-directory = Directory:
 label-save-map-panel-filename = Filename:
 button-save-map-panel = Save
 label-actor-edit-panel-id = ID
-button-container-delete = Delete
 button-container-ok = OK
 label-tiles-bg-search = Search:
 label-bg-filter = Filter:
@@ -62,7 +61,7 @@ label-area-selection = Area Selection
 label-area-info = Area Info
 label-selected-area-diagonal = Diagonal:
 label-selected-area-resources = Resources:
-label-copy-filters = Copy Filters
+label-selection-filters = Filters
 label-filter-terrain = Terrain
 label-filter-resources = Resources
 label-filter-actors = Actors
@@ -80,6 +79,14 @@ button-map-editor-tab-container-overlays-tooltip = Overlays
 button-map-editor-tab-container-actors-tooltip = Actors
 button-map-editor-tab-container-tools-tooltip = Tools
 button-map-editor-tab-container-history-tooltip = History
+
+button-delete-area =
+   .label = Delete
+   .tooltip = Remove everything in the selected area
+
+button-delete-actor =
+   .label = Delete
+   .tooltip = Remove the selected actor
 
 button-editor-world-root-options =
    .label = Menu

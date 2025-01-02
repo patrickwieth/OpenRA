@@ -11,6 +11,7 @@
 
 using System;
 using OpenRA.Mods.Common.Activities;
+using OpenRA.Mods.Common.Effects;
 using OpenRA.Mods.Common.Orders;
 using OpenRA.Mods.Common.Traits.Render;
 using OpenRA.Traits;
@@ -33,6 +34,9 @@ namespace OpenRA.Mods.Common.Traits
 		[FluentReference(optional: true)]
 		[Desc("Text notification to display.")]
 		public readonly string TextNotification = null;
+
+		[Desc("Sell the actor without queuing an activity for it.")]
+		public readonly bool SellDirectly = false;
 
 		[Desc("Whether to show the cash tick indicators rising from the actor.")]
 		public readonly bool ShowTicks = true;
@@ -93,7 +97,30 @@ namespace OpenRA.Mods.Common.Traits
 				}
 			}
 
-			self.QueueActivity(false, new Sell(self, info.ShowTicks));
+			if (!Info.SellDirectly)
+				self.QueueActivity(false, new Sell(self, info.ShowTicks));
+			else
+			{
+				// Copied from Sell activity.
+				var sellValue = self.GetSellValue();
+
+				// Cast to long to avoid overflow when multiplying by the health
+				var hp = health != null ? health.Value.HP : 1L;
+				var maxHP = health != null ? health.Value.MaxHP : 1L;
+				var refund = (int)(sellValue * info.RefundPercent * hp / (100 * maxHP));
+				refund = self.Owner.PlayerActor.Trait<PlayerResources>().ChangeCash(refund); // No point caching this, this code should be running once per actor ever.
+
+				foreach (var ns in self.TraitsImplementing<INotifySold>())
+					ns.Sold(self);
+
+				if (info.ShowTicks && refund > 0 && self.Owner.IsAlliedWith(self.World.RenderPlayer))
+					self.World.AddFrameEndTask(w => w.Add(new FloatingText(self.CenterPosition, self.OwnerColor(), FloatingText.FormatCashTick(refund), 30)));
+
+				Game.Sound.PlayNotification(self.World.Map.Rules, self.Owner, "Speech", Info.Notification, self.Owner.Faction.InternalName);
+				TextNotificationsManager.AddTransientLine(self.Owner, Info.TextNotification);
+
+				self.Dispose();
+			}
 		}
 
 		public bool IsTooltipVisible(Player forPlayer)
