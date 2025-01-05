@@ -65,6 +65,12 @@ namespace OpenRA.Mods.AS.Traits
 
 		public readonly bool StartsFullyCharged = false;
 
+		[Desc("Does this actor deploy only with those of the same deploy type?")]
+		public readonly bool ExclusiveDeploy = false;
+
+		[Desc("The category of deploy to use for exclusive deploys.")]
+		public readonly string DeployType = null;
+
 		[VoiceReference]
 		public readonly string Voice = "Action";
 
@@ -121,7 +127,26 @@ namespace OpenRA.Mods.AS.Traits
 			return new Order("GrantTimedConditionOnDeploy", self, queued);
 		}
 
-		bool IIssueDeployOrder.CanIssueDeployOrder(Actor self, bool queued) { return !IsTraitPaused && !IsTraitDisabled; }
+		bool IIssueDeployOrder.CanIssueDeployOrder(Actor self, bool queued) { return !IsTraitPaused && !IsTraitDisabled && IsGroupDeployNeeded(self); }
+
+		bool IsGroupDeployNeeded(Actor self)
+		{
+			if (!Info.ExclusiveDeploy)
+				return true;
+
+			var actors = self.World.Selection.Actors;
+
+			foreach (var a in actors)
+			{
+				GrantTimedConditionOnDeploy gtcod = null;
+				if (!a.IsDead && a.IsInWorld)
+					gtcod = a.TraitOrDefault<GrantTimedConditionOnDeploy>();
+
+				if (gtcod == null || gtcod.Info.DeployType != Info.DeployType) return false;
+			}
+
+			return true;
+		}
 
 		IEnumerable<IOrderTargeter> IIssueOrder.Orders
 		{

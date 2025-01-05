@@ -480,7 +480,7 @@ namespace OpenRA.Mods.Common.Traits
 					self.World.AddFrameEndTask(w =>
 					{
 						var positionable = passenger.Trait<IPositionable>();
-						if (positionable.CanEnterCell(self.Location, self, BlockedByActor.All))
+						if (positionable.CanEnterCell(self.Location, self, BlockedByActor.Immovable))
 						{
 							var exitSubCell = ChooseExitSubCell(passenger);
 							if (exitSubCell != null)
