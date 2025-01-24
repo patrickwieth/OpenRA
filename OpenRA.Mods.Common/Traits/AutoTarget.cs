@@ -11,6 +11,7 @@
 
 using System.Collections.Generic;
 using System.Linq;
+using OpenRA.Mods.Common.Activities;
 using OpenRA.Primitives;
 using OpenRA.Traits;
 
@@ -38,6 +39,9 @@ namespace OpenRA.Mods.Common.Traits
 
 		[Desc("It will try to pivot to face the enemy if stance is not HoldFire.")]
 		public readonly bool AllowTurning = true;
+
+		[Desc("It will attack-move if possible when retaliating.")]
+		public readonly bool AttackMoveOnRetaliate = true;
 
 		[Desc("Scan for new targets when idle.")]
 		public readonly bool ScanOnIdle = true;
@@ -131,6 +135,7 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly IEnumerable<AttackBase> ActiveAttackBases;
 
 		readonly bool allowMovement;
+		readonly IMove move;
 
 		[Sync]
 		int nextScanTime = 0;
@@ -184,7 +189,8 @@ namespace OpenRA.Mods.Common.Traits
 
 			PredictedStance = Stance;
 
-			allowMovement = Info.AllowMovement && self.TraitOrDefault<IMove>() != null;
+			move = self.TraitOrDefault<IMove>();
+			allowMovement = Info.AllowMovement && move != null;
 		}
 
 		protected override void Created(Actor self)
@@ -263,8 +269,10 @@ namespace OpenRA.Mods.Common.Traits
 			}
 
 			Aggressor = attacker;
-
-			Attack(Target.FromActor(Aggressor), AllowMove);
+			if (Info.AttackMoveOnRetaliate && AllowMove)
+				self.QueueActivity(new AttackMoveActivity(self, () => move.MoveWithinRange(Target.FromCell(self.World, Aggressor.Location), WDist.FromCells(2))));
+			else
+				Attack(Target.FromActor(Aggressor), AllowMove);
 		}
 
 		void INotifyIdle.TickIdle(Actor self)
