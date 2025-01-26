@@ -269,7 +269,7 @@ namespace OpenRA.Mods.Common.Traits
 			}
 
 			Aggressor = attacker;
-			if (Info.AttackMoveOnRetaliate && AllowMove)
+			if (Info.AttackMoveOnRetaliate && AllowMove && Aggressor != null)
 				self.QueueActivity(new AttackMoveActivity(self, () => move.MoveWithinRange(Target.FromCell(self.World, Aggressor.Location), WDist.FromCells(2))));
 			else
 				Attack(Target.FromActor(Aggressor), AllowMove);

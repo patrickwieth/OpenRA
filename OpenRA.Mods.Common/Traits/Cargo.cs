@@ -546,8 +546,15 @@ namespace OpenRA.Mods.Common.Traits
 
 		void INotifyOwnerChanged.OnOwnerChanged(Actor self, Player oldOwner, Player newOwner)
 		{
-			if (!Info.OwnerChangedAffectsPassengers || cargo == null)
+			if (cargo == null)
 				return;
+
+			if (!Info.OwnerChangedAffectsPassengers)
+			{
+				self.CancelActivity();
+				self.QueueActivity(new UnloadCargo(self, Info.LoadRange));
+				return;
+			}
 
 			foreach (var p in Passengers)
 				p.ChangeOwner(newOwner);
