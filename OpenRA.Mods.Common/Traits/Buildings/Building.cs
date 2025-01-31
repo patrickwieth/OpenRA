@@ -77,7 +77,12 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly bool RemoveBuilder = false;
 
 		[NotificationReference("Speech")]
-		public readonly string PlacedNotification = null;
+		public readonly string PlacedAudio = null;
+
+		[FluentReference(optional: true)]
+		[Desc("Notification displayed when you can't queue another actor",
+			"when the queue length limit is exceeded.")]
+		public readonly string PlacedTextNotification = null;
 
 		public override object Create(ActorInitializer init) { return new Building(init, this); }
 

@@ -32,6 +32,8 @@ namespace OpenRA.Mods.Common.Activities
 		readonly IMove move;
 		readonly IMoveInfo moveInfo;
 		readonly PlaceBuildingInfo placeBuildingInfo;
+		readonly PlayerResources playerResources;
+		readonly DeveloperMode developerMode;
 		readonly ProductionQueue queue;
 		readonly ProductionItem item;
 
@@ -48,13 +50,15 @@ namespace OpenRA.Mods.Common.Activities
 			move = self.Trait<IMove>();
 			moveInfo = self.Info.TraitInfo<IMoveInfo>();
 			placeBuildingInfo = self.Owner.PlayerActor.Info.TraitInfo<PlaceBuildingInfo>();
+			playerResources = self.Owner.PlayerActor.Trait<PlayerResources>();
+			developerMode = self.Owner.PlayerActor.Trait<DeveloperMode>();
 			this.queue = queue;
 			this.item = item;
 		}
 
 		public override bool Tick(Actor self)
 		{
-			if (IsCanceling || self.IsDead || !queue.AllQueued().Any(i => i == item))
+			if (IsCanceling || self.IsDead)
 				return true;
 
 			// Move towards the target cell
@@ -71,33 +75,49 @@ namespace OpenRA.Mods.Common.Activities
 				// Try clear the area
 				foreach (var ord in ClearBlockersOrders(self))
 					world.IssueOrder(ord);
-					// Game.Debug("Issued 1 order to clear site");
+				// Game.Debug("Issued 1 order to clear site");
 
 				Game.Sound.PlayNotification(world.Map.Rules, self.Owner, "Speech", placeBuildingInfo.CannotPlaceNotification, faction);
+				TextNotificationsManager.AddTransientLine(self.Owner, placeBuildingInfo.CannotPlaceTextNotification);
 
 				return true;
 			}
 
 			self.World.AddFrameEndTask(w =>
 			{
-				if (!order.Queued)
-					self.CancelActivity();
+				// if (!order.Queued)
+				//	self.CancelActivity();
 
-				var building = w.CreateActor(true, order.TargetString, new TypeDictionary
+				var canQueue = CanQueue(self, out var notification, out var textNotification);
+
+				if (!canQueue)
 				{
-					new LocationInit(centerTarget),
-					new OwnerInit(order.Player),
-					new FactionInit(faction),
-					new PlaceBuildingInit()
-				});
+					Game.Sound.PlayNotification(world.Map.Rules, self.Owner, "Speech", notification, world.LocalPlayer.Faction.InternalName);
+					TextNotificationsManager.AddTransientLine(self.Owner, textNotification);
+					self.CancelActivity();
+				}
+				else
+				{
+					playerResources.TakeCash(item.TotalCost);
 
-				foreach (var s in buildingInfo.BuildSounds)
+					var building = w.CreateActor(true, order.TargetString, new TypeDictionary
+					{
+						new LocationInit(centerTarget),
+						new OwnerInit(order.Player),
+						new FactionInit(faction),
+						new PlaceBuildingInit()
+					});
+
+					foreach (var s in buildingInfo.BuildSounds)
 						Game.Sound.PlayToPlayer(SoundType.World, order.Player, s, building.CenterPosition);
 
-				Game.Sound.PlayNotification(world.Map.Rules, self.Owner, "Speech", buildingInfo.PlacedNotification, faction);
+					Game.Sound.PlayNotification(world.Map.Rules, self.Owner, "Speech", buildingInfo.PlacedAudio, faction);
+					TextNotificationsManager.AddTransientLine(self.Owner, buildingInfo.PlacedTextNotification);
+				}
 			});
-			
-			if (buildingInfo.RemoveBuilder) {
+
+			if (buildingInfo.RemoveBuilder)
+			{
 				self.QueueActivity(new RemoveSelf());
 			}
 
@@ -105,44 +125,57 @@ namespace OpenRA.Mods.Common.Activities
 				foreach (var nbp in self.TraitsImplementing<INotifyBuildingPlaced>())
 					nbp.BuildingPlaced(self);
 
-			queue.EndProduction(item);
-
 			return true;
 		}
 
 		// Copied from PlaceBuildingOrderGenerator, triplicated in BuildOnSite and BuilderUnitBuildingOrderGenerator
 		IEnumerable<Order> ClearBlockersOrders(Actor ownerActor)
 		{
-			var allTiles = buildingInfo.Tiles(centerTarget).ToArray();
-			var adjacentTiles = Util.ExpandFootprint(allTiles, true).Except(allTiles)
-				.Where(world.Map.Contains).ToList();
+			return AIUtils.ClearBlockersOrders(buildingInfo.Tiles(centerTarget).ToList(), ownerActor.Owner);
+		}
 
-			var blockers = allTiles.SelectMany(world.ActorMap.GetActorsAt)
-				.Where(a => a.Owner == ownerActor.Owner && a.IsIdle && a != ownerActor)
-				.Select(a => new TraitPair<IMove>(a, a.TraitOrDefault<IMove>()))
-				.Where(x => x.Trait != null);
+		// duplicated from ProductionQueue
+		public bool CanQueue(Actor self, out string notificationAudio, out string notificationText)
+		{
+			notificationAudio = queue.Info.BlockedAudio;
+			notificationText = queue.Info.BlockedTextNotification;
 
-			foreach (var blocker in blockers)
+			var bi = BuildableInfo.GetTraitForQueue(buildingActor, queue.Info.Type);
+			if (bi == null)
+				return false;
+
+			var buildableNames = queue.BuildableItems().Select(b => b.Name).ToHashSet();
+
+			if (!developerMode.AllTech)
 			{
-				CPos moveCell;
-				if (blocker.Trait is Mobile mobile)
+				if (item.TotalCost > playerResources.GetCashAndResources())
 				{
-					var availableCells = adjacentTiles.Where(t => mobile.CanEnterCell(t)).ToList();
-					if (availableCells.Count == 0)
-						continue;
+					notificationAudio = playerResources.Info.InsufficientFundsNotification;
+					notificationText = playerResources.Info.InsufficientFundsTextNotification;
 
-					moveCell = blocker.Actor.ClosestCell(availableCells);
+					return false;
 				}
-				else if (blocker.Trait is Aircraft)
-					moveCell = blocker.Actor.Location;
-				else
-					continue;
 
-				yield return new Order("Move", blocker.Actor, Target.FromCell(world, moveCell), false)
+				if (!buildableNames.Contains(item.Item))
 				{
-					SuppressVisualFeedback = true
-				};
+					notificationAudio = queue.Info.BlockedAudio;
+					notificationText = queue.Info.BlockedTextNotification;
+
+					return false;
+				}
+
+				if (bi.BuildLimit > 0)
+				{
+					var owned = self.Owner.World.ActorsHavingTrait<Buildable>()
+						.Count(a => a.Info.Name == buildingActor.Name && a.Owner == self.Owner);
+					if (owned >= bi.BuildLimit)
+						return false;
+				}
 			}
+
+			// notificationAudio = buildingInfo.PlacedAudio;
+			// notificationText = buildingInfo.PlacedTextNotification;
+			return true;
 		}
 	}
 }

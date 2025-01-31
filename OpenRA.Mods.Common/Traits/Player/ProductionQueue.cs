@@ -641,7 +641,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		protected virtual void BeginProduction(ProductionItem item, bool hasPriority)
 		{
-			if (Info.PayUpFront)
+			if ((Info.PayUpFront || item.ActorInfo.HasTraitInfo<InstantlyPlacedInfo>()) && !Actor.Info.HasTraitInfo<BuilderUnitInfo>())
 			{
 				if (playerResources.Resources > 0 && playerResources.Resources <= item.TotalCost)
 					item.ResourcesPaid = playerResources.Resources;
@@ -774,6 +774,7 @@ namespace OpenRA.Mods.Common.Traits
 			BuildableInfo = BuildableInfo.GetTraitForQueue(ActorInfo, Queue.Info.Type);
 			BuildPaletteOrder = BuildableInfo.BuildPaletteOrder;
 			Infinite = false;
+			Done = ActorInfo.HasTraitInfo<InstantlyPlacedInfo>();
 		}
 
 		public void Tick(PlayerResources pr)
