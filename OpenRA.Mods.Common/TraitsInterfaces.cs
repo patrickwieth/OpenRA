@@ -208,6 +208,10 @@ namespace OpenRA.Mods.Common.Traits
 		void Harvested(Actor self, string resourceType);
 		void MovingToResources(Actor self, CPos targetCell);
 		void MovementCancelled(Actor self);
+
+		void MovingToRefinery(Actor self, Actor refineryActor, Activity next);
+		void Docked();
+		void Undocked();
 	}
 
 	public interface IDockClientInfo : ITraitInfoInterface { }
