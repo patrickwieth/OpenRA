@@ -208,10 +208,6 @@ namespace OpenRA.Mods.Common.Traits
 		void Harvested(Actor self, string resourceType);
 		void MovingToResources(Actor self, CPos targetCell);
 		void MovementCancelled(Actor self);
-
-		void MovingToRefinery(Actor self, Actor refineryActor, Activity next);
-		void Docked();
-		void Undocked();
 	}
 
 	public interface IDockClientInfo : ITraitInfoInterface { }
@@ -453,6 +449,9 @@ namespace OpenRA.Mods.Common.Traits
 
 	[RequireExplicitImplementation]
 	public interface ITurnSpeedModifier { int GetTurnSpeedModifier(); }
+
+	[RequireExplicitImplementation]
+	public interface ITurretTurnSpeedModifier { int GetTurretTurnSpeedModifier(string turretName); }
 
 	[RequireExplicitImplementation]
 	public interface IFirepowerModifier { int GetFirepowerModifier(string armamentName); }

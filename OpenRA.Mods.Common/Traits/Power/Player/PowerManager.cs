@@ -79,7 +79,7 @@ namespace OpenRA.Mods.Common.Traits
 		public void UpdateActor(Actor a)
 		{
 			// Do not add power from actors that are not in the world
-			if (!a.IsInWorld)
+			if (a.IsDead)
 				return;
 
 			// Old is 0 if a is not in powerDrain
