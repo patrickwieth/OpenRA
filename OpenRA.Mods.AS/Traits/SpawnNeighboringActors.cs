@@ -74,7 +74,7 @@ namespace OpenRA.Mods.AS.Traits
 
 		void ITick.Tick(Actor self)
 		{
-			if (IsTraitPaused || IsTraitDisabled || (Info.RecreationInterval < 0 && spawned) )
+			if (IsTraitPaused || IsTraitDisabled || (Info.RecreationInterval <= 0 && spawned) )
 				return;
 
 			if (--ticks < 0)
