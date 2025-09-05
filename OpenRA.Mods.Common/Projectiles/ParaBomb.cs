@@ -127,7 +127,7 @@ namespace OpenRA.Mods.Common.Projectiles
 
 			if (!string.IsNullOrEmpty(info.ParachuteImage))
 			{
-				parachuteAnim = new Animation(args.SourceActor.World, info.ParachuteImage, () => args.Facing);
+				parachuteAnim = new Animation(args.SourceActor.World, info.ParachuteImage);
 			}
 
 			shadowColor = new float3(info.ShadowColor.R, info.ShadowColor.G, info.ShadowColor.B) / 255f;
@@ -142,16 +142,18 @@ namespace OpenRA.Mods.Common.Projectiles
 
 			// Check parachute activation altitude
 			var altitude = world.Map.DistanceAboveTerrain(pos);
-			if (!parachuteActive && parachuteAnim != null && altitude.Length <= info.ParachuteAltitude.Length)
+			if (!parachuteActive && parachuteAnim != null && !string.IsNullOrEmpty(info.ParachuteImage) && 
+				altitude.Length <= info.ParachuteAltitude.Length)
 			{
 				parachuteActive = true;
 				if (!string.IsNullOrEmpty(info.ParachuteOpeningSequence))
 					parachuteAnim.PlayThen(info.ParachuteOpeningSequence, () =>
 					{
 						parachuteOpened = true;
-						parachuteAnim.PlayRepeating(info.ParachuteSequence);
+						if (!string.IsNullOrEmpty(info.ParachuteSequence))
+							parachuteAnim.PlayRepeating(info.ParachuteSequence);
 					});
-				else
+				else if (!string.IsNullOrEmpty(info.ParachuteSequence))
 				{
 					parachuteOpened = true;
 					parachuteAnim.PlayRepeating(info.ParachuteSequence);
@@ -159,13 +161,16 @@ namespace OpenRA.Mods.Common.Projectiles
 			}
 
 			// Check parachute deactivation altitude
-			if (parachuteActive && parachuteOpened && !parachuteClosing && altitude.Length <= info.ParachuteCloseAltitude.Length)
+			if (parachuteActive && parachuteOpened && !parachuteClosing && !string.IsNullOrEmpty(info.ParachuteImage) && 
+				altitude.Length <= info.ParachuteCloseAltitude.Length)
 			{
 				parachuteClosing = true;
 				if (!string.IsNullOrEmpty(info.ParachuteClosingSequence))
 					parachuteAnim.PlayThen(info.ParachuteClosingSequence, () => parachuteActive = false);
-				else
+				else if (!string.IsNullOrEmpty(info.ParachuteOpeningSequence))
 					parachuteAnim.PlayBackwardsThen(info.ParachuteOpeningSequence, () => parachuteActive = false);
+				else
+					parachuteActive = false;
 			}
 
 			if (!info.PointDefenseTypes.IsEmpty)
@@ -209,7 +214,7 @@ namespace OpenRA.Mods.Common.Projectiles
 			if (!world.FogObscures(pos))
 			{
 				// Render parachute
-				if (parachuteActive && parachuteAnim != null)
+				if (parachuteActive && parachuteAnim != null && !string.IsNullOrEmpty(info.ParachuteImage))
 				{
 					var parachutePaletteName = info.ParachutePalette;
 					if (parachutePaletteName != null && info.ParachuteIsPlayerPalette)
