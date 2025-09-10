@@ -9,6 +9,7 @@
  */
 #endregion
 
+using System;
 using System.Linq;
 using OpenRA.Primitives;
 using OpenRA.Traits;
@@ -82,22 +83,13 @@ namespace OpenRA.Mods.Common.Traits
 			else
 			{
 				// Show deviation from relaxed value
-				if (currentValue >= relaxedValue)
-				{
-					// Positive deviation
-					var maxDeviation = maxValue - relaxedValue;
-					if (maxDeviation == 0)
-						return 0f;
-					return (float)(currentValue - relaxedValue) / maxDeviation;
-				}
-				else
-				{
-					// Negative deviation (show as positive bar value but with different color)
-					var maxDeviation = relaxedValue - minValue;
-					if (maxDeviation == 0)
-						return 0f;
-					return (float)(relaxedValue - currentValue) / maxDeviation;
-				}
+				var deviation = Math.Abs(currentValue - relaxedValue);
+				var maxDeviation = Math.Max(maxValue - relaxedValue, relaxedValue - minValue);
+				
+				if (maxDeviation == 0 || deviation == 0)
+					return 0f;
+					
+				return (float)deviation / maxDeviation;
 			}
 		}
 
