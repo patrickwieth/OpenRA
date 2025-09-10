@@ -91,7 +91,7 @@ namespace OpenRA.Mods.Common.Projectiles
 	{
 		readonly ParaBombInfo info;
 		readonly Animation anim;
-		readonly Animation parachuteAnim;
+		Animation parachuteAnim;
 		readonly ProjectileArgs args;
 		readonly WVec acceleration;
 
