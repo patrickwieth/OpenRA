@@ -46,6 +46,9 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Delay in ticks before relaxation starts after external value change.")]
 		public readonly int RelaxationDelay = 0;
 
+		[Desc("Interval in ticks between relaxation applications.")]
+		public readonly int RelaxationInterval = 1;
+
 		[Desc("Target value for relaxation.")]
 		public readonly int RelaxedValue = 0;
 
@@ -62,6 +65,7 @@ namespace OpenRA.Mods.Common.Traits
 		readonly INotifyPhysicalStateChanged[] notifyPhysicalStateChanged;
 
 		int relaxationDelayTicks;
+		int relaxationIntervalTicks;
 
 		[Sync]
 		int currentValue;
@@ -124,7 +128,11 @@ namespace OpenRA.Mods.Common.Traits
 				return;
 			}
 
-			ApplyRelaxation();
+			if (++relaxationIntervalTicks >= Info.RelaxationInterval)
+			{
+				relaxationIntervalTicks = 0;
+				ApplyRelaxation();
+			}
 		}
 
 		void ApplyRelaxation()
