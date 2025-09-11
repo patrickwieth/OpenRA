@@ -38,6 +38,9 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Only apply damage when PhysicalState value is above this threshold.")]
 		public readonly int DamageThreshold = 0;
 
+		[Desc("Use percentage-based damage relative to max health instead of absolute values.")]
+		public readonly bool UsePercentageDamage = false;
+
 		public override object Create(ActorInitializer init) { return new ChangesHealthProportionalToPhysicalState(init.Self, this); }
 	}
 
@@ -85,11 +88,23 @@ namespace OpenRA.Mods.Common.Traits
 				return;
 
 			var normalizedValue = (float)(currentValue - minValue) / range;
-			var damageAmount = (int)(Info.DamageAtMinimum + (Info.DamageAtMaximum - Info.DamageAtMinimum) * normalizedValue);
+			var baseDamageAmount = Info.DamageAtMinimum + (Info.DamageAtMaximum - Info.DamageAtMinimum) * normalizedValue;
 
-			if (damageAmount > 0)
+			int actualDamageAmount;
+			if (Info.UsePercentageDamage)
 			{
-				self.InflictDamage(self, new Damage(damageAmount, Info.DamageTypes));
+				// Percentage-based damage relative to max health
+				actualDamageAmount = (int)(health.MaxHP * baseDamageAmount / 100f);
+			}
+			else
+			{
+				// Absolute damage
+				actualDamageAmount = (int)baseDamageAmount;
+			}
+
+			if (actualDamageAmount > 0)
+			{
+				self.InflictDamage(self, new Damage(actualDamageAmount, Info.DamageTypes));
 			}
 		}
 

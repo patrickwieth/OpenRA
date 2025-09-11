@@ -56,6 +56,12 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Use the deviation from RelaxedValue instead of absolute PhysicalState value.")]
 		public readonly bool UseDeviationFromRelaxed = true;
 
+		[Desc("Only apply effects when PhysicalState value is below RelaxedValue (negative deviation).")]
+		public readonly bool OnlyNegativeValues = false;
+
+		[Desc("Only apply effects when PhysicalState value is above RelaxedValue (positive deviation).")]
+		public readonly bool OnlyPositiveValues = false;
+
 		public override object Create(ActorInitializer init) { return new SlowsProportionalToPhysicalState(init.Self, this); }
 	}
 
@@ -111,9 +117,16 @@ namespace OpenRA.Mods.Common.Traits
 
 		float GetNormalizedValue(int physicalStateValue)
 		{
+			var relaxedValue = ((PhysicalStateInfo)physicalState.Info).RelaxedValue;
+
+			// Check if we should only apply effects to specific value ranges
+			if (Info.OnlyNegativeValues && physicalStateValue >= relaxedValue)
+				return 0f; // No effect for positive values
+			if (Info.OnlyPositiveValues && physicalStateValue <= relaxedValue)
+				return 0f; // No effect for negative values
+
 			if (Info.UseDeviationFromRelaxed)
 			{
-				var relaxedValue = ((PhysicalStateInfo)physicalState.Info).RelaxedValue;
 				var minValue = physicalState.MinValue;
 				var maxValue = physicalState.MaxValue;
 
