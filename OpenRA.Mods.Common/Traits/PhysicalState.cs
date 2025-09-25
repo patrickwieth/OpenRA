@@ -62,7 +62,7 @@ namespace OpenRA.Mods.Common.Traits
 	{
 		readonly Actor self;
 		readonly Health health;
-		readonly INotifyPhysicalStateChanged[] notifyPhysicalStateChanged;
+		INotifyPhysicalStateChanged[] notifyPhysicalStateChanged = Array.Empty<INotifyPhysicalStateChanged>();
 
 		int relaxationDelayTicks;
 		int relaxationIntervalTicks;
@@ -86,8 +86,13 @@ namespace OpenRA.Mods.Common.Traits
 		{
 			this.self = self;
 			health = self.TraitOrDefault<Health>();
-			notifyPhysicalStateChanged = self.TraitsImplementing<INotifyPhysicalStateChanged>().ToArray();
 			currentValue = Math.Clamp(info.InitialValue, info.MinValue, info.MaxValue);
+		}
+
+		protected override void Created(Actor self)
+		{
+			notifyPhysicalStateChanged = self.TraitsImplementing<INotifyPhysicalStateChanged>().ToArray();
+			base.Created(self);
 		}
 
 		void SetValue(int newValue, bool isExternalChange)

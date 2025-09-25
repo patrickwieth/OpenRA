@@ -161,7 +161,16 @@ namespace OpenRA.Mods.Common.Traits
 
 		int ISpeedModifier.GetSpeedModifier()
 		{
-			return IsTraitDisabled ? 100 : currentSpeedModifier;
+			if (IsTraitDisabled)
+				return 100;
+
+			// Debug: Log current values to game console
+			if (self.World.WorldTick % 25 == 0) // Every second
+			{
+				Game.Debug($"SlowsProportionalToPhysicalState: PhysicalState={physicalState?.Value ?? -999}, SpeedModifier={currentSpeedModifier}");
+			}
+
+			return currentSpeedModifier;
 		}
 
 		int ITurnSpeedModifier.GetTurnSpeedModifier()
