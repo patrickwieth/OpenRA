@@ -62,6 +62,7 @@ namespace OpenRA.Mods.Common.Traits
 	{
 		readonly Actor self;
 		readonly Health health;
+		Actor sourceActor;
 		INotifyPhysicalStateChanged[] notifyPhysicalStateChanged = Array.Empty<INotifyPhysicalStateChanged>();
 
 		int relaxationDelayTicks;
@@ -81,6 +82,15 @@ namespace OpenRA.Mods.Common.Traits
 		public int MinValue => Info.MinValue;
 		public int MaxValue => Info.MaxValue;
 
+		public Actor SourceActor
+		{
+			get
+			{
+				ClearInvalidSource();
+				return sourceActor;
+			}
+		}
+
 		public PhysicalState(Actor self, PhysicalStateInfo info)
 			: base(info)
 		{
@@ -95,15 +105,28 @@ namespace OpenRA.Mods.Common.Traits
 			base.Created(self);
 		}
 
-		void SetValue(int newValue, bool isExternalChange)
+		void SetValue(int newValue, bool isExternalChange, Actor source = null)
 		{
-			var clampedValue = Math.Clamp(newValue, Info.MinValue, Info.MaxValue);
-			
-			if (clampedValue == currentValue)
-				return;
+			ClearInvalidSource();
 
+			var clampedValue = Math.Clamp(newValue, Info.MinValue, Info.MaxValue);
 			var oldValue = currentValue;
+
+			if (isExternalChange)
+				UpdateSource(oldValue, clampedValue, source);
+
+			if (clampedValue == currentValue)
+			{
+				if (clampedValue == Info.RelaxedValue)
+					sourceActor = null;
+
+				return;
+			}
+
 			currentValue = clampedValue;
+
+			if (currentValue == Info.RelaxedValue)
+				sourceActor = null;
 
 			if (isExternalChange && Info.RelaxationDelay > 0)
 				relaxationDelayTicks = Info.RelaxationDelay;
@@ -112,18 +135,65 @@ namespace OpenRA.Mods.Common.Traits
 				notify.PhysicalStateChanged(self, this, oldValue, currentValue);
 		}
 
-		public void ApplyChange(int amount)
+		public void ApplyChange(int amount, Actor source = null)
 		{
 			var scaledAmount = amount;
-			
+
 			if (Info.RelativeToHealth && health != null && health.MaxHP > 0)
 				scaledAmount = (int)(amount * health.HP / 10000.0f);
 
-			SetValue(currentValue + scaledAmount, true);
+			SetValue(currentValue + scaledAmount, true, source);
+		}
+
+
+		void UpdateSource(int oldValue, int newValue, Actor source)
+		{
+			if (source == null || source.Disposed || !source.IsInWorld || source.IsDead)
+				return;
+
+			if (sourceActor != null && (sourceActor.Disposed || !sourceActor.IsInWorld || sourceActor.IsDead))
+				sourceActor = null;
+
+			if (sourceActor == source)
+				return;
+
+			var baseline = Info.RelaxedValue;
+			var oldOffset = oldValue - baseline;
+			var newOffset = newValue - baseline;
+
+			if (sourceActor == null)
+			{
+				if (newValue != baseline)
+					sourceActor = source;
+
+				return;
+			}
+
+			if (oldOffset == 0 && newOffset != 0)
+			{
+				sourceActor = source;
+				return;
+			}
+
+			if ((oldOffset > 0 && newOffset <= 0) || (oldOffset < 0 && newOffset >= 0))
+			{
+				if (newOffset == 0)
+					sourceActor = null;
+				else
+					sourceActor = source;
+			}
+		}
+
+		void ClearInvalidSource()
+		{
+			if (sourceActor != null && (sourceActor.Disposed || !sourceActor.IsInWorld || sourceActor.IsDead))
+				sourceActor = null;
 		}
 
 		void ITick.Tick(Actor self)
 		{
+			ClearInvalidSource();
+
 			if (IsTraitDisabled)
 				return;
 

@@ -104,7 +104,11 @@ namespace OpenRA.Mods.Common.Traits
 
 			if (actualDamageAmount > 0)
 			{
-				self.InflictDamage(self, new Damage(actualDamageAmount, Info.DamageTypes));
+				var attacker = physicalState.SourceActor;
+				if (attacker == null || attacker.Disposed || !attacker.IsInWorld || attacker.IsDead)
+					attacker = self;
+
+				self.InflictDamage(attacker, new Damage(actualDamageAmount, Info.DamageTypes));
 			}
 		}
 

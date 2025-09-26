@@ -46,7 +46,7 @@ namespace OpenRA.Mods.Common.Warheads
 				var physicalState = actor.TraitsImplementing<PhysicalState>()
 					.FirstOrDefault(ps => ps.Name == PhysicalStateName);
 
-				physicalState?.ApplyChange(Amount);
+				physicalState?.ApplyChange(Amount, firedBy);
 			}
 		}
 	}

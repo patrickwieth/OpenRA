@@ -127,7 +127,7 @@ namespace OpenRA.Mods.Common.Traits
 				var physicalState = actor.TraitsImplementing<PhysicalState>()
 					.FirstOrDefault(ps => ps.Name == Info.PhysicalStateName);
 
-				physicalState?.ApplyChange(Info.AmountPerTick);
+				physicalState?.ApplyChange(Info.AmountPerTick, self);
 			}
 
 			foreach (var actor in actorsToRemove)
