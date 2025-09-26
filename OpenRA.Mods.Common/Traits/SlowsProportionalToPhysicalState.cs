@@ -41,11 +41,11 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Turret turn speed modifier at maximum PhysicalState value (percentage).")]
 		public readonly int TurretTurnSpeedModifierAtMaximum = 50;
 
-		[Desc("Reload delay modifier at minimum PhysicalState value (percentage). Higher = slower reload.")]
+		[Desc("Reload delay modifier at minimum PhysicalState value (percentage). Higher = faster reload.")]
 		public readonly int ReloadDelayModifierAtMinimum = 100;
 
-		[Desc("Reload delay modifier at maximum PhysicalState value (percentage). Higher = slower reload.")]
-		public readonly int ReloadDelayModifierAtMaximum = 200;
+		[Desc("Reload delay modifier at maximum PhysicalState value (percentage). Lower = slower reload.")]
+		public readonly int ReloadDelayModifierAtMaximum = 50;
 
 		[Desc("Turret types to affect. Leave empty to affect all turrets.")]
 		public readonly HashSet<string> TurretTypes = new();
@@ -74,7 +74,7 @@ namespace OpenRA.Mods.Common.Traits
 		int currentSpeedModifier = 100;
 		int currentTurnSpeedModifier = 100;
 		int currentTurretTurnSpeedModifier = 100;
-		int currentReloadDelayModifier = 100;
+		int currentReloadDelaySpeedPercent = 100;
 
 		public SlowsProportionalToPhysicalState(Actor self, SlowsProportionalToPhysicalStateInfo info)
 			: base(info)
@@ -109,7 +109,7 @@ namespace OpenRA.Mods.Common.Traits
 				Info.TurretTurnSpeedModifierAtMaximum,
 				normalizedValue);
 
-			currentReloadDelayModifier = InterpolateModifier(
+			currentReloadDelaySpeedPercent = InterpolateModifier(
 				Info.ReloadDelayModifierAtMinimum,
 				Info.ReloadDelayModifierAtMaximum,
 				normalizedValue);
@@ -156,7 +156,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		int InterpolateModifier(int minModifier, int maxModifier, float normalizedValue)
 		{
-			return (int)(minModifier + (maxModifier - minModifier) * normalizedValue);
+			return Math.Max(0, (int)(minModifier + (maxModifier - minModifier) * normalizedValue));
 		}
 
 		int ISpeedModifier.GetSpeedModifier()
@@ -187,7 +187,7 @@ namespace OpenRA.Mods.Common.Traits
 				return 100;
 
 			return Info.WeaponTypes.Count == 0 || (!string.IsNullOrEmpty(armamentName) && Info.WeaponTypes.Contains(armamentName))
-				? currentReloadDelayModifier : 100;
+				? ConvertReloadSpeedToDelayPercent(currentReloadDelaySpeedPercent) : 100;
 		}
 
 		void INotifyPhysicalStateChanged.PhysicalStateChanged(Actor self, PhysicalState physicalState, int oldValue, int newValue)
@@ -195,5 +195,15 @@ namespace OpenRA.Mods.Common.Traits
 			if (physicalState == this.physicalState)
 				UpdateModifiers(newValue);
 		}
+
+		static int ConvertReloadSpeedToDelayPercent(int speedPercent)
+		{
+			if (speedPercent <= 0)
+				return int.MaxValue;
+
+			var delayPercent = (int)Math.Ceiling(10000m / speedPercent);
+			return Math.Max(1, delayPercent);
+		}
+
 	}
 }
