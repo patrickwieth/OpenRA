@@ -237,6 +237,8 @@ namespace OpenRA.Mods.Common.Traits
 
 		public WAngle TurnSpeed => Info.TurnSpeed;
 
+		public WAngle TurnSpeedWithModifiers => new WAngle(Util.ApplyPercentageModifiers(Info.TurnSpeed.Angle, TurnSpeedModifiers));
+
 		#endregion
 
 		[Sync]
