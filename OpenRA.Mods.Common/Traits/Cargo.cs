@@ -498,7 +498,7 @@ namespace OpenRA.Mods.Common.Traits
 							if (Info.EjectOnDeathDamage > 0 && health != null)
 							{
 								var damage = health.MaxHP * Info.EjectOnDeathDamage / 100;
-								health.InflictDamage(passenger, e.Attacker, new Damage(damage, e.Damage.DamageTypes), true);
+								health.InflictDamage(passenger, e.Attacker, new Damage(damage, e.Damage.DamageTypes, e.Damage.ProjectileType), true);
 							}
 
 							passenger.Trait<Passenger>().OnEjectedFromKilledCargo(passenger);

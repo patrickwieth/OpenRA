@@ -443,6 +443,12 @@ namespace OpenRA.Mods.Common.Traits
 	public interface ICashTricklerModifier { int GetCashTricklerModifier(); }
 
 	[RequireExplicitImplementation]
+	public interface IPhysicalStateShield
+	{
+		Damage AbsorbDamage(Actor self, Actor attacker, Damage damage);
+	}
+
+	[RequireExplicitImplementation]
 	public interface IDamageModifier { int GetDamageModifier(Actor attacker, Damage damage); }
 
 	[RequireExplicitImplementation]
