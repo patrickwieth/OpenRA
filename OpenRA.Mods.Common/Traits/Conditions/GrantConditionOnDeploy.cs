@@ -201,41 +201,25 @@ namespace OpenRA.Mods.Common.Traits
 
 		bool IIssueDeployOrder.CanIssueDeployOrder(Actor self, bool queued)
 		{
-			return !IsTraitPaused && !IsTraitDisabled && IsGroupDeployNeeded(self);
-		}
+			if (IsTraitPaused || IsTraitDisabled || self.IsDead || self.Disposed)
+				return false;
 
-		bool IsGroupDeployNeeded(Actor self)
-		{
-			if (!Info.SmartDeploy && !Info.ExclusiveDeploy)
+			if (!Info.ExclusiveDeploy && (queued || !Info.SmartDeploy || DeployState == DeployState.Undeployed || DeployState == DeployState.Undeploying))
 				return true;
 
-			var actors = self.World.Selection.Actors;
-
-			var hasDeployedActors = false;
-			var hasUndeployedActors = false;
-
-			foreach (var a in actors)
+			foreach (var actor in self.World.Selection.Actors)
 			{
-				GrantConditionOnDeploy gcod = null;
-				if (!a.IsDead && a.IsInWorld)
-					gcod = a.TraitOrDefault<GrantConditionOnDeploy>();
+				if (actor == self || actor.IsDead || !actor.IsInWorld)
+					continue;
 
-				if (Info.ExclusiveDeploy && (gcod == null || gcod.Info.DeployType != Info.DeployType)) return false;
+				var deploys = actor.TraitsImplementing<GrantConditionOnDeploy>().ToList();
 
-				if (!hasDeployedActors && gcod != null && gcod.Info.DeployType == Info.DeployType && (gcod.DeployState == DeployState.Deploying || gcod.DeployState == DeployState.Deployed))
-					hasDeployedActors = true;
-
-				if (!hasUndeployedActors && gcod != null && gcod.Info.DeployType == Info.DeployType && (gcod.DeployState == DeployState.Undeploying || gcod.DeployState == DeployState.Undeployed))
-					hasUndeployedActors = true;
-
-				if (!self.IsDead && !self.Disposed && hasDeployedActors && hasUndeployedActors)
-				{
-					var self_gcod = self.TraitOrDefault<GrantConditionOnDeploy>();
-					if (self_gcod.DeployState == DeployState.Undeploying || self_gcod.DeployState == DeployState.Undeployed)
-						return true;
-
+				if ((Info.ExclusiveDeploy && deploys.Count == 0) || deploys.Any(d => !d.IsTraitPaused &&
+												!d.IsTraitDisabled &&
+												((Info.SmartDeploy && (d.DeployState == DeployState.Undeployed ||
+												 d.DeployState == DeployState.Undeploying)) ||
+												 (Info.ExclusiveDeploy && d.Info.DeployType != Info.DeployType))))
 					return false;
-				}
 			}
 
 			return true;

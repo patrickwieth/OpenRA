@@ -132,9 +132,14 @@ namespace OpenRA.Mods.Common.Activities
 				if (attackAircraft.Info.AbortOnResupply)
 					NextActivity?.Cancel(self);
 
-				QueueChild(new ReturnToBase(self));
-				returnToBase = true;
-				return attackAircraft.Info.AbortOnResupply;
+				if (ReturnToBase.ChooseResupplier(self, false) != null)
+				{
+					QueueChild(new ReturnToBase(self));
+					returnToBase = true;
+					return attackAircraft.Info.AbortOnResupply;
+				}
+				else
+					return true;
 			}
 
 			var pos = self.CenterPosition;
@@ -307,3 +312,4 @@ namespace OpenRA.Mods.Common.Activities
 		}
 	}
 }
+

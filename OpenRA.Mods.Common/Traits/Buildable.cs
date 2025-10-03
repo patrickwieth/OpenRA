@@ -36,6 +36,9 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Build this many of the actor at once.")]
 		public readonly int BuildAmount = 1;
 
+		[Desc("Additionally produce these actors when built.")]
+		public readonly string[] AdditionalActors = Array.Empty<string>();
+
 		[Desc("Force a specific faction variant, overriding the faction of the producing actor.")]
 		public readonly string ForceFaction = null;
 
@@ -168,3 +171,5 @@ namespace OpenRA.Mods.Common.Traits
 
 	public class Buildable { }
 }
+
+
