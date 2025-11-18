@@ -15,6 +15,7 @@ using System.Globalization;
 using System.Linq;
 using System.Numerics;
 using OpenRA.Graphics;
+using OpenRA.Mods.Common.Graphics;
 using OpenRA.Mods.Common.Lint;
 using OpenRA.Mods.Common.Orders;
 using OpenRA.Mods.Common.Traits;
@@ -34,6 +35,10 @@ namespace OpenRA.Mods.Common.Widgets
 		public PaletteReference Palette;
 		public PaletteReference IconClockPalette;
 		public PaletteReference IconDarkenPalette;
+		public bool Buttonize;
+		public ProductionButtonStyle ButtonStyle;
+		public string ButtonLabel;
+		public string ButtonLabelFont;
 		public float2 Pos;
 		public List<ProductionItem> Queued;
 		public ProductionQueue ProductionQueue;
@@ -521,6 +526,7 @@ namespace OpenRA.Mods.Common.Widgets
 				var rsi = item.TraitInfo<RenderSpritesInfo>();
 				var icon = new Animation(World, rsi.GetImage(item, faction));
 				icon.Play(bi.Icon);
+				var seq = icon.CurrentSequence as DefaultSpriteSequence;
 
 				var palette = bi.IconPaletteIsPlayerPalette ? bi.IconPalette + producer.Actor.Owner.InternalName : bi.IconPalette;
 
@@ -537,6 +543,14 @@ namespace OpenRA.Mods.Common.Widgets
 					Queued = currentQueue.AllQueued().Where(a => a.Item == item.Name).ToList(),
 					ProductionQueue = currentQueue
 				};
+
+				if (seq != null)
+				{
+					pi.Buttonize = seq.Buttonize;
+					pi.ButtonStyle = seq.ButtonStyle;
+					pi.ButtonLabel = seq.ButtonLabel;
+					pi.ButtonLabelFont = seq.ButtonLabelFont;
+				}
 
 				if (!icons.ContainsKey(rect))
 					icons.Add(rect, pi);
@@ -585,6 +599,9 @@ namespace OpenRA.Mods.Common.Widgets
 				}
 				else if (!buildableItems.Any(a => a.Name == icon.Name))
 					WidgetUtils.DrawSpriteCentered(cantBuild.Image, icon.IconDarkenPalette, icon.Pos + iconOffset);
+
+				var rect = new Rectangle((int)icon.Pos.X, (int)icon.Pos.Y, IconSize.X, IconSize.Y);
+				ProductionIconButtonizer.Draw(icon, rect, icon.Name, OverlayFont);
 			}
 
 			Game.Renderer.DisableAntialiasingFilter();
@@ -646,3 +663,8 @@ namespace OpenRA.Mods.Common.Widgets
 		}
 	}
 }
+
+
+
+
+
