@@ -1,5 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Text;
+using OpenRA;
+using OpenRA.FileFormats;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.Graphics;
 using OpenRA.Primitives;
@@ -86,14 +91,18 @@ namespace OpenRA.Mods.Common.Widgets
 				return;
 
 			var style = ResolveStyle(icon.ButtonStyle);
-			DrawFrame(rect, style);
+			var fontName = icon.ButtonLabelFont ?? fallbackFont;
+			var useOsFont = OsShpCameoFontRenderer.CanHandle(fontName);
+			var frameRect = useOsFont
+				? new Rectangle(rect.Left - 1, rect.Top - 1, rect.Width + 2, rect.Height + 2)
+				: rect;
+			DrawFrame(frameRect, style);
 
 			var label = icon.ButtonLabel ?? fallbackText;
 			if (string.IsNullOrEmpty(label))
 				return;
 
-			var fontName = icon.ButtonLabelFont ?? fallbackFont;
-			DrawLabel(rect, label, fontName, style);
+			DrawLabel(rect, label, fontName, fallbackFont, style);
 		}
 
 		static ButtonVisualStyle ResolveStyle(ProductionButtonStyle style)
@@ -135,9 +144,14 @@ namespace OpenRA.Mods.Common.Widgets
 			}
 		}
 
-		static void DrawLabel(Rectangle rect, string label, string fontName, ButtonVisualStyle style)
+		static void DrawLabel(Rectangle rect, string label, string fontName, string fallbackFont, ButtonVisualStyle style)
 		{
-			var font = Game.Renderer.Fonts[fontName];
+			if (OsShpCameoFontRenderer.CanHandle(fontName) && OsShpCameoFontRenderer.TryDraw(label, rect, style))
+				return;
+
+			if (!Game.Renderer.Fonts.TryGetValue(fontName, out var font))
+				font = Game.Renderer.Fonts[fallbackFont];
+
 			var barHeight = Math.Max(4, Math.Min(BarHeight, rect.Height / 3));
 			var bar = new Rectangle(rect.Left, rect.Bottom - barHeight, rect.Width, barHeight);
 			WidgetUtils.FillRectWithColor(bar, style.BarTopColor, style.BarTopColor, style.BarBottomColor, style.BarBottomColor);
@@ -149,12 +163,337 @@ namespace OpenRA.Mods.Common.Widgets
 			var y = bar.Top + (bar.Height - textSize.Y) / 2;
 			var pos = new int2(x, y);
 
-			// Pixel-like text: draw a dark outline then a light fill
 			font.DrawText(text, pos + new int2(-1, 0), style.TextDark);
 			font.DrawText(text, pos + new int2(1, 0), style.TextDark);
 			font.DrawText(text, pos + new int2(0, -1), style.TextDark);
 			font.DrawText(text, pos + new int2(0, 1), style.TextDark);
 			font.DrawText(text, pos, style.TextLight);
+		}
+
+		static class OsShpCameoFontRenderer
+		{
+			public const string FontKey = "OsShp";
+			const string Asset = "ca|uibits/osshp-font.png";
+			const int TileWidth = 20;
+			const int TileHeight = 12;
+			const int VisibleHeight = 6;
+			const int SpaceAdvance = 3;
+			const int MaxCharsPerLine = 14;
+			const int MaxLines = 2;
+			static readonly object Sync = new();
+			static Sprite[] glyphs;
+			static int[] advances;
+			static Sheet glyphSheet;
+			static bool failed;
+
+			public static bool CanHandle(string fontName)
+			{
+				return !string.IsNullOrEmpty(fontName) && fontName.Equals(FontKey, StringComparison.OrdinalIgnoreCase);
+			}
+
+			public static bool TryDraw(string label, Rectangle rect, ButtonVisualStyle style)
+			{
+				if (!EnsureGlyphs())
+					return false;
+
+				var normalized = Normalize(label);
+				if (string.IsNullOrEmpty(normalized))
+					return false;
+
+				var lines = Wrap(normalized);
+				if (lines.Count == 0)
+					return false;
+
+				var padding = lines.Count == 1 ? 1 : 4;
+				var textHeight = lines.Count * VisibleHeight;
+				var barHeight = Math.Min(rect.Height, textHeight + padding);
+				var bar = new Rectangle(rect.Left, rect.Bottom - barHeight, rect.Width, barHeight);
+				WidgetUtils.FillRectWithColor(bar, style.BarTopColor, style.BarTopColor, style.BarBottomColor, style.BarBottomColor);
+
+				var firstLineTop = bar.Bottom - textHeight;
+				for (var i = 0; i < lines.Count; i++)
+				{
+					var lineTop = firstLineTop + i * VisibleHeight;
+					DrawLine(lines[i], bar, lineTop);
+				}
+
+				return true;
+			}
+
+			static void DrawLine(string text, Rectangle bar, int lineTop)
+			{
+				var runs = BuildGlyphRuns(text);
+				if (runs.Count == 0)
+					return;
+
+				var totalWidth = 0;
+				foreach (var run in runs)
+					totalWidth += run.Advance;
+
+				var x = bar.Left + (bar.Width - totalWidth) / 2;
+				var y = lineTop;
+
+				foreach (var run in runs)
+				{
+					if (run.Sprite != null)
+						WidgetUtils.DrawSprite(run.Sprite, new float2(x, y));
+
+					x += run.Advance;
+				}
+			}
+
+			static List<GlyphRun> BuildGlyphRuns(string text)
+			{
+				var runs = new List<GlyphRun>(text.Length);
+				foreach (var ch in text)
+				{
+					if (ch == ' ')
+					{
+						runs.Add(GlyphRun.Space);
+						continue;
+					}
+
+					var index = MapIndex(ch);
+					if (index < 0 || index >= glyphs.Length)
+						continue;
+
+					var sprite = glyphs[index];
+					var advance = advances[index];
+					if (sprite == null || advance == 0)
+						continue;
+
+					runs.Add(new GlyphRun(sprite, advance));
+				}
+
+				return runs;
+			}
+
+			static int MapIndex(char c)
+			{
+				if (c >= '0' && c <= '9')
+					return c - '0';
+				if (c >= 'A' && c <= 'Z')
+					return c - 'A' + 10;
+				if (c == '.')
+					return 36;
+				return -1;
+			}
+
+			static string Normalize(string text)
+			{
+				if (string.IsNullOrWhiteSpace(text))
+					return string.Empty;
+
+				var builder = new StringBuilder(text.Length);
+				var pendingSpace = false;
+				foreach (var ch in text)
+				{
+					var upper = char.ToUpperInvariant(ch);
+					if ((upper >= 'A' && upper <= 'Z') || (upper >= '0' && upper <= '9'))
+					{
+						builder.Append(upper);
+						pendingSpace = false;
+					}
+					else if (upper == '.')
+					{
+						builder.Append('.');
+						pendingSpace = false;
+					}
+					else if (char.IsWhiteSpace(ch) || upper == '-' || upper == '_' || upper == '/')
+					{
+						if (!pendingSpace && builder.Length > 0)
+						{
+							builder.Append(' ');
+							pendingSpace = true;
+						}
+					}
+				}
+
+				if (builder.Length == 0)
+					return string.Empty;
+
+				if (builder[^1] == ' ')
+					builder.Length--;
+
+				return builder.ToString();
+			}
+
+			static List<string> Wrap(string text)
+			{
+				var lines = new List<string>(MaxLines);
+				var remaining = text.Trim();
+
+				while (!string.IsNullOrEmpty(remaining) && lines.Count < MaxLines)
+				{
+					if (remaining.Length <= MaxCharsPerLine)
+					{
+						lines.Add(remaining);
+						remaining = string.Empty;
+						break;
+					}
+
+					var breakIndex = remaining.LastIndexOf(' ', MaxCharsPerLine - 1);
+					var brokeAtSpace = breakIndex > 0;
+					if (!brokeAtSpace)
+						breakIndex = MaxCharsPerLine;
+
+					var sliceLength = Math.Min(breakIndex, remaining.Length);
+					var line = remaining.Substring(0, sliceLength).TrimEnd();
+					if (!string.IsNullOrEmpty(line))
+						lines.Add(line);
+
+					if (sliceLength >= remaining.Length)
+					{
+						remaining = string.Empty;
+						break;
+					}
+
+					var nextStart = brokeAtSpace ? Math.Min(breakIndex + 1, remaining.Length) : sliceLength;
+					remaining = remaining.Substring(nextStart).TrimStart();
+				}
+
+				if (!string.IsNullOrEmpty(remaining) && lines.Count < MaxLines)
+					lines.Add(remaining.Length > MaxCharsPerLine ? remaining.Substring(0, MaxCharsPerLine) : remaining);
+
+				return lines;
+			}
+
+			static bool EnsureGlyphs()
+			{
+				if (glyphs != null)
+					return true;
+				if (failed || Game.ModData == null)
+					return false;
+
+				lock (Sync)
+				{
+					if (glyphs != null)
+						return true;
+					if (failed || Game.ModData == null)
+						return false;
+
+					try
+					{
+					using var stream = Game.ModData.DefaultFileSystem.Open(Asset);
+					var sheet = LoadFontSheet(stream);
+					ApplyTransparency(sheet);
+					BuildGlyphSprites(sheet);
+					return true;
+					}
+					catch
+					{
+						failed = true;
+						return false;
+					}
+				}
+			}
+
+			static Sheet LoadFontSheet(Stream stream)
+			{
+				var png = new Png(stream);
+				var paddedWidth = NextPowerOfTwo(png.Width);
+				var paddedHeight = NextPowerOfTwo(png.Height);
+				var sheet = new Sheet(SheetType.BGRA, new Size(paddedWidth, paddedHeight));
+				var destBytes = sheet.GetData();
+				var destPixels = MemoryMarshal.Cast<byte, uint>(destBytes.AsSpan());
+				var sentinel = Color.FromArgb(0, 0, 255).ToArgb();
+				for (var i = 0; i < destPixels.Length; i++)
+					destPixels[i] = sentinel;
+
+				var sprite = new Sprite(sheet, new Rectangle(0, 0, png.Width, png.Height), TextureChannel.Red);
+				OpenRA.Graphics.Util.FastCopyIntoSprite(sprite, png);
+
+				sheet.CommitBufferedData();
+				return sheet;
+			}
+
+			static int NextPowerOfTwo(int value)
+			{
+				var result = 1;
+				while (result < value)
+					result <<= 1;
+				return result;
+			}
+
+			static void ApplyTransparency(Sheet sheet)
+			{
+				var colors = MemoryMarshal.Cast<byte, uint>(sheet.GetData().AsSpan());
+				for (var i = 0; i < colors.Length; i++)
+				{
+				var value = colors[i];
+				if ((value & 0x00FFFFFF) == 0x0000FF)
+					colors[i] = 0;
+				}
+
+				sheet.CommitBufferedData();
+			}
+
+			static void BuildGlyphSprites(Sheet sheet)
+			{
+				glyphSheet = sheet;
+				var columns = sheet.Size.Width / TileWidth;
+				var rows = sheet.Size.Height / TileHeight;
+				var total = columns * rows;
+				glyphs = new Sprite[total];
+				advances = new int[total];
+
+				var pixels = MemoryMarshal.Cast<byte, uint>(sheet.GetData().AsSpan());
+				var stride = sheet.Size.Width;
+				for (var row = 0; row < rows; row++)
+				{
+					for (var col = 0; col < columns; col++)
+					{
+						var index = row * columns + col;
+						var tileX = col * TileWidth;
+						var tileY = row * TileHeight;
+						var width = MeasureGlyphWidth(pixels, stride, tileX, tileY);
+						if (width <= 0)
+							continue;
+
+						width = Math.Max(2, Math.Min(width, TileWidth));
+						var bounds = new Rectangle(tileX, tileY, width, VisibleHeight);
+						glyphs[index] = new Sprite(sheet, bounds, TextureChannel.RGBA);
+						advances[index] = width;
+					}
+				}
+			}
+
+			static int MeasureGlyphWidth(Span<uint> pixels, int stride, int tileX, int tileY)
+			{
+				var width = 0;
+				for (var x = 0; x < TileWidth; x++)
+				{
+					var hasPixel = false;
+					for (var y = 0; y < VisibleHeight; y++)
+					{
+						var idx = (tileY + y) * stride + tileX + x;
+						if ((pixels[idx] & 0xFF000000) != 0)
+						{
+							hasPixel = true;
+							break;
+						}
+					}
+
+					if (hasPixel)
+						width = x + 1;
+				}
+
+				return width;
+			}
+
+			readonly struct GlyphRun
+			{
+				public readonly Sprite Sprite;
+				public readonly int Advance;
+
+				public GlyphRun(Sprite sprite, int advance)
+				{
+					Sprite = sprite;
+					Advance = advance;
+				}
+
+				public static GlyphRun Space => new(null, SpaceAdvance);
+			}
 		}
 
 		readonly struct ButtonVisualStyle
@@ -199,4 +538,3 @@ namespace OpenRA.Mods.Common.Widgets
 		}
 	}
 }
-
