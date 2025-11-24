@@ -180,6 +180,7 @@ namespace OpenRA.Mods.Common.Widgets
 			const int SpaceAdvance = 3;
 			const int MaxCharsPerLine = 14;
 			const int MaxLines = 2;
+			const int VerticalOffset = 1;
 			static readonly object Sync = new();
 			static Sprite[] glyphs;
 			static int[] advances;
@@ -207,7 +208,9 @@ namespace OpenRA.Mods.Common.Widgets
 				var padding = lines.Count == 1 ? 1 : 4;
 				var textHeight = lines.Count * VisibleHeight;
 				var barHeight = Math.Min(rect.Height, textHeight + padding);
-				var bar = new Rectangle(rect.Left, rect.Bottom - barHeight, rect.Width, barHeight);
+				if (lines.Count > 1)
+					barHeight = Math.Max(4, barHeight - 2);
+				var bar = new Rectangle(rect.Left, rect.Bottom - barHeight + VerticalOffset, rect.Width, barHeight);
 				WidgetUtils.FillRectWithColor(bar, style.BarTopColor, style.BarTopColor, style.BarBottomColor, style.BarBottomColor);
 
 				var firstLineTop = bar.Bottom - textHeight;
