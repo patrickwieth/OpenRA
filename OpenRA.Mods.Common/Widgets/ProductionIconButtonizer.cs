@@ -15,6 +15,7 @@ namespace OpenRA.Mods.Common.Widgets
 	{
 		public const int BarHeight = 8;
 		const int TextPadding = 2;
+		const int VerticalOffset = 1;
 
 		static readonly Color DefaultBarTopColor = Color.FromArgb(150, 70, 70, 70);
 		static readonly Color DefaultBarBottomColor = Color.FromArgb(180, 40, 40, 40);
@@ -153,7 +154,7 @@ namespace OpenRA.Mods.Common.Widgets
 				font = Game.Renderer.Fonts[fallbackFont];
 
 			var barHeight = Math.Max(4, Math.Min(BarHeight, rect.Height / 3));
-			var bar = new Rectangle(rect.Left, rect.Bottom - barHeight, rect.Width, barHeight);
+			var bar = new Rectangle(rect.Left, rect.Bottom - barHeight + VerticalOffset, rect.Width + VerticalOffset, barHeight);
 			WidgetUtils.FillRectWithColor(bar, style.BarTopColor, style.BarTopColor, style.BarBottomColor, style.BarBottomColor);
 
 			var maxWidth = Math.Max(0, bar.Width - TextPadding * 2);
@@ -180,7 +181,6 @@ namespace OpenRA.Mods.Common.Widgets
 			const int SpaceAdvance = 3;
 			const int MaxCharsPerLine = 14;
 			const int MaxLines = 2;
-			const int VerticalOffset = 1;
 			static readonly object Sync = new();
 			static Sprite[] glyphs;
 			static int[] advances;
@@ -210,7 +210,7 @@ namespace OpenRA.Mods.Common.Widgets
 				var barHeight = Math.Min(rect.Height, textHeight + padding);
 				if (lines.Count > 1)
 					barHeight = Math.Max(4, barHeight - 2);
-				var bar = new Rectangle(rect.Left, rect.Bottom - barHeight + VerticalOffset, rect.Width, barHeight);
+				var bar = new Rectangle(rect.Left, rect.Bottom - barHeight + VerticalOffset, rect.Width + VerticalOffset, barHeight);
 				WidgetUtils.FillRectWithColor(bar, style.BarTopColor, style.BarTopColor, style.BarBottomColor, style.BarBottomColor);
 
 				var firstLineTop = bar.Bottom - textHeight;

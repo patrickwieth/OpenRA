@@ -10,6 +10,7 @@
 #endregion
 
 using System;
+using OpenRA;
 using OpenRA.GameRules;
 using OpenRA.Mods.Common.Traits;
 using OpenRA.Widgets;
@@ -29,6 +30,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 		readonly MusicPlaylist musicPlaylist;
 		MusicInfo currentSong = null;
+		bool noSongsForMode;
 
 		[ObjectCreator.UseCtor]
 		public MusicPlayerLogic(Widget widget, World world, ModData modData, Action onExit)
@@ -38,6 +40,14 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			musicList = panel.Get<ScrollPanelWidget>("MUSIC_LIST");
 			itemTemplate = musicList.Get<ScrollItemWidget>("MUSIC_TEMPLATE");
 			musicPlaylist = world.WorldActor.Trait<MusicPlaylist>();
+
+			var noSongsLabel = panel.GetOrNull<LabelWidget>("NO_MATCHING_SONGS");
+			if (noSongsLabel != null)
+				noSongsLabel.IsVisible = () => noSongsForMode;
+
+			ConfigureModeButton(panel, "MUSIC_MODE_MIX", MusicPlaybackMode.MixAll);
+			ConfigureModeButton(panel, "MUSIC_MODE_OLD", MusicPlaybackMode.OnlyOldschool);
+			ConfigureModeButton(panel, "MUSIC_MODE_FACTION", MusicPlaybackMode.FactionSpecific);
 
 			BuildMusicTable();
 
@@ -136,6 +146,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				return;
 
 			var music = musicPlaylist.AvailablePlaylist();
+			noSongsForMode = musicPlaylist.IsMusicAvailable && music.Length == 0;
 			currentSong = musicPlaylist.CurrentSong();
 
 			musicList.RemoveChildren();
@@ -151,6 +162,27 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 			if (currentSong != null && !musicPlaylist.CurrentSongIsBackground)
 				musicList.ScrollToItem(currentSong.Filename);
+		}
+
+		void ConfigureModeButton(Widget panel, string id, MusicPlaybackMode mode)
+		{
+			var button = panel.GetOrNull<ButtonWidget>(id);
+			if (button == null)
+				return;
+
+			button.IsHighlighted = () => Game.Settings.Sound.MusicMode == mode;
+			button.OnClick = () =>
+			{
+				if (Game.Settings.Sound.MusicMode == mode)
+					return;
+
+				var resume = Game.Sound.MusicPlaying && !musicPlaylist.CurrentSongIsBackground;
+				Game.Settings.Sound.MusicMode = mode;
+				musicPlaylist.RefreshForPlaybackModeChange(resume);
+				BuildMusicTable();
+				if (resume)
+					Play();
+			};
 		}
 
 		void Play()

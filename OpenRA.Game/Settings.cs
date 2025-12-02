@@ -42,6 +42,13 @@ namespace OpenRA
 
 	public enum WorldViewport { Native, Close, Medium, Far }
 
+	public enum MusicPlaybackMode
+	{
+		MixAll,
+		OnlyOldschool,
+		FactionSpecific
+	}
+
 	public class ServerSettings
 	{
 		[Desc("Sets the server name.")]
@@ -234,6 +241,7 @@ namespace OpenRA
 
 		public bool Shuffle = false;
 		public bool Repeat = false;
+		public MusicPlaybackMode MusicMode = MusicPlaybackMode.FactionSpecific;
 
 		public string Device = null;
 

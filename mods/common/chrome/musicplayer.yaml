@@ -6,11 +6,40 @@ Background@MUSIC_PANEL:
 	Height: 500
 	Children:
 		LogicTicker@SONG_WATCHER:
-		ScrollPanel@MUSIC_LIST:
+		Container@MODE_PANEL:
 			X: 20
 			Y: 45
 			Width: PARENT_WIDTH - 40
-			Height: PARENT_HEIGHT - 175
+			Height: 40
+			Children:
+				Label@MODE_LABEL:
+					Width: PARENT_WIDTH
+					Height: 16
+					Text: label-music-mode-title
+					Font: Bold
+				Button@MUSIC_MODE_MIX:
+					Y: 18
+					Width: 120
+					Height: 20
+					Text: button-music-mode-mix
+				Button@MUSIC_MODE_OLD:
+					X: 125
+					Y: 18
+					Width: 120
+					Height: 20
+					Text: button-music-mode-oldschool
+				Button@MUSIC_MODE_FACTION:
+					X: 250
+					Y: 18
+					Width: 120
+					Height: 20
+					Text: button-music-mode-faction
+
+		ScrollPanel@MUSIC_LIST:
+			X: 20
+			Y: 95
+			Width: PARENT_WIDTH - 40
+			Height: PARENT_HEIGHT - 215
 			Children:
 				ScrollItem@MUSIC_TEMPLATE:
 					Width: PARENT_WIDTH - 27
@@ -31,6 +60,16 @@ Background@MUSIC_PANEL:
 							X: PARENT_WIDTH - 60
 							Align: Right
 							Height: 25
+		Label@NO_MATCHING_SONGS:
+			X: 20
+			Y: 220
+			Width: PARENT_WIDTH - 40
+			Height: 40
+			Align: Center
+			Font: Bold
+			Text: label-music-filter-empty
+			Visible: false
+
 		Container@LABEL_CONTAINER:
 			X: 20
 			Y: 16

@@ -49,6 +49,35 @@ Container@LOBBY_MUSIC_BIN:
 					Width: PARENT_WIDTH
 					Height: 25
 					Align: Center
+				Container@MODE_PANEL:
+					X: 15
+					Y: 130
+					Width: PARENT_WIDTH - 30
+					Height: 40
+					Children:
+						Label@MODE_LABEL:
+							Width: PARENT_WIDTH
+							Height: 16
+							Text: label-music-mode-title
+							Font: Bold
+						Button@MUSIC_MODE_MIX:
+							Y: 18
+							Width: 80
+							Height: 20
+							Text: button-music-mode-mix
+						Button@MUSIC_MODE_OLD:
+							X: 90
+							Y: 18
+							Width: 80
+							Height: 20
+							Text: button-music-mode-oldschool
+						Button@MUSIC_MODE_FACTION:
+							X: 180
+							Y: 18
+							Width: 80
+							Height: 20
+							Text: button-music-mode-faction
+
 				Container@BUTTONS:
 					X: (PARENT_WIDTH - WIDTH) / 2
 					Y: 100
@@ -111,27 +140,27 @@ Container@LOBBY_MUSIC_BIN:
 									ImageName: next
 				Checkbox@SHUFFLE:
 					X: 25
-					Y: 150
+					Y: 190
 					Width: 85
 					Height: 20
 					Font: Regular
 					Text: checkbox-music-controls-shuffle
 				Checkbox@REPEAT:
 					X: PARENT_WIDTH - 15 - WIDTH
-					Y: 150
+					Y: 190
 					Width: 70
 					Height: 20
 					Font: Regular
 					Text: checkbox-music-controls-loop
 				Label@VOLUME_LABEL:
-					Y: 181
+					Y: 221
 					Width: 65
 					Height: 25
 					Align: Right
 					Text: label-music-controls-volume
 				ExponentialSlider@MUSIC_SLIDER:
 					X: 70
-					Y: 186
+					Y: 226
 					Width: PARENT_WIDTH - 80
 					Height: 20
 					Ticks: 7
@@ -158,6 +187,16 @@ Container@LOBBY_MUSIC_BIN:
 							Width: 50
 							Height: 25
 							Align: Right
+		Label@NO_MATCHING_SONGS:
+			X: 268
+			Y: 200
+			Width: PARENT_WIDTH - 268
+			Height: 40
+			Align: Center
+			Font: Bold
+			Text: label-music-filter-empty
+			Visible: false
+
 		Container@NO_MUSIC_LABEL:
 			X: 268
 			Width: PARENT_WIDTH - 268
@@ -182,3 +221,7 @@ Container@LOBBY_MUSIC_BIN:
 					Height: 25
 					Align: Center
 					Text: label-no-music-desc-b
+
+
+
+
