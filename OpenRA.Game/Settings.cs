@@ -14,6 +14,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using OpenRA.Primitives;
+using OpenRA.GameRules;
 
 namespace OpenRA
 {
@@ -46,7 +47,8 @@ namespace OpenRA
 	{
 		MixAll,
 		OnlyOldschool,
-		FactionSpecific
+		FactionSpecific,
+		Custom
 	}
 
 	public class ServerSettings
@@ -242,6 +244,7 @@ namespace OpenRA
 		public bool Shuffle = false;
 		public bool Repeat = false;
 		public MusicPlaybackMode MusicMode = MusicPlaybackMode.FactionSpecific;
+		public string[] CustomMusicCategories = new[] { MusicCategories.Generic, MusicCategories.Oldschool };
 
 		public string Device = null;
 

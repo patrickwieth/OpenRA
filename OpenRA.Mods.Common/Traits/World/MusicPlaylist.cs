@@ -223,8 +223,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (!IsMusicAvailable)
 				return null;
 
-			var ordered = Game.Settings.Sound.Shuffle ? random : playlist;
-			var songs = FilterSongs(ordered);
+			var songs = FilterSongsForPlaybackOrder();
 			if (songs.Length == 0)
 				return null;
 
@@ -245,17 +244,17 @@ namespace OpenRA.Mods.Common.Traits
 			if (!IsMusicAvailable || CurrentSongIsBackground)
 				return;
 
-			var available = FilterSongs(playlist);
-			if (available.Length == 0)
+			var ordered = FilterSongsForPlaybackOrder();
+			if (ordered.Length == 0)
 			{
 				currentSong = null;
 				Game.Sound.StopMusic();
 				return;
 			}
 
-			if (currentSong == null || !available.Contains(currentSong))
+			if (currentSong == null || !ordered.Contains(currentSong))
 			{
-				currentSong = available.First();
+				currentSong = ordered.First();
 				CurrentSongIsBackground = false;
 			}
 
@@ -268,18 +267,23 @@ namespace OpenRA.Mods.Common.Traits
 			if (!IsMusicAvailable || CurrentSongIsBackground)
 				return;
 
-			var available = FilterSongs(playlist);
-			if (available.Length == 0)
+			var ordered = FilterSongsForPlaybackOrder();
+			if (ordered.Length == 0)
 			{
 				currentSong = null;
 				return;
 			}
 
-			if (currentSong == null || !available.Contains(currentSong))
+			if (currentSong == null || !ordered.Contains(currentSong))
 			{
-				currentSong = available.First();
+				currentSong = ordered.First();
 				CurrentSongIsBackground = false;
 			}
+		}
+
+		MusicInfo[] FilterSongsForPlaybackOrder()
+		{
+			return FilterSongs(Game.Settings.Sound.Shuffle ? random : playlist);
 		}
 
 		MusicInfo[] FilterSongs(IEnumerable<MusicInfo> songs)
@@ -296,9 +300,50 @@ namespace OpenRA.Mods.Common.Traits
 					return list.Where(s => s.IsOldschool).ToArray();
 				case MusicPlaybackMode.FactionSpecific:
 					return FilterFactionSongs(list, DetermineFactionCategory());
+				case MusicPlaybackMode.Custom:
+					return FilterCustomSongs(list);
 				default:
 					return list.ToArray();
 			}
+		}
+
+		MusicInfo[] FilterCustomSongs(IList<MusicInfo> songs)
+		{
+			var filters = Game.Settings.Sound.CustomMusicCategories ?? Array.Empty<string>();
+			var normalized = filters
+				.Select(f => MusicCategories.Normalize(f, null))
+				.Where(f => !string.IsNullOrEmpty(f))
+				.Distinct(StringComparer.OrdinalIgnoreCase)
+				.ToArray();
+
+			if (normalized.Length == 0)
+				return Array.Empty<MusicInfo>();
+
+			return songs.Where(s => MatchesCustomCategory(s, normalized)).ToArray();
+		}
+
+		bool MatchesCustomCategory(MusicInfo song, IReadOnlyCollection<string> normalizedCategories)
+		{
+			foreach (var category in normalizedCategories)
+			{
+				switch (category)
+				{
+					case MusicCategories.Generic:
+						if (song.IsGeneric)
+							return true;
+						break;
+					case MusicCategories.Oldschool:
+						if (song.IsOldschool)
+							return true;
+						break;
+					default:
+						if (song.MatchesCategory(category))
+							return true;
+						break;
+				}
+			}
+
+			return false;
 		}
 
 		MusicInfo[] FilterFactionSongs(IList<MusicInfo> songs, string category)

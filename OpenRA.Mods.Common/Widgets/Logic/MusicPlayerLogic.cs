@@ -10,6 +10,7 @@
 #endregion
 
 using System;
+using System.Collections.Generic;
 using OpenRA;
 using OpenRA.GameRules;
 using OpenRA.Mods.Common.Traits;
@@ -32,18 +33,89 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		MusicInfo currentSong = null;
 		bool noSongsForMode;
 
+		readonly Widget panel;
+		readonly Widget customFilterPanel;
+		readonly Widget labelContainer;
+		readonly Widget buttonsPanel;
+		readonly LabelWidget timeLabelWidget;
+		readonly LabelWidget titleLabelWidget;
+		readonly CheckboxWidget shuffleWidget;
+		readonly CheckboxWidget repeatWidget;
+		readonly LabelWidget volumeLabelWidget;
+		readonly SliderWidget musicSliderWidget;
+		readonly Widget noMusicContainer;
+		readonly LabelWidget muteLabelWidget;
+		readonly Widget modePanel;
+		readonly ButtonWidget backButtonWidget;
+		readonly LabelWidget noSongsLabelWidget;
+
+		readonly List<(Widget Widget, int BaseY)> customDownTargets = new();
+		readonly List<(Widget Widget, int BaseY)> customRaiseTargets = new();
+		readonly List<(Widget Widget, int BaseY)> customLowerTargets = new();
+
+		const int CustomDownOffset = 200;
+		const int CustomUpOffset = 150;
+		const int CustomLowerOffset = 50;
+
+		readonly int basePanelHeight;
+		readonly int expandedPanelHeight;
+		readonly int collapsedPanelHeight;
+		readonly int panelCenterY;
+		readonly bool allowPanelResize;
+		readonly int customLayoutOffset;
+
+		bool showCustomFilters;
+
 		[ObjectCreator.UseCtor]
 		public MusicPlayerLogic(Widget widget, World world, ModData modData, Action onExit)
 		{
-			var panel = widget;
+			panel = widget;
 
 			musicList = panel.Get<ScrollPanelWidget>("MUSIC_LIST");
 			itemTemplate = musicList.Get<ScrollItemWidget>("MUSIC_TEMPLATE");
 			musicPlaylist = world.WorldActor.Trait<MusicPlaylist>();
 
-			var noSongsLabel = panel.GetOrNull<LabelWidget>("NO_MATCHING_SONGS");
-			if (noSongsLabel != null)
-				noSongsLabel.IsVisible = () => noSongsForMode;
+			customFilterPanel = panel.GetOrNull<Widget>("CUSTOM_FILTER_PANEL");
+			labelContainer = panel.GetOrNull<Widget>("LABEL_CONTAINER");
+			buttonsPanel = panel.GetOrNull<Widget>("BUTTONS");
+			timeLabelWidget = panel.GetOrNull<LabelWidget>("TIME_LABEL");
+			titleLabelWidget = panel.GetOrNull<LabelWidget>("TITLE_LABEL");
+			shuffleWidget = panel.GetOrNull<CheckboxWidget>("SHUFFLE");
+			repeatWidget = panel.GetOrNull<CheckboxWidget>("REPEAT");
+			volumeLabelWidget = panel.GetOrNull<LabelWidget>("VOLUME_LABEL");
+			musicSliderWidget = panel.GetOrNull<SliderWidget>("MUSIC_SLIDER");
+			noMusicContainer = panel.GetOrNull<Widget>("NO_MUSIC_LABEL");
+			muteLabelWidget = panel.GetOrNull<LabelWidget>("MUTE_LABEL");
+			modePanel = panel.GetOrNull<Widget>("MODE_PANEL");
+			backButtonWidget = panel.GetOrNull<ButtonWidget>("BACK_BUTTON");
+			noSongsLabelWidget = panel.GetOrNull<LabelWidget>("NO_MATCHING_SONGS");
+
+			basePanelHeight = panel.Bounds.Height;
+			panelCenterY = panel.Bounds.Y + basePanelHeight / 2;
+			allowPanelResize = panel.Id == "MUSIC_PANEL";
+			customLayoutOffset = (customFilterPanel?.Bounds.Height ?? 0) + CustomDownOffset + CustomLowerOffset;
+			expandedPanelHeight = allowPanelResize ? basePanelHeight + customLayoutOffset : basePanelHeight;
+			collapsedPanelHeight = basePanelHeight;
+
+			if (customFilterPanel != null)
+				customFilterPanel.IsVisible = () => allowPanelResize && showCustomFilters;
+
+			RegisterCustomDownTarget(labelContainer);
+			RegisterCustomDownTarget(musicList);
+			RegisterCustomDownTarget(noSongsLabelWidget);
+			RegisterCustomDownTarget(titleLabelWidget);
+
+			RegisterCustomLowerTarget(buttonsPanel);
+			RegisterCustomLowerTarget(timeLabelWidget);
+			RegisterCustomLowerTarget(shuffleWidget);
+			RegisterCustomLowerTarget(repeatWidget);
+			RegisterCustomLowerTarget(volumeLabelWidget);
+			RegisterCustomLowerTarget(musicSliderWidget);
+			RegisterCustomLowerTarget(noMusicContainer);
+			RegisterCustomLowerTarget(muteLabelWidget);
+			RegisterCustomLowerTarget(backButtonWidget);
+
+			RegisterCustomRaiseTarget(modePanel);
 
 			ConfigureModeButton(panel, "MUSIC_MODE_MIX", MusicPlaybackMode.MixAll);
 			ConfigureModeButton(panel, "MUSIC_MODE_OLD", MusicPlaybackMode.OnlyOldschool);
@@ -87,17 +159,22 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			prevButton.OnClick = () => { currentSong = musicPlaylist.GetPrevSong(); Play(); };
 			prevButton.IsDisabled = NoMusic;
 
-			var shuffleCheckbox = panel.Get<CheckboxWidget>("SHUFFLE");
-			shuffleCheckbox.IsChecked = () => Game.Settings.Sound.Shuffle;
-			shuffleCheckbox.OnClick = () => Game.Settings.Sound.Shuffle ^= true;
-			shuffleCheckbox.IsDisabled = () => musicPlaylist.CurrentSongIsBackground;
+			if (shuffleWidget != null)
+			{
+				shuffleWidget.IsChecked = () => Game.Settings.Sound.Shuffle;
+				shuffleWidget.OnClick = () => Game.Settings.Sound.Shuffle ^= true;
+				shuffleWidget.IsDisabled = () => musicPlaylist.CurrentSongIsBackground;
+			}
 
-			var repeatCheckbox = panel.Get<CheckboxWidget>("REPEAT");
-			repeatCheckbox.IsChecked = () => Game.Settings.Sound.Repeat;
-			repeatCheckbox.OnClick = () => Game.Sound.SetMusicLooped(!Game.Settings.Sound.Repeat);
-			repeatCheckbox.IsDisabled = () => musicPlaylist.CurrentSongIsBackground;
+			if (repeatWidget != null)
+			{
+				repeatWidget.IsChecked = () => Game.Settings.Sound.Repeat;
+				repeatWidget.OnClick = () => Game.Sound.SetMusicLooped(!Game.Settings.Sound.Repeat);
+				repeatWidget.IsDisabled = () => musicPlaylist.CurrentSongIsBackground;
+			}
 
-			panel.Get<LabelWidget>("TIME_LABEL").GetText = () =>
+			if (timeLabelWidget != null)
+				timeLabelWidget.GetText = () =>
 			{
 				if (currentSong == null || musicPlaylist.CurrentSongIsBackground)
 					return "";
@@ -112,15 +189,16 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			};
 
 			var noSongPlaying = FluentProvider.GetMessage(NoSongPlaying);
-			var musicTitle = panel.GetOrNull<LabelWidget>("TITLE_LABEL");
-			if (musicTitle != null)
-				musicTitle.GetText = () => currentSong != null ? currentSong.Title : noSongPlaying;
+			if (titleLabelWidget != null)
+				titleLabelWidget.GetText = () => currentSong != null ? currentSong.Title : noSongPlaying;
 
-			var musicSlider = panel.Get<SliderWidget>("MUSIC_SLIDER");
-			musicSlider.OnChange += x => Game.Sound.MusicVolume = x;
-			musicSlider.Value = Game.Sound.MusicVolume;
+			if (musicSliderWidget != null)
+			{
+				musicSliderWidget.OnChange += x => Game.Sound.MusicVolume = x;
+				musicSliderWidget.Value = Game.Sound.MusicVolume;
+			}
 
-			var songWatcher = widget.GetOrNull<LogicTickerWidget>("SONG_WATCHER");
+			var songWatcher = panel.GetOrNull<LogicTickerWidget>("SONG_WATCHER");
 			if (songWatcher != null)
 			{
 				songWatcher.OnTick = () =>
@@ -135,9 +213,10 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				};
 			}
 
-			var backButton = panel.GetOrNull<ButtonWidget>("BACK_BUTTON");
-			if (backButton != null)
-				backButton.OnClick = () => { Game.Settings.Save(); Ui.CloseWindow(); onExit(); };
+			if (backButtonWidget != null)
+				backButtonWidget.OnClick = () => { Game.Settings.Save(); Ui.CloseWindow(); onExit(); };
+
+			UpdateCustomLayout(forceRefresh: true);
 		}
 
 		public void BuildMusicTable()
