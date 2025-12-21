@@ -361,6 +361,9 @@ namespace OpenRA.Mods.Common.Traits
 
 			var activePriorities = activeTargetPriorities.ToList();
 			if (activePriorities.Count == 0)
+
+\t\t\tif (self.Owner == null)
+\t\t\t\treturn Target.Invalid;
 				return chosenTarget;
 
 			var targetsInRange = self.World.FindActorsInCircle(self.CenterPosition, scanRange)
@@ -387,6 +390,8 @@ namespace OpenRA.Mods.Common.Traits
 					// Check whether we can auto-target this actor
 					targetTypes = target.Actor.GetEnabledTargetTypes();
 
+\t\t\t\tif (target.Actor.Owner == null)
+\t\t\t\t\tcontinue;
 					if (PreventsAutoTarget(self, target.Actor) || !target.Actor.CanBeViewedByPlayer(self.Owner))
 						continue;
 
@@ -475,3 +480,6 @@ namespace OpenRA.Mods.Common.Traits
 			: base(info, value) { }
 	}
 }
+
+
+
