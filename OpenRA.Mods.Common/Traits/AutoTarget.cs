@@ -360,11 +360,8 @@ namespace OpenRA.Mods.Common.Traits
 			var chosenTargetRange = 0;
 
 			var activePriorities = activeTargetPriorities.ToList();
-			if (activePriorities.Count == 0)
-
-\t\t\tif (self.Owner == null)
-\t\t\t\treturn Target.Invalid;
-				return chosenTarget;
+			if (activePriorities.Count == 0 || self.Owner == null)
+				return Target.Invalid;
 
 			var targetsInRange = self.World.FindActorsInCircle(self.CenterPosition, scanRange)
 				.Select(Target.FromActor);
@@ -389,9 +386,8 @@ namespace OpenRA.Mods.Common.Traits
 
 					// Check whether we can auto-target this actor
 					targetTypes = target.Actor.GetEnabledTargetTypes();
-
-\t\t\t\tif (target.Actor.Owner == null)
-\t\t\t\t\tcontinue;
+					if (target.Actor.Owner == null)
+						continue;
 					if (PreventsAutoTarget(self, target.Actor) || !target.Actor.CanBeViewedByPlayer(self.Owner))
 						continue;
 
