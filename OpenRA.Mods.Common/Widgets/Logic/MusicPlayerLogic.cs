@@ -561,7 +561,9 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 				var bounds = widget.Bounds;
 
-				var y = showCustomFilters ? baseY + CustomControlDownOffset : baseY;
+				var shouldShiftControls = showCustomFilters && allowPanelResize;
+
+				var y = shouldShiftControls ? baseY + CustomControlDownOffset : baseY;
 
 				widget.Bounds = new WidgetBounds(bounds.X, y, bounds.Width, bounds.Height);
 			}
