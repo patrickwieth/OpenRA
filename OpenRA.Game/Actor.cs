@@ -502,6 +502,9 @@ namespace OpenRA
 			if (player == null)
 				return false;
 
+			if (defaultVisibility == null)
+				return false;
+
 			// PERF: Avoid LINQ.
 			foreach (var visibilityModifier in visibilityModifiers)
 				if (!visibilityModifier.IsVisible(this, player))
