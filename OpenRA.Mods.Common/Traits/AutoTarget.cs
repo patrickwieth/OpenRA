@@ -230,6 +230,9 @@ namespace OpenRA.Mods.Common.Traits
 				return;
 
 			var attacker = e.Attacker;
+			if (attacker == null)
+				return;
+
 			if (attacker.Disposed)
 				return;
 
