@@ -241,6 +241,10 @@ namespace OpenRA.Mods.Common.Traits
 				if (oat.TryGetAutoTargetOverride(self, out _))
 					return;
 
+			var owner = self.Owner;
+			if (owner == null)
+				return;
+
 			if (!attacker.IsInWorld)
 			{
 				// If the aggressor is in a transport, then attack the transport instead
@@ -250,7 +254,7 @@ namespace OpenRA.Mods.Common.Traits
 			}
 
 			// Don't fire at an invisible enemy when we can't move to reveal it
-			if (!AllowMove && !attacker.CanBeViewedByPlayer(self.Owner))
+			if (!AllowMove && !attacker.CanBeViewedByPlayer(owner))
 				return;
 
 			// Not a lot we can do about things we can't hurt... although maybe we should automatically run away?
