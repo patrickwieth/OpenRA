@@ -68,7 +68,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (!allowSpawn)
 				return;
 
-			if (!self.IsInWorld || self.Disposed)
+			if (self.Disposed)
 				return;
 
 			allowSpawn = Info.AllowRespawn;
