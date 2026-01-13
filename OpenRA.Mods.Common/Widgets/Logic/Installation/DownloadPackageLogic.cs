@@ -211,7 +211,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 									Log.Write("install", "Downloaded SHA1: " + archiveSHA1);
 									Log.Write("install", "Expected SHA1: " + download.SHA1);
 
-									archiveValid = archiveSHA1 == download.SHA1;
+									archiveValid = string.Equals(archiveSHA1, download.SHA1, StringComparison.OrdinalIgnoreCase);
 								}
 							}
 							catch (Exception e)
