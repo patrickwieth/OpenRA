@@ -12,6 +12,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
@@ -241,21 +242,44 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 								{
 									foreach (var kv in download.Extract)
 									{
-										if (!package.Contains(kv.Value))
+										var sourcePath = kv.Value.Replace('\\', '/');
+										var targetRoot = Platform.ResolvePath(kv.Key);
+
+										if (package.Contains(sourcePath))
 										{
-											Log.Write("install", $"Downloaded package does not contain {kv.Value} - skipping.");
+											OnExtractProgress(FluentProvider.GetMessage(ExtractingEntry, "entry", kv.Value));
+											Log.Write("install", "Extracting " + kv.Value);
+											Directory.CreateDirectory(Path.GetDirectoryName(targetRoot));
+											extracted.Add(targetRoot);
+
+											using (var zz = package.GetStream(sourcePath))
+											using (var f = File.Create(targetRoot))
+												await zz.CopyToAsync(f);
 											continue;
 										}
 
-										OnExtractProgress(FluentProvider.GetMessage(ExtractingEntry, "entry", kv.Value));
-										Log.Write("install", "Extracting " + kv.Value);
-										var targetPath = Platform.ResolvePath(kv.Key);
-										Directory.CreateDirectory(Path.GetDirectoryName(targetPath));
-										extracted.Add(targetPath);
+										var folderPrefix = sourcePath.TrimEnd('/') + "/";
+										var folderEntries = package.Contents.Where(entry => entry.StartsWith(folderPrefix, StringComparison.Ordinal));
+										var extractedAny = false;
 
-										using (var zz = package.GetStream(kv.Value))
-										using (var f = File.Create(targetPath))
-											await zz.CopyToAsync(f);
+										foreach (var entry in folderEntries)
+										{
+											extractedAny = true;
+											var relativePath = entry[folderPrefix.Length..];
+											var targetPath = Path.Combine(targetRoot, relativePath.Replace('/', Path.DirectorySeparatorChar));
+
+											OnExtractProgress(FluentProvider.GetMessage(ExtractingEntry, "entry", entry));
+											Log.Write("install", "Extracting " + entry);
+											Directory.CreateDirectory(Path.GetDirectoryName(targetPath));
+											extracted.Add(targetPath);
+
+											using (var zz = package.GetStream(entry))
+											using (var f = File.Create(targetPath))
+												await zz.CopyToAsync(f);
+										}
+
+										if (!extractedAny)
+											Log.Write("install", $"Downloaded package does not contain {kv.Value} - skipping.");
 									}
 
 									package.Dispose();
