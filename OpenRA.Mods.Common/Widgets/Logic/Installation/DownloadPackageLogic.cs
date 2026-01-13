@@ -240,6 +240,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 								if (packageLoader.TryParsePackage(stream, file, modData.ModFiles, out var package))
 								{
+									var contents = package.Contents.ToArray();
 									foreach (var kv in download.Extract)
 									{
 										var sourcePath = kv.Value.Replace('\\', '/');
@@ -259,7 +260,58 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 										}
 
 										var folderPrefix = sourcePath.TrimEnd('/') + "/";
-										var folderEntries = package.Contents.Where(entry => entry.StartsWith(folderPrefix, StringComparison.Ordinal));
+										var folderEntries = contents.Where(entry => entry.StartsWith(folderPrefix, StringComparison.Ordinal)).ToArray();
+
+										if (folderEntries.Length == 0)
+										{
+											string archiveRoot = null;
+											foreach (var entry in contents)
+											{
+												var separatorIndex = entry.IndexOf('/');
+												if (separatorIndex <= 0)
+												{
+													archiveRoot = null;
+													break;
+												}
+
+												var entryRoot = entry[..separatorIndex];
+												if (archiveRoot == null)
+													archiveRoot = entryRoot;
+												else if (!string.Equals(archiveRoot, entryRoot, StringComparison.Ordinal))
+												{
+													archiveRoot = null;
+													break;
+												}
+											}
+
+											if (!string.IsNullOrEmpty(archiveRoot))
+											{
+												var nestedPrefix = $"{archiveRoot}/{folderPrefix}";
+												var nestedEntries = contents.Where(entry => entry.StartsWith(nestedPrefix, StringComparison.Ordinal)).ToArray();
+												if (nestedEntries.Length > 0)
+												{
+													folderPrefix = nestedPrefix;
+													folderEntries = nestedEntries;
+												}
+												else if (string.IsNullOrEmpty(Path.GetExtension(sourcePath)))
+												{
+													var rootPrefix = archiveRoot + "/";
+													var rootEntries = contents.Where(entry => entry.StartsWith(rootPrefix, StringComparison.Ordinal)).ToArray();
+													if (rootEntries.Length > 0)
+													{
+														folderPrefix = rootPrefix;
+														folderEntries = rootEntries;
+													}
+												}
+											}
+
+											if (folderEntries.Length == 0 && string.IsNullOrEmpty(Path.GetExtension(sourcePath)) && contents.Length > 0)
+											{
+												folderPrefix = "";
+												folderEntries = contents;
+											}
+										}
+
 										var extractedAny = false;
 
 										foreach (var entry in folderEntries)
