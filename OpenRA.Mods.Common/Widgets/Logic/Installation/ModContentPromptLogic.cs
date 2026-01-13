@@ -71,7 +71,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				Ui.CloseWindow();
 				continueLoading();
 			};
-			continueButton.HotKey = Hotkey.FromConfigString("escape");
+			continueButton.Key = modData.Hotkeys["escape"];
 			continueButton.GetText = () => continueMessage;
 
 			Game.RunAfterTick(Ui.ResetTooltips);
