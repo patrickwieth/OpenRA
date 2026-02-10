@@ -39,6 +39,7 @@ namespace OpenRA.Mods.Common.Widgets
 		public ProductionButtonStyle ButtonStyle;
 		public string ButtonLabel;
 		public string ButtonLabelFont;
+		public float2 ButtonLabelOffset;
 		public float2 Pos;
 		public List<ProductionItem> Queued;
 		public ProductionQueue ProductionQueue;
@@ -550,6 +551,7 @@ namespace OpenRA.Mods.Common.Widgets
 					pi.ButtonStyle = seq.ButtonStyle;
 					pi.ButtonLabel = seq.ButtonLabel;
 					pi.ButtonLabelFont = seq.ButtonLabelFont;
+					pi.ButtonLabelOffset = seq.ButtonLabelOffset;
 				}
 
 				if (!icons.ContainsKey(rect))
@@ -663,7 +665,6 @@ namespace OpenRA.Mods.Common.Widgets
 		}
 	}
 }
-
 
 
 
