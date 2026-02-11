@@ -13,8 +13,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using OpenRA.Primitives;
 using OpenRA.GameRules;
+using OpenRA.Primitives;
 
 namespace OpenRA
 {

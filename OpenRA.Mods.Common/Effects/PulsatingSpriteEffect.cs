@@ -48,14 +48,18 @@ namespace OpenRA.Mods.Common.Effects
 			int growTicks, int holdTicks, int shrinkTicks, bool loop,
 			bool visibleThroughFog = false, int delay = 0)
 			: this(() => pos, () => WAngle.Zero, world, image, sequence, palette,
-				startScale, peakScale, endScale, growTicks, holdTicks, shrinkTicks, loop, visibleThroughFog, delay) { }
+				startScale, peakScale, endScale, growTicks, holdTicks, shrinkTicks, loop, visibleThroughFog, delay)
+		{
+		}
 
 		public PulsatingSpriteEffect(Func<WPos> posFunc, World world, string image, string sequence, string palette,
 			float startScale, float peakScale, float endScale,
 			int growTicks, int holdTicks, int shrinkTicks, bool loop,
 			bool visibleThroughFog = false, int delay = 0)
 			: this(posFunc, () => WAngle.Zero, world, image, sequence, palette,
-				startScale, peakScale, endScale, growTicks, holdTicks, shrinkTicks, loop, visibleThroughFog, delay) { }
+				startScale, peakScale, endScale, growTicks, holdTicks, shrinkTicks, loop, visibleThroughFog, delay)
+		{
+		}
 
 		public PulsatingSpriteEffect(Func<WPos> posFunc, Func<WAngle> facingFunc, World world, string image, string sequence, string palette,
 			float startScale, float peakScale, float endScale,

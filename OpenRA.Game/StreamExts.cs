@@ -148,7 +148,7 @@ namespace OpenRA
 
 		public static string ReadASCII(this Stream s, int length)
 		{
-			Span<byte> buffer = length < 128 ? stackalloc byte[length] : new byte[length];
+			var buffer = length < 128 ? stackalloc byte[length] : new byte[length];
 			s.ReadBytes(buffer);
 			return Encoding.ASCII.GetString(buffer);
 		}
@@ -266,7 +266,7 @@ namespace OpenRA
 			if (length > maxLength)
 				throw new InvalidOperationException($"The length of the string ({length}) is longer than the maximum allowed ({maxLength}).");
 
-			Span<byte> buffer = length < 128 ? stackalloc byte[length] : new byte[length];
+			var buffer = length < 128 ? stackalloc byte[length] : new byte[length];
 			s.ReadBytes(buffer);
 			return encoding.GetString(buffer);
 		}

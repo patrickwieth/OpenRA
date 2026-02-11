@@ -664,4 +664,3 @@ namespace OpenRA.Traits
 		LongBitSet<PlayerBitMask> CrushableBy(Actor self, BitSet<CrushClass> crushClasses);
 	}
 }
-
