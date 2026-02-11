@@ -28,6 +28,7 @@ namespace OpenRA.Mods.Common.Widgets
 		readonly ITemplatedTerrainInfo terrainInfo;
 		readonly EditorViewportControllerWidget editorWidget;
 		readonly EditorActionManager editorActionManager;
+		readonly IAutoTile autoTile;
 
 		bool painting;
 
@@ -47,6 +48,7 @@ namespace OpenRA.Mods.Common.Widgets
 
 			editorActionManager = world.WorldActor.Trait<EditorActionManager>();
 			terrainRenderer = world.WorldActor.Trait<ITiledTerrainRenderer>();
+			autoTile = world.WorldActor.TraitOrDefault<IAutoTile>();
 
 			Template = id;
 			TerrainTemplate = terrainInfo.Templates.First(t => t.Value.Id == id).Value;
@@ -105,7 +107,10 @@ namespace OpenRA.Mods.Common.Widgets
 			if (isMoving && PlacementOverlapsSameTemplate(template, cell))
 				return;
 
-			editorActionManager.Add(new PaintTileEditorAction(Template, world.Map, cell));
+			if (autoTile != null && autoTile.IsAutoTileTemplate(Template) && autoTile.IsAutoTileBaseTemplate(Template))
+				editorActionManager.Add(new AutoTileEditorAction(Template, world.Map, cell, autoTile));
+			else
+				editorActionManager.Add(new PaintTileEditorAction(Template, world.Map, cell));
 		}
 
 		void FloodFillWithBrush(CPos cell)
@@ -120,7 +125,10 @@ namespace OpenRA.Mods.Common.Widgets
 			if (replace.Type == Template)
 				return;
 
-			editorActionManager.Add(new FloodFillEditorAction(Template, map, cell));
+			if (autoTile != null && autoTile.IsAutoTileTemplate(Template) && autoTile.IsAutoTileBaseTemplate(Template))
+				editorActionManager.Add(new AutoTileFloodFillEditorAction(Template, map, cell, autoTile));
+			else
+				editorActionManager.Add(new FloodFillEditorAction(Template, map, cell));
 		}
 
 		bool PlacementOverlapsSameTemplate(TerrainTemplateInfo template, CPos cell)
@@ -239,6 +247,358 @@ namespace OpenRA.Mods.Common.Widgets
 				mapTiles[undoTile.Cell] = undoTile.MapTile;
 				mapHeight[undoTile.Cell] = undoTile.Height;
 			}
+		}
+	}
+
+	sealed class AutoTileEditorAction : IEditorAction
+	{
+		[FluentReference("id")]
+		const string AddedTile = "notification-added-tile";
+
+		public string Text { get; }
+
+		readonly Map map;
+		readonly CPos cell;
+		readonly IAutoTile autoTile;
+		readonly ITemplatedTerrainInfo terrainInfo;
+		readonly TerrainTemplateInfo terrainTemplate;
+
+		readonly Queue<UndoTile> undoTiles = new();
+		readonly HashSet<CPos> undoCells = new();
+		readonly HashSet<CPos> autoTileCells = new();
+		static readonly CVec[] AutoTileNeighborOffsets =
+		{
+			new CVec(0, 0),
+			new CVec(0, -1),
+			new CVec(1, 0),
+			new CVec(0, 1),
+			new CVec(-1, 0),
+			new CVec(1, -1),
+			new CVec(1, 1),
+			new CVec(-1, 1),
+			new CVec(-1, -1),
+		};
+
+		public AutoTileEditorAction(ushort template, Map map, CPos cell, IAutoTile autoTile)
+		{
+			this.map = map;
+			this.cell = cell;
+			this.autoTile = autoTile;
+
+			terrainInfo = (ITemplatedTerrainInfo)map.Rules.TerrainInfo;
+			terrainTemplate = terrainInfo.Templates[template];
+			Text = FluentProvider.GetMessage(AddedTile, "id", terrainTemplate.Id);
+		}
+
+		public void Execute()
+		{
+			Do();
+		}
+
+		public void Do()
+		{
+			PaintTemplate(cell, terrainTemplate);
+			ApplyAutoTile();
+		}
+
+		public void Undo()
+		{
+			var mapTiles = map.Tiles;
+			var mapHeight = map.Height;
+
+			while (undoTiles.Count > 0)
+			{
+				var undoTile = undoTiles.Dequeue();
+
+				mapTiles[undoTile.Cell] = undoTile.MapTile;
+				mapHeight[undoTile.Cell] = undoTile.Height;
+			}
+		}
+
+		void PaintTemplate(CPos cellToPaint, TerrainTemplateInfo templateInfo)
+		{
+			var mapTiles = map.Tiles;
+			var mapHeight = map.Height;
+			var baseHeight = mapHeight.Contains(cellToPaint) ? mapHeight[cellToPaint] : (byte)0;
+
+			var i = 0;
+			for (var y = 0; y < templateInfo.Size.Y; y++)
+			{
+				for (var x = 0; x < templateInfo.Size.X; x++, i++)
+				{
+					if (templateInfo.Contains(i) && templateInfo[i] != null)
+					{
+						var index = templateInfo.PickAny ? (byte)Game.CosmeticRandom.Next(0, templateInfo.TilesCount) : (byte)i;
+						var c = cellToPaint + new CVec(x, y);
+						if (!mapTiles.Contains(c))
+							continue;
+
+						RememberUndo(c, mapTiles[c], mapHeight[c]);
+
+						mapTiles[c] = new TerrainTile(templateInfo.Id, index);
+						mapHeight[c] = (byte)(baseHeight + templateInfo[index].Height).Clamp(0, map.Grid.MaximumTerrainHeight);
+
+						AddAutoTileCells(c);
+					}
+				}
+			}
+		}
+
+		void ApplyAutoTile()
+		{
+			if (autoTile == null || autoTileCells.Count == 0)
+				return;
+
+			var mapTiles = map.Tiles;
+			var mapHeight = map.Height;
+
+			foreach (var c in autoTileCells)
+			{
+				if (!map.Contains(c))
+					continue;
+
+				var current = mapTiles[c];
+				if (!autoTile.IsAutoTileTemplate(current.Type))
+					continue;
+
+				var resolvedTemplateId = autoTile.ResolveTemplate(map, c);
+				if (resolvedTemplateId == current.Type)
+					continue;
+
+				var resolvedTemplate = terrainInfo.Templates[resolvedTemplateId];
+				if (resolvedTemplate.Size.X != 1 || resolvedTemplate.Size.Y != 1)
+					continue;
+
+				var index = resolvedTemplate.PickAny ? (byte)Game.CosmeticRandom.Next(0, resolvedTemplate.TilesCount) : (byte)0;
+				RememberUndo(c, current, mapHeight[c]);
+
+				mapTiles[c] = new TerrainTile(resolvedTemplateId, index);
+
+				var baseHeight = mapHeight.Contains(c) ? mapHeight[c] : (byte)0;
+				mapHeight[c] = (byte)(baseHeight + resolvedTemplate[index].Height).Clamp(0, map.Grid.MaximumTerrainHeight);
+			}
+		}
+
+		void AddAutoTileCells(CPos cellToAdd)
+		{
+			foreach (var offset in AutoTileNeighborOffsets)
+				autoTileCells.Add(cellToAdd + offset);
+		}
+
+		void RememberUndo(CPos cellToRemember, TerrainTile tile, byte height)
+		{
+			if (!undoCells.Add(cellToRemember))
+				return;
+
+			undoTiles.Enqueue(new UndoTile(cellToRemember, tile, height));
+		}
+	}
+
+	sealed class AutoTileFloodFillEditorAction : IEditorAction
+	{
+		[FluentReference("id")]
+		const string FilledTile = "notification-filled-tile";
+
+		public string Text { get; }
+
+		readonly ushort template;
+		readonly Map map;
+		readonly CPos cell;
+		readonly IAutoTile autoTile;
+		readonly ITemplatedTerrainInfo terrainInfo;
+		readonly TerrainTemplateInfo terrainTemplate;
+
+		readonly Queue<UndoTile> undoTiles = new();
+		readonly HashSet<CPos> undoCells = new();
+		readonly HashSet<CPos> autoTileCells = new();
+		static readonly CVec[] AutoTileNeighborOffsets =
+		{
+			new CVec(0, 0),
+			new CVec(0, -1),
+			new CVec(1, 0),
+			new CVec(0, 1),
+			new CVec(-1, 0),
+			new CVec(1, -1),
+			new CVec(1, 1),
+			new CVec(-1, 1),
+			new CVec(-1, -1),
+		};
+
+		public AutoTileFloodFillEditorAction(ushort template, Map map, CPos cell, IAutoTile autoTile)
+		{
+			this.template = template;
+			this.map = map;
+			this.cell = cell;
+			this.autoTile = autoTile;
+
+			terrainInfo = (ITemplatedTerrainInfo)map.Rules.TerrainInfo;
+			terrainTemplate = terrainInfo.Templates[template];
+			Text = FluentProvider.GetMessage(FilledTile, "id", terrainTemplate.Id);
+		}
+
+		public void Execute()
+		{
+			Do();
+		}
+
+		public void Do()
+		{
+			var queue = new Queue<CPos>();
+			var touched = new CellLayer<bool>(map);
+			var mapTiles = map.Tiles;
+			var replace = mapTiles[cell];
+
+			void MaybeEnqueue(CPos newCell)
+			{
+				if (map.Contains(cell) && !touched[newCell])
+				{
+					queue.Enqueue(newCell);
+					touched[newCell] = true;
+				}
+			}
+
+			bool ShouldPaint(CPos cellToCheck)
+			{
+				for (var y = 0; y < terrainTemplate.Size.Y; y++)
+				{
+					for (var x = 0; x < terrainTemplate.Size.X; x++)
+					{
+						var c = cellToCheck + new CVec(x, y);
+						if (!map.Contains(c) || mapTiles[c].Type != replace.Type)
+							return false;
+					}
+				}
+
+				return true;
+			}
+
+			CPos FindEdge(CPos refCell, CVec direction)
+			{
+				while (true)
+				{
+					var newCell = refCell + direction;
+					if (!ShouldPaint(newCell))
+						return refCell;
+					refCell = newCell;
+				}
+			}
+
+			queue.Enqueue(cell);
+			while (queue.Count > 0)
+			{
+				var queuedCell = queue.Dequeue();
+				if (!ShouldPaint(queuedCell))
+					continue;
+
+				var previousCell = FindEdge(queuedCell, new CVec(-1 * terrainTemplate.Size.X, 0));
+				var nextCell = FindEdge(queuedCell, new CVec(1 * terrainTemplate.Size.X, 0));
+
+				for (var x = previousCell.X; x <= nextCell.X; x += terrainTemplate.Size.X)
+				{
+					PaintSingleCell(new CPos(x, queuedCell.Y));
+					var upperCell = new CPos(x, queuedCell.Y - 1 * terrainTemplate.Size.Y);
+					var lowerCell = new CPos(x, queuedCell.Y + 1 * terrainTemplate.Size.Y);
+
+					if (ShouldPaint(upperCell))
+						MaybeEnqueue(upperCell);
+					if (ShouldPaint(lowerCell))
+						MaybeEnqueue(lowerCell);
+				}
+			}
+
+			ApplyAutoTile();
+		}
+
+		public void Undo()
+		{
+			var mapTiles = map.Tiles;
+			var mapHeight = map.Height;
+
+			while (undoTiles.Count > 0)
+			{
+				var undoTile = undoTiles.Dequeue();
+
+				mapTiles[undoTile.Cell] = undoTile.MapTile;
+				mapHeight[undoTile.Cell] = undoTile.Height;
+			}
+		}
+
+		void PaintSingleCell(CPos cellToPaint)
+		{
+			var mapTiles = map.Tiles;
+			var mapHeight = map.Height;
+			var baseHeight = mapHeight.Contains(cellToPaint) ? mapHeight[cellToPaint] : (byte)0;
+
+			var i = 0;
+			for (var y = 0; y < terrainTemplate.Size.Y; y++)
+			{
+				for (var x = 0; x < terrainTemplate.Size.X; x++, i++)
+				{
+					if (terrainTemplate.Contains(i) && terrainTemplate[i] != null)
+					{
+						var index = terrainTemplate.PickAny ? (byte)Game.CosmeticRandom.Next(0, terrainTemplate.TilesCount) : (byte)i;
+						var c = cellToPaint + new CVec(x, y);
+						if (!mapTiles.Contains(c))
+							continue;
+
+						RememberUndo(c, mapTiles[c], mapHeight[c]);
+
+						mapTiles[c] = new TerrainTile(template, index);
+						mapHeight[c] = (byte)(baseHeight + terrainTemplate[index].Height).Clamp(0, map.Grid.MaximumTerrainHeight);
+
+						AddAutoTileCells(c);
+					}
+				}
+			}
+		}
+
+		void ApplyAutoTile()
+		{
+			if (autoTile == null || autoTileCells.Count == 0)
+				return;
+
+			var mapTiles = map.Tiles;
+			var mapHeight = map.Height;
+
+			foreach (var c in autoTileCells)
+			{
+				if (!map.Contains(c))
+					continue;
+
+				var current = mapTiles[c];
+				if (!autoTile.IsAutoTileTemplate(current.Type))
+					continue;
+
+				var resolvedTemplateId = autoTile.ResolveTemplate(map, c);
+				if (resolvedTemplateId == current.Type)
+					continue;
+
+				var resolvedTemplate = terrainInfo.Templates[resolvedTemplateId];
+				if (resolvedTemplate.Size.X != 1 || resolvedTemplate.Size.Y != 1)
+					continue;
+
+				var index = resolvedTemplate.PickAny ? (byte)Game.CosmeticRandom.Next(0, resolvedTemplate.TilesCount) : (byte)0;
+				RememberUndo(c, current, mapHeight[c]);
+
+				mapTiles[c] = new TerrainTile(resolvedTemplateId, index);
+
+				var baseHeight = mapHeight.Contains(c) ? mapHeight[c] : (byte)0;
+				mapHeight[c] = (byte)(baseHeight + resolvedTemplate[index].Height).Clamp(0, map.Grid.MaximumTerrainHeight);
+			}
+		}
+
+		void AddAutoTileCells(CPos cellToAdd)
+		{
+			foreach (var offset in AutoTileNeighborOffsets)
+				autoTileCells.Add(cellToAdd + offset);
+		}
+
+		void RememberUndo(CPos cellToRemember, TerrainTile tile, byte height)
+		{
+			if (!undoCells.Add(cellToRemember))
+				return;
+
+			undoTiles.Enqueue(new UndoTile(cellToRemember, tile, height));
 		}
 	}
 

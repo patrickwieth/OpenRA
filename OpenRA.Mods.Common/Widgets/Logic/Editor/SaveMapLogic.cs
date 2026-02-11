@@ -227,6 +227,9 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					SaveMapFailed(e, modData, world);
 				}
 
+				if (string.IsNullOrEmpty(map.Uid))
+					return;
+
 				onSave(map.Uid);
 			}
 
@@ -337,9 +340,13 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			if (actionManager != null)
 				actionManager.SaveFailed = true;
 
+			var prompt = SaveMapFailedPrompt;
+			if (e != null && !string.IsNullOrWhiteSpace(e.Message))
+				prompt = $"{prompt}\n\n{e.GetType().Name}: {e.Message}";
+
 			ConfirmationDialogs.ButtonPrompt(modData,
 				title: SaveMapFailedTitle,
-				text: SaveMapFailedPrompt,
+				text: prompt,
 				onConfirm: () =>
 				{
 					if (actionManager != null)
