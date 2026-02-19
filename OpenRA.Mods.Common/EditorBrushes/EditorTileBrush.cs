@@ -107,6 +107,8 @@ namespace OpenRA.Mods.Common.Widgets
 			if (isMoving && PlacementOverlapsSameTemplate(template, cell))
 				return;
 
+			// Only base templates should trigger autotile resolution.
+			// Non-base transition templates must be paintable directly for reference/test layouts.
 			if (autoTile != null && autoTile.IsAutoTileTemplate(Template) && autoTile.IsAutoTileBaseTemplate(Template))
 				editorActionManager.Add(new AutoTileEditorAction(Template, world.Map, cell, autoTile));
 			else
@@ -125,6 +127,7 @@ namespace OpenRA.Mods.Common.Widgets
 			if (replace.Type == Template)
 				return;
 
+			// Flood-fill should also only autotile when placing base templates.
 			if (autoTile != null && autoTile.IsAutoTileTemplate(Template) && autoTile.IsAutoTileBaseTemplate(Template))
 				editorActionManager.Add(new AutoTileFloodFillEditorAction(Template, map, cell, autoTile));
 			else
@@ -266,18 +269,8 @@ namespace OpenRA.Mods.Common.Widgets
 		readonly Queue<UndoTile> undoTiles = new();
 		readonly HashSet<CPos> undoCells = new();
 		readonly HashSet<CPos> autoTileCells = new();
-		static readonly CVec[] AutoTileNeighborOffsets =
-		{
-			new CVec(0, 0),
-			new CVec(0, -1),
-			new CVec(1, 0),
-			new CVec(0, 1),
-			new CVec(-1, 0),
-			new CVec(1, -1),
-			new CVec(1, 1),
-			new CVec(-1, 1),
-			new CVec(-1, -1),
-		};
+		const int AutoTileUpdateRadius = 1;
+		const int AutoTileMaxPasses = 4;
 
 		public AutoTileEditorAction(ushort template, Map map, CPos cell, IAutoTile autoTile)
 		{
@@ -351,38 +344,76 @@ namespace OpenRA.Mods.Common.Widgets
 
 			var mapTiles = map.Tiles;
 			var mapHeight = map.Height;
-
-			foreach (var c in autoTileCells)
+			for (var pass = 0; pass < AutoTileMaxPasses; pass++)
 			{
-				if (!map.Contains(c))
-					continue;
+				var updates = new List<(CPos Cell, TerrainTile Current, ushort ResolvedTemplateId)>();
 
-				var current = mapTiles[c];
-				if (!autoTile.IsAutoTileTemplate(current.Type))
-					continue;
+				// Resolve only within the local neighborhood touched by this brush action.
+				foreach (var c in autoTileCells.OrderBy(c => c.Y).ThenBy(c => c.X))
+				{
+					var current = mapTiles[c];
+					if (!autoTile.IsAutoTileTemplate(current.Type))
+						continue;
 
-				var resolvedTemplateId = autoTile.ResolveTemplate(map, c);
-				if (resolvedTemplateId == current.Type)
-					continue;
+					var resolvedTemplateId = autoTile.ResolveTemplate(map, c);
+					if (resolvedTemplateId == current.Type)
+						continue;
 
-				var resolvedTemplate = terrainInfo.Templates[resolvedTemplateId];
-				if (resolvedTemplate.Size.X != 1 || resolvedTemplate.Size.Y != 1)
-					continue;
+					var resolvedTemplate = terrainInfo.Templates[resolvedTemplateId];
+					if (resolvedTemplate.Size.X != 1 || resolvedTemplate.Size.Y != 1)
+						continue;
 
-				var index = resolvedTemplate.PickAny ? (byte)Game.CosmeticRandom.Next(0, resolvedTemplate.TilesCount) : (byte)0;
-				RememberUndo(c, current, mapHeight[c]);
+					updates.Add((c, current, resolvedTemplateId));
+				}
 
-				mapTiles[c] = new TerrainTile(resolvedTemplateId, index);
+				if (updates.Count == 0)
+					break;
 
-				var baseHeight = mapHeight.Contains(c) ? mapHeight[c] : (byte)0;
-				mapHeight[c] = (byte)(baseHeight + resolvedTemplate[index].Height).Clamp(0, map.Grid.MaximumTerrainHeight);
+				foreach (var update in updates)
+				{
+					var c = update.Cell;
+					var current = update.Current;
+					var resolvedTemplate = terrainInfo.Templates[update.ResolvedTemplateId];
+
+					var index = resolvedTemplate.PickAny ? (byte)Game.CosmeticRandom.Next(0, resolvedTemplate.TilesCount) : (byte)0;
+					RememberUndo(c, current, mapHeight[c]);
+
+					mapTiles[c] = new TerrainTile(update.ResolvedTemplateId, index);
+
+					var baseHeight = mapHeight.Contains(c) ? mapHeight[c] : (byte)0;
+					mapHeight[c] = (byte)(baseHeight + resolvedTemplate[index].Height).Clamp(0, map.Grid.MaximumTerrainHeight);
+				}
 			}
 		}
 
 		void AddAutoTileCells(CPos cellToAdd)
 		{
-			foreach (var offset in AutoTileNeighborOffsets)
+			foreach (var offset in GetAutoTileOffsets(map, cellToAdd))
 				autoTileCells.Add(cellToAdd + offset);
+		}
+
+		static IEnumerable<CVec> GetAutoTileOffsets(Map map, CPos cell)
+		{
+			var offsets = new List<CVec>();
+			if (map.Grid.Type == MapGridType.Rectangular || map.Grid.Type == MapGridType.RectangularIsometric)
+			{
+				for (var dy = -AutoTileUpdateRadius; dy <= AutoTileUpdateRadius; dy++)
+					for (var dx = -AutoTileUpdateRadius; dx <= AutoTileUpdateRadius; dx++)
+						offsets.Add(new CVec(dx, dy));
+				return offsets;
+			}
+
+			var uv = cell.ToMPos(map.Grid.Type);
+			for (var dv = -AutoTileUpdateRadius; dv <= AutoTileUpdateRadius; dv++)
+			{
+				for (var du = -AutoTileUpdateRadius; du <= AutoTileUpdateRadius; du++)
+				{
+					var n = new MPos(uv.U + du, uv.V + dv).ToCPos(map.Grid.Type);
+					offsets.Add(n - cell);
+				}
+			}
+
+			return offsets;
 		}
 
 		void RememberUndo(CPos cellToRemember, TerrainTile tile, byte height)
@@ -411,18 +442,8 @@ namespace OpenRA.Mods.Common.Widgets
 		readonly Queue<UndoTile> undoTiles = new();
 		readonly HashSet<CPos> undoCells = new();
 		readonly HashSet<CPos> autoTileCells = new();
-		static readonly CVec[] AutoTileNeighborOffsets =
-		{
-			new CVec(0, 0),
-			new CVec(0, -1),
-			new CVec(1, 0),
-			new CVec(0, 1),
-			new CVec(-1, 0),
-			new CVec(1, -1),
-			new CVec(1, 1),
-			new CVec(-1, 1),
-			new CVec(-1, -1),
-		};
+		const int AutoTileUpdateRadius = 1;
+		const int AutoTileMaxPasses = 4;
 
 		public AutoTileFloodFillEditorAction(ushort template, Map map, CPos cell, IAutoTile autoTile)
 		{
@@ -559,38 +580,76 @@ namespace OpenRA.Mods.Common.Widgets
 
 			var mapTiles = map.Tiles;
 			var mapHeight = map.Height;
-
-			foreach (var c in autoTileCells)
+			for (var pass = 0; pass < AutoTileMaxPasses; pass++)
 			{
-				if (!map.Contains(c))
-					continue;
+				var updates = new List<(CPos Cell, TerrainTile Current, ushort ResolvedTemplateId)>();
 
-				var current = mapTiles[c];
-				if (!autoTile.IsAutoTileTemplate(current.Type))
-					continue;
+				// Resolve only within the local neighborhood touched by this brush action.
+				foreach (var c in autoTileCells.OrderBy(c => c.Y).ThenBy(c => c.X))
+				{
+					var current = mapTiles[c];
+					if (!autoTile.IsAutoTileTemplate(current.Type))
+						continue;
 
-				var resolvedTemplateId = autoTile.ResolveTemplate(map, c);
-				if (resolvedTemplateId == current.Type)
-					continue;
+					var resolvedTemplateId = autoTile.ResolveTemplate(map, c);
+					if (resolvedTemplateId == current.Type)
+						continue;
 
-				var resolvedTemplate = terrainInfo.Templates[resolvedTemplateId];
-				if (resolvedTemplate.Size.X != 1 || resolvedTemplate.Size.Y != 1)
-					continue;
+					var resolvedTemplate = terrainInfo.Templates[resolvedTemplateId];
+					if (resolvedTemplate.Size.X != 1 || resolvedTemplate.Size.Y != 1)
+						continue;
 
-				var index = resolvedTemplate.PickAny ? (byte)Game.CosmeticRandom.Next(0, resolvedTemplate.TilesCount) : (byte)0;
-				RememberUndo(c, current, mapHeight[c]);
+					updates.Add((c, current, resolvedTemplateId));
+				}
 
-				mapTiles[c] = new TerrainTile(resolvedTemplateId, index);
+				if (updates.Count == 0)
+					break;
 
-				var baseHeight = mapHeight.Contains(c) ? mapHeight[c] : (byte)0;
-				mapHeight[c] = (byte)(baseHeight + resolvedTemplate[index].Height).Clamp(0, map.Grid.MaximumTerrainHeight);
+				foreach (var update in updates)
+				{
+					var c = update.Cell;
+					var current = update.Current;
+					var resolvedTemplate = terrainInfo.Templates[update.ResolvedTemplateId];
+
+					var index = resolvedTemplate.PickAny ? (byte)Game.CosmeticRandom.Next(0, resolvedTemplate.TilesCount) : (byte)0;
+					RememberUndo(c, current, mapHeight[c]);
+
+					mapTiles[c] = new TerrainTile(update.ResolvedTemplateId, index);
+
+					var baseHeight = mapHeight.Contains(c) ? mapHeight[c] : (byte)0;
+					mapHeight[c] = (byte)(baseHeight + resolvedTemplate[index].Height).Clamp(0, map.Grid.MaximumTerrainHeight);
+				}
 			}
 		}
 
 		void AddAutoTileCells(CPos cellToAdd)
 		{
-			foreach (var offset in AutoTileNeighborOffsets)
+			foreach (var offset in GetAutoTileOffsets(map, cellToAdd))
 				autoTileCells.Add(cellToAdd + offset);
+		}
+
+		static IEnumerable<CVec> GetAutoTileOffsets(Map map, CPos cell)
+		{
+			var offsets = new List<CVec>();
+			if (map.Grid.Type == MapGridType.Rectangular || map.Grid.Type == MapGridType.RectangularIsometric)
+			{
+				for (var dy = -AutoTileUpdateRadius; dy <= AutoTileUpdateRadius; dy++)
+					for (var dx = -AutoTileUpdateRadius; dx <= AutoTileUpdateRadius; dx++)
+						offsets.Add(new CVec(dx, dy));
+				return offsets;
+			}
+
+			var uv = cell.ToMPos(map.Grid.Type);
+			for (var dv = -AutoTileUpdateRadius; dv <= AutoTileUpdateRadius; dv++)
+			{
+				for (var du = -AutoTileUpdateRadius; du <= AutoTileUpdateRadius; du++)
+				{
+					var n = new MPos(uv.U + du, uv.V + dv).ToCPos(map.Grid.Type);
+					offsets.Add(n - cell);
+				}
+			}
+
+			return offsets;
 		}
 
 		void RememberUndo(CPos cellToRemember, TerrainTile tile, byte height)

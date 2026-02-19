@@ -10,6 +10,7 @@
 #endregion
 
 using System.Collections.Generic;
+using System.Text;
 using OpenRA;
 using OpenRA.Primitives;
 using OpenRA.Traits;
@@ -86,10 +87,21 @@ namespace OpenRA.Mods.Common.Traits
 			public readonly ushort End_NE = 0;
 			public readonly ushort End_SE = 0;
 			public readonly ushort End_SW = 0;
+			public readonly bool PatternOnly = false;
+			public readonly int PatternRadius = 0;
+
+			[FieldLoader.Ignore]
+			public readonly Dictionary<string, ushort> PatternMap = new();
 
 			public AutoTileTransitionsInfo(MiniYaml yaml)
 			{
 				FieldLoader.Load(this, yaml);
+				var pattern = yaml.NodeWithKeyOrDefault("PatternMap");
+				if (pattern != null)
+				{
+					foreach (var entry in pattern.Value.Nodes)
+						PatternMap[entry.Key] = FieldLoader.GetValue<ushort>(entry.Key, entry.Value.Value);
+				}
 			}
 
 			public bool TryGetTemplateForMask(byte mask, out ushort templateId)
@@ -264,16 +276,56 @@ namespace OpenRA.Mods.Common.Traits
 			(new CVec(-1, -1), AutoTileMasks.N | AutoTileMasks.W),
 		};
 
+		static readonly (int du, int dv, byte mask)[] IsoNeighborDirs =
+		{
+			(0, -1, AutoTileMasks.N),
+			(1, 0, AutoTileMasks.E),
+			(0, 1, AutoTileMasks.S),
+			(-1, 0, AutoTileMasks.W),
+		};
+
+		static readonly (int du, int dv, byte mask)[] IsoDiagonalDirs =
+		{
+			(1, -1, AutoTileMasks.N | AutoTileMasks.E),
+			(1, 1, AutoTileMasks.S | AutoTileMasks.E),
+			(-1, 1, AutoTileMasks.S | AutoTileMasks.W),
+			(-1, -1, AutoTileMasks.N | AutoTileMasks.W),
+		};
+
 		const byte AllEdges = AutoTileMasks.N | AutoTileMasks.E | AutoTileMasks.S | AutoTileMasks.W;
 
 		static (CVec offset, byte mask)[] GetNeighborDirs(Map map, CPos cell)
 		{
-			return RectNeighborDirs;
+			if (map.Grid.Type == MapGridType.Rectangular || map.Grid.Type == MapGridType.RectangularIsometric)
+				return RectNeighborDirs;
+
+			var uv = cell.ToMPos(map.Grid.Type);
+			var result = new (CVec offset, byte mask)[IsoNeighborDirs.Length];
+			for (var i = 0; i < IsoNeighborDirs.Length; i++)
+			{
+				var (du, dv, mask) = IsoNeighborDirs[i];
+				var n = new MPos(uv.U + du, uv.V + dv).ToCPos(map.Grid.Type);
+				result[i] = (n - cell, mask);
+			}
+
+			return result;
 		}
 
 		static (CVec offset, byte mask)[] GetDiagonalDirs(Map map, CPos cell)
 		{
-			return RectDiagonalDirs;
+			if (map.Grid.Type == MapGridType.Rectangular || map.Grid.Type == MapGridType.RectangularIsometric)
+				return RectDiagonalDirs;
+
+			var uv = cell.ToMPos(map.Grid.Type);
+			var result = new (CVec offset, byte mask)[IsoDiagonalDirs.Length];
+			for (var i = 0; i < IsoDiagonalDirs.Length; i++)
+			{
+				var (du, dv, mask) = IsoDiagonalDirs[i];
+				var n = new MPos(uv.U + du, uv.V + dv).ToCPos(map.Grid.Type);
+				result[i] = (n - cell, mask);
+			}
+
+			return result;
 		}
 
 		public AutoTile(AutoTileInfo info)
@@ -466,14 +518,14 @@ namespace OpenRA.Mods.Common.Traits
 			if (mask == 0)
 				return false;
 
-			if ((mask & AutoTileMasks.N) != 0 && IsBaseTemplateInGroup(map, cell + new CVec(0, -1), groupId))
-				return true;
-			if ((mask & AutoTileMasks.E) != 0 && IsBaseTemplateInGroup(map, cell + new CVec(1, 0), groupId))
-				return true;
-			if ((mask & AutoTileMasks.S) != 0 && IsBaseTemplateInGroup(map, cell + new CVec(0, 1), groupId))
-				return true;
-			if ((mask & AutoTileMasks.W) != 0 && IsBaseTemplateInGroup(map, cell + new CVec(-1, 0), groupId))
-				return true;
+			foreach (var dir in GetNeighborDirs(map, cell))
+			{
+				if ((mask & dir.mask) == 0)
+					continue;
+
+				if (IsBaseTemplateInGroup(map, cell + dir.offset, groupId))
+					return true;
+			}
 
 			return false;
 		}
@@ -488,6 +540,47 @@ namespace OpenRA.Mods.Common.Traits
 				return false;
 
 			return style.GroupId == groupId && templateId == style.BaseTemplate;
+		}
+
+		bool IsBaseNeighborGroup(
+			Map map,
+			CPos cell,
+			AutoTileStyle style,
+			AutoTileInfo.AutoTileGroupInfo neighborGroup,
+			int groupPriority,
+			string neighborGroupId)
+		{
+			if (!IsBaseTemplateInGroup(map, cell, neighborGroupId))
+				return false;
+
+			if (IsNormalPriority(neighborGroup.Priority, groupPriority))
+				return true;
+
+			return allowEnclosedTransitions && IsOppositePriority(neighborGroup.Priority, groupPriority)
+				&& IsEnclosedByGroup(map, cell, style.GroupId);
+		}
+
+		bool IsAnchoredNeighborGroup(
+			Map map,
+			CPos cell,
+			AutoTileStyle style,
+			AutoTileInfo.AutoTileGroupInfo neighborGroup,
+			int groupPriority,
+			string neighborGroupId)
+		{
+			return IsNeighborGroupTileAnchored(map, cell, style, neighborGroup, groupPriority, neighborGroupId, allowTransitions: true);
+		}
+
+		bool IsNeighborGroupEdge(
+			Map map,
+			CPos cell,
+			AutoTileStyle style,
+			AutoTileInfo.AutoTileGroupInfo neighborGroup,
+			int groupPriority,
+			string neighborGroupId,
+			byte requiredMask)
+		{
+			return HasNeighborGroupEdge(map, cell, style, neighborGroup, groupPriority, neighborGroupId, requiredMask, allowTransitions: true);
 		}
 
 		bool IsNeighborGroupTile(
@@ -565,6 +658,18 @@ namespace OpenRA.Mods.Common.Traits
 			return transitionGroupsByTemplate.TryGetValue(templateId, out var groups) && groups.Contains(groupId);
 		}
 
+		bool IsBaseGroup(Map map, CPos cell, string groupId)
+		{
+			if (!map.Contains(cell))
+				return false;
+
+			var templateId = map.Tiles[cell].Type;
+			if (!styleByTemplate.TryGetValue(templateId, out var style))
+				return false;
+
+			return style.GroupId == groupId && templateId == style.BaseTemplate;
+		}
+
 		public bool IsAutoTileTemplate(ushort templateId) => styleByTemplate.ContainsKey(templateId);
 
 		public bool IsAutoTileBaseTemplate(ushort templateId)
@@ -587,7 +692,16 @@ namespace OpenRA.Mods.Common.Traits
 			if (!groups.TryGetValue(style.GroupId, out var group))
 				return style.BaseTemplate;
 
-			if (!TryFindNeighborGroup(map, cell, style, group.Priority, out var neighborGroupId, out var neighborStyleId))
+			string neighborGroupId = null;
+			string neighborStyleId = null;
+			var baseOnly = false;
+
+			if (TryFindPatternOnlyNeighborGroup(map, cell, style, group.Priority, out var patternGroupId))
+			{
+				neighborGroupId = patternGroupId;
+				baseOnly = true;
+			}
+			else if (!TryFindNeighborGroup(map, cell, style, group.Priority, out neighborGroupId, out neighborStyleId))
 			{
 				if (debug)
 					Log.Write("debug", $"AutoTile {cell}: style={style.Id} group={style.GroupId} no neighbor group");
@@ -601,14 +715,33 @@ namespace OpenRA.Mods.Common.Traits
 				return style.BaseTemplate;
 			}
 
-			if (TryResolveSpecialTemplate(map, cell, style, group.Priority, neighborGroupId, transitions, out var specialTemplateId))
+			baseOnly |= transitions.PatternOnly;
+
+			if (transitions.PatternMap.Count > 0)
+			{
+				if (TryResolvePatternTemplate(map, cell, neighborGroupId, transitions, out var patternTemplateId))
+				{
+					if (debug)
+						Log.Write("debug", $"AutoTile {cell}: style={style.Id} neighborGroup={neighborGroupId} neighborStyle={neighborStyleId} pattern -> {patternTemplateId}");
+					return patternTemplateId;
+				}
+
+				if (transitions.PatternOnly)
+				{
+					if (debug)
+						Log.Write("debug", $"AutoTile {cell}: style={style.Id} neighborGroup={neighborGroupId} neighborStyle={neighborStyleId} pattern only -> base");
+					return style.BaseTemplate;
+				}
+			}
+
+			if (TryResolveSpecialTemplate(map, cell, style, group.Priority, neighborGroupId, transitions, baseOnly, out var specialTemplateId))
 			{
 				if (debug)
 					Log.Write("debug", $"AutoTile {cell}: style={style.Id} neighborGroup={neighborGroupId} neighborStyle={neighborStyleId} special -> {specialTemplateId}");
 				return specialTemplateId;
 			}
 
-			var mask = BuildMask(map, cell, style, group.Priority, neighborGroupId);
+			var mask = BuildMask(map, cell, style, group.Priority, neighborGroupId, baseOnly);
 			if (mask == 0)
 			{
 				if (debug)
@@ -636,6 +769,61 @@ namespace OpenRA.Mods.Common.Traits
 			return style.BaseTemplate;
 		}
 
+		bool TryResolvePatternTemplate(Map map, CPos cell, string neighborGroupId, AutoTileInfo.AutoTileTransitionsInfo transitions, out ushort templateId)
+		{
+			templateId = 0;
+			if (transitions.PatternRadius <= 0 || transitions.PatternMap.Count == 0)
+				return false;
+
+			var key = BuildPatternKey(map, cell, transitions.PatternRadius, neighborGroupId);
+			if (key == null)
+				return false;
+
+			if (transitions.PatternMap.TryGetValue(key, out templateId))
+				return templateId != 0;
+
+			return false;
+		}
+
+		string BuildPatternKey(Map map, CPos cell, int radius, string neighborGroupId)
+		{
+			if (radius <= 0)
+				return null;
+
+			var sb = new StringBuilder((2 * radius + 1) * (2 * radius + 1) - 1);
+			if (map.Grid.Type == MapGridType.Rectangular || map.Grid.Type == MapGridType.RectangularIsometric)
+			{
+				for (var dv = -radius; dv <= radius; dv++)
+				{
+					for (var du = -radius; du <= radius; du++)
+					{
+						if (du == 0 && dv == 0)
+							continue;
+
+						var n = cell + new CVec(du, dv);
+						sb.Append(IsBaseGroup(map, n, neighborGroupId) ? '1' : '0');
+					}
+				}
+
+				return sb.ToString();
+			}
+
+			var uv = cell.ToMPos(map.Grid.Type);
+			for (var dv = -radius; dv <= radius; dv++)
+			{
+				for (var du = -radius; du <= radius; du++)
+				{
+					if (du == 0 && dv == 0)
+						continue;
+
+					var n = new MPos(uv.U + du, uv.V + dv).ToCPos(map.Grid.Type);
+					sb.Append(IsBaseGroup(map, n, neighborGroupId) ? '1' : '0');
+				}
+			}
+
+			return sb.ToString();
+		}
+
 		bool TryResolveTransitions(AutoTileStyle style, string neighborGroupId, string neighborStyleId, out AutoTileInfo.AutoTileTransitionsInfo transitions)
 		{
 			if (neighborStyleId != null && style.Transitions.TryGetValue(neighborStyleId, out transitions))
@@ -651,26 +839,86 @@ namespace OpenRA.Mods.Common.Traits
 			int groupPriority,
 			string neighborGroupId,
 			AutoTileInfo.AutoTileTransitionsInfo transitions,
+			bool baseOnly,
 			out ushort templateId)
 		{
 			templateId = 0;
 			if (!groups.TryGetValue(neighborGroupId, out var neighborGroup))
 				return false;
 
-			const bool allowTransitions = true;
-			bool Edge(CPos n, byte requiredMask)
+			var neighborDirs = GetNeighborDirs(map, cell);
+			var diagonalDirs = GetDiagonalDirs(map, cell);
+
+			CVec nOffset = CVec.Zero;
+			CVec eOffset = CVec.Zero;
+			CVec sOffset = CVec.Zero;
+			CVec wOffset = CVec.Zero;
+			foreach (var dir in neighborDirs)
 			{
-				return HasNeighborGroupEdge(map, n, style, neighborGroup, groupPriority, neighborGroupId, requiredMask, allowTransitions);
+				switch (dir.mask)
+				{
+					case AutoTileMasks.N:
+						nOffset = dir.offset;
+						break;
+					case AutoTileMasks.E:
+						eOffset = dir.offset;
+						break;
+					case AutoTileMasks.S:
+						sOffset = dir.offset;
+						break;
+					case AutoTileMasks.W:
+						wOffset = dir.offset;
+						break;
+				}
 			}
 
-			var nT = IsNeighborGroupTileAnchored(map, cell + new CVec(0, -1), style, neighborGroup, groupPriority, neighborGroupId, allowTransitions);
-			var eT = IsNeighborGroupTileAnchored(map, cell + new CVec(1, 0), style, neighborGroup, groupPriority, neighborGroupId, allowTransitions);
-			var sT = IsNeighborGroupTileAnchored(map, cell + new CVec(0, 1), style, neighborGroup, groupPriority, neighborGroupId, allowTransitions);
-			var wT = IsNeighborGroupTileAnchored(map, cell + new CVec(-1, 0), style, neighborGroup, groupPriority, neighborGroupId, allowTransitions);
-			var neT = Edge(cell + new CVec(1, -1), AutoTileMasks.N | AutoTileMasks.E);
-			var nwT = Edge(cell + new CVec(-1, -1), AutoTileMasks.N | AutoTileMasks.W);
-			var seT = Edge(cell + new CVec(1, 1), AutoTileMasks.S | AutoTileMasks.E);
-			var swT = Edge(cell + new CVec(-1, 1), AutoTileMasks.S | AutoTileMasks.W);
+			CVec neOffset = CVec.Zero;
+			CVec nwOffset = CVec.Zero;
+			CVec seOffset = CVec.Zero;
+			CVec swOffset = CVec.Zero;
+			foreach (var dir in diagonalDirs)
+			{
+				switch (dir.mask)
+				{
+					case AutoTileMasks.N | AutoTileMasks.E:
+						neOffset = dir.offset;
+						break;
+					case AutoTileMasks.N | AutoTileMasks.W:
+						nwOffset = dir.offset;
+						break;
+					case AutoTileMasks.S | AutoTileMasks.E:
+						seOffset = dir.offset;
+						break;
+					case AutoTileMasks.S | AutoTileMasks.W:
+						swOffset = dir.offset;
+						break;
+				}
+			}
+
+			var nT = baseOnly
+				? IsBaseNeighborGroupEdge(map, cell + nOffset, style, neighborGroup, groupPriority, neighborGroupId)
+				: IsNeighborGroupEdge(map, cell + nOffset, style, neighborGroup, groupPriority, neighborGroupId, AutoTileMasks.S);
+			var eT = baseOnly
+				? IsBaseNeighborGroupEdge(map, cell + eOffset, style, neighborGroup, groupPriority, neighborGroupId)
+				: IsNeighborGroupEdge(map, cell + eOffset, style, neighborGroup, groupPriority, neighborGroupId, AutoTileMasks.W);
+			var sT = baseOnly
+				? IsBaseNeighborGroupEdge(map, cell + sOffset, style, neighborGroup, groupPriority, neighborGroupId)
+				: IsNeighborGroupEdge(map, cell + sOffset, style, neighborGroup, groupPriority, neighborGroupId, AutoTileMasks.N);
+			var wT = baseOnly
+				? IsBaseNeighborGroupEdge(map, cell + wOffset, style, neighborGroup, groupPriority, neighborGroupId)
+				: IsNeighborGroupEdge(map, cell + wOffset, style, neighborGroup, groupPriority, neighborGroupId, AutoTileMasks.E);
+			var neT = baseOnly
+				? IsBaseNeighborGroupEdge(map, cell + neOffset, style, neighborGroup, groupPriority, neighborGroupId)
+				: IsNeighborGroupEdge(map, cell + neOffset, style, neighborGroup, groupPriority, neighborGroupId, (byte)(AutoTileMasks.S | AutoTileMasks.W));
+			var nwT = baseOnly
+				? IsBaseNeighborGroupEdge(map, cell + nwOffset, style, neighborGroup, groupPriority, neighborGroupId)
+				: IsNeighborGroupEdge(map, cell + nwOffset, style, neighborGroup, groupPriority, neighborGroupId, (byte)(AutoTileMasks.S | AutoTileMasks.E));
+			var seT = baseOnly
+				? IsBaseNeighborGroupEdge(map, cell + seOffset, style, neighborGroup, groupPriority, neighborGroupId)
+				: IsNeighborGroupEdge(map, cell + seOffset, style, neighborGroup, groupPriority, neighborGroupId, (byte)(AutoTileMasks.N | AutoTileMasks.W));
+			var swT = baseOnly
+				? IsBaseNeighborGroupEdge(map, cell + swOffset, style, neighborGroup, groupPriority, neighborGroupId)
+				: IsNeighborGroupEdge(map, cell + swOffset, style, neighborGroup, groupPriority, neighborGroupId, (byte)(AutoTileMasks.N | AutoTileMasks.E));
 
 			var allOrth = nT && eT && sT && wT;
 
@@ -778,7 +1026,7 @@ namespace OpenRA.Mods.Common.Traits
 			string selectedGroupId = null;
 			string selectedStyleId = null;
 
-			void ConsiderNeighbor(CPos n, byte requiredMask)
+			void ConsiderNeighbor(CPos n)
 			{
 				if (!map.Contains(n))
 					return;
@@ -787,48 +1035,43 @@ namespace OpenRA.Mods.Common.Traits
 				if (!styleByTemplate.TryGetValue(templateId, out var neighborStyle))
 					return;
 
-				var candidateGroups = new List<string> { neighborStyle.GroupId };
-				if (transitionGroupsByTemplate.TryGetValue(templateId, out var transitionGroups))
-					candidateGroups.AddRange(transitionGroups);
-
-				foreach (var candidateGroupId in candidateGroups)
+				void ConsiderGroup(string candidateGroupId, string candidateStyleId)
 				{
 					if (!groups.TryGetValue(candidateGroupId, out var neighborGroup))
-						continue;
+						return;
 
-					if (allowEnclosedTransitions && !HasTransitionsFor(style, candidateGroupId, neighborStyle.Id))
-						continue;
+					if (allowEnclosedTransitions && !HasTransitionsFor(style, candidateGroupId, candidateStyleId))
+						return;
 
-					if (!HasNeighborGroupEdge(map, n, style, neighborGroup, groupPriority, candidateGroupId, requiredMask, allowTransitions: true))
-						continue;
+					if (!IsNeighborGroupEdge(map, n, style, neighborGroup, groupPriority, candidateGroupId, 0))
+						return;
 
 					if (neighborGroup.Priority <= selectedPriority)
-						continue;
+						return;
 
 					selectedPriority = neighborGroup.Priority;
 					selectedGroupId = candidateGroupId;
-					selectedStyleId = neighborStyle.Id;
+					selectedStyleId = candidateStyleId;
+				}
+
+				var baseStyleId = templateId == neighborStyle.BaseTemplate ? neighborStyle.Id : null;
+				ConsiderGroup(neighborStyle.GroupId, baseStyleId);
+
+				if (transitionGroupsByTemplate.TryGetValue(templateId, out var transitionGroups))
+				{
+					foreach (var transitionGroupId in transitionGroups)
+					{
+						if (transitionGroupId == neighborStyle.GroupId)
+							continue;
+
+						ConsiderGroup(transitionGroupId, null);
+					}
 				}
 			}
 
 			foreach (var dir in GetNeighborDirs(map, cell))
 			{
-				byte requiredMask = dir.mask switch
-				{
-					AutoTileMasks.N => AutoTileMasks.S,
-					AutoTileMasks.E => AutoTileMasks.W,
-					AutoTileMasks.S => AutoTileMasks.N,
-					AutoTileMasks.W => AutoTileMasks.E,
-					_ => 0
-				};
-
-				ConsiderNeighbor(cell + dir.offset, requiredMask);
-			}
-
-			if (includeDiagonals)
-			{
-				foreach (var dir in GetDiagonalDirs(map, cell))
-					ConsiderNeighbor(cell + dir.offset, dir.mask);
+				ConsiderNeighbor(cell + dir.offset);
 			}
 
 			neighborGroupId = selectedGroupId;
@@ -836,28 +1079,81 @@ namespace OpenRA.Mods.Common.Traits
 			return neighborGroupId != null;
 		}
 
-		byte BuildMask(Map map, CPos cell, AutoTileStyle style, int groupPriority, string neighborGroupId)
+		bool TryFindPatternOnlyNeighborGroup(Map map, CPos cell, AutoTileStyle style, int groupPriority, out string neighborGroupId)
+		{
+			neighborGroupId = null;
+			var selectedPriority = int.MinValue;
+			string selectedGroupId = null;
+
+			foreach (var transition in style.Transitions)
+			{
+				if (!transition.Value.PatternOnly)
+					continue;
+
+				var candidateGroupId = transition.Key;
+				if (!groups.TryGetValue(candidateGroupId, out var neighborGroup))
+					continue;
+
+				foreach (var dir in GetNeighborDirs(map, cell))
+				{
+					var n = cell + dir.offset;
+					if (!IsBaseNeighborGroup(map, n, style, neighborGroup, groupPriority, candidateGroupId))
+						continue;
+
+					if (neighborGroup.Priority <= selectedPriority)
+						continue;
+
+					selectedPriority = neighborGroup.Priority;
+					selectedGroupId = candidateGroupId;
+				}
+			}
+
+			neighborGroupId = selectedGroupId;
+			return neighborGroupId != null;
+		}
+
+		bool IsBaseNeighborGroupEdge(
+			Map map,
+			CPos cell,
+			AutoTileStyle style,
+			AutoTileInfo.AutoTileGroupInfo neighborGroup,
+			int groupPriority,
+			string neighborGroupId)
+		{
+			if (!IsBaseTemplateInGroup(map, cell, neighborGroupId))
+				return false;
+
+			if (IsNormalPriority(neighborGroup.Priority, groupPriority))
+				return true;
+
+			return allowEnclosedTransitions && IsOppositePriority(neighborGroup.Priority, groupPriority)
+				&& IsEnclosedByGroup(map, cell, style.GroupId);
+		}
+
+		byte BuildMask(Map map, CPos cell, AutoTileStyle style, int groupPriority, string neighborGroupId, bool baseOnly)
 		{
 			byte mask = 0;
 
 			if (!groups.TryGetValue(neighborGroupId, out var neighborGroup))
 				return mask;
 
-			const bool allowTransitions = true;
 			foreach (var dir in GetNeighborDirs(map, cell))
 			{
 				var n = cell + dir.offset;
-				byte requiredMask = dir.mask switch
+				var required = dir.mask switch
 				{
 					AutoTileMasks.N => AutoTileMasks.S,
 					AutoTileMasks.E => AutoTileMasks.W,
 					AutoTileMasks.S => AutoTileMasks.N,
 					AutoTileMasks.W => AutoTileMasks.E,
-					_ => 0
+					_ => (byte)0
 				};
 
-				if (HasNeighborGroupEdge(map, n, style, neighborGroup, groupPriority, neighborGroupId, requiredMask, allowTransitions)
-					|| IsNeighborGroupTileAnchored(map, n, style, neighborGroup, groupPriority, neighborGroupId, allowTransitions))
+				var hasEdge = baseOnly
+					? IsBaseNeighborGroupEdge(map, n, style, neighborGroup, groupPriority, neighborGroupId)
+					: IsNeighborGroupEdge(map, n, style, neighborGroup, groupPriority, neighborGroupId, required);
+
+				if (hasEdge)
 					mask |= dir.mask;
 			}
 
@@ -869,7 +1165,20 @@ namespace OpenRA.Mods.Common.Traits
 						continue;
 
 					var n = cell + dir.offset;
-					if (HasNeighborGroupEdge(map, n, style, neighborGroup, groupPriority, neighborGroupId, dir.mask, allowTransitions))
+					var required = dir.mask switch
+					{
+						(byte)(AutoTileMasks.N | AutoTileMasks.E) => (byte)(AutoTileMasks.S | AutoTileMasks.W),
+						(byte)(AutoTileMasks.N | AutoTileMasks.W) => (byte)(AutoTileMasks.S | AutoTileMasks.E),
+						(byte)(AutoTileMasks.S | AutoTileMasks.E) => (byte)(AutoTileMasks.N | AutoTileMasks.W),
+						(byte)(AutoTileMasks.S | AutoTileMasks.W) => (byte)(AutoTileMasks.N | AutoTileMasks.E),
+						_ => (byte)0
+					};
+
+					var hasEdge = baseOnly
+						? IsBaseNeighborGroupEdge(map, n, style, neighborGroup, groupPriority, neighborGroupId)
+						: IsNeighborGroupEdge(map, n, style, neighborGroup, groupPriority, neighborGroupId, required);
+
+					if (hasEdge)
 						mask |= dir.mask;
 				}
 			}
