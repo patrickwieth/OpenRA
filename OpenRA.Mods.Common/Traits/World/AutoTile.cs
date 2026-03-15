@@ -1,4 +1,4 @@
-#region Copyright & License Information
+﻿#region Copyright & License Information
 /*
  * Copyright (c) The OpenRA Developers and Contributors
  * This file is part of OpenRA, which is free software. It is made
@@ -21,6 +21,7 @@ namespace OpenRA.Mods.Common.Traits
 	{
 		bool IsAutoTileTemplate(ushort templateId);
 		bool IsAutoTileBaseTemplate(ushort templateId);
+		ushort GetAutoTileBaseTemplate(ushort templateId);
 		ushort ResolveTemplate(Map map, CPos cell);
 	}
 
@@ -296,7 +297,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		static (CVec offset, byte mask)[] GetNeighborDirs(Map map, CPos cell)
 		{
-			if (map.Grid.Type == MapGridType.Rectangular || map.Grid.Type == MapGridType.RectangularIsometric)
+			if (map.Grid.Type == MapGridType.Rectangular)
 				return RectNeighborDirs;
 
 			var uv = cell.ToMPos(map.Grid.Type);
@@ -313,7 +314,7 @@ namespace OpenRA.Mods.Common.Traits
 
 		static (CVec offset, byte mask)[] GetDiagonalDirs(Map map, CPos cell)
 		{
-			if (map.Grid.Type == MapGridType.Rectangular || map.Grid.Type == MapGridType.RectangularIsometric)
+			if (map.Grid.Type == MapGridType.Rectangular)
 				return RectDiagonalDirs;
 
 			var uv = cell.ToMPos(map.Grid.Type);
@@ -678,6 +679,13 @@ namespace OpenRA.Mods.Common.Traits
 				&& style.BaseTemplate == templateId;
 		}
 
+		public ushort GetAutoTileBaseTemplate(ushort templateId)
+		{
+			return styleByTemplate.TryGetValue(templateId, out var style)
+				? style.BaseTemplate
+				: templateId;
+		}
+
 		public ushort ResolveTemplate(Map map, CPos cell)
 		{
 			if (!map.Contains(cell))
@@ -703,9 +711,12 @@ namespace OpenRA.Mods.Common.Traits
 			}
 			else if (!TryFindNeighborGroup(map, cell, style, group.Priority, out neighborGroupId, out neighborStyleId))
 			{
-				if (debug)
-					Log.Write("debug", $"AutoTile {cell}: style={style.Id} group={style.GroupId} no neighbor group");
-				return style.BaseTemplate;
+				if (!TryFindPatternNeighborGroup(map, cell, style, group.Priority, out neighborGroupId))
+				{
+					if (debug)
+						Log.Write("debug", $"AutoTile {cell}: style={style.Id} group={style.GroupId} no neighbor group");
+					return style.BaseTemplate;
+				}
 			}
 
 			if (!TryResolveTransitions(style, neighborGroupId, neighborStyleId, out var transitions))
@@ -782,7 +793,267 @@ namespace OpenRA.Mods.Common.Traits
 			if (transitions.PatternMap.TryGetValue(key, out templateId))
 				return templateId != 0;
 
+			if (map.Grid.Type == MapGridType.RectangularIsometric
+				&& TryResolveRotatedPatternTemplate(key, transitions, out templateId))
+				return templateId != 0;
+
+			if (TryResolveExtendedPatternTemplate(key, transitions, out templateId))
+				return templateId != 0;
+
 			return false;
+		}
+
+		bool TryResolveExtendedPatternTemplate(string key, AutoTileInfo.AutoTileTransitionsInfo transitions, out ushort templateId)
+		{
+			templateId = 0;
+			if (string.IsNullOrEmpty(key))
+				return false;
+
+			var radius = transitions.PatternRadius;
+			var found = false;
+			var bestSpecificity = -1;
+			var bestExtraCount = int.MaxValue;
+			var bestTemplateId = (ushort)0;
+			var ambiguous = false;
+
+			for (var turns = 0; turns < 4; turns++)
+			{
+				var rotatedKey = turns == 0 ? key : RotatePatternKey(key, radius, turns);
+				if (!TryFindCompatiblePatternTemplate(rotatedKey, transitions, out var rotatedTemplateId, out var specificity, out var extraCount))
+					continue;
+
+				var resolvedTemplateId = turns == 0 ? rotatedTemplateId : RotateTemplateCCW(transitions, rotatedTemplateId, turns);
+				if (!found
+					|| specificity > bestSpecificity
+					|| (specificity == bestSpecificity && extraCount < bestExtraCount))
+				{
+					found = true;
+					bestSpecificity = specificity;
+					bestExtraCount = extraCount;
+					bestTemplateId = resolvedTemplateId;
+					ambiguous = false;
+					continue;
+				}
+
+				if (specificity == bestSpecificity && extraCount == bestExtraCount && resolvedTemplateId != bestTemplateId)
+					ambiguous = true;
+			}
+
+			if (!found || ambiguous)
+				return false;
+
+			templateId = bestTemplateId;
+			return templateId != 0;
+		}
+
+		static bool TryFindCompatiblePatternTemplate(
+			string actualKey,
+			AutoTileInfo.AutoTileTransitionsInfo transitions,
+			out ushort templateId,
+			out int specificity,
+			out int extraCount)
+		{
+			templateId = 0;
+			specificity = -1;
+			extraCount = int.MaxValue;
+			var found = false;
+			var ambiguous = false;
+			var offsets = GetPatternOffsets(transitions.PatternRadius);
+
+			foreach (var pattern in transitions.PatternMap)
+			{
+				if (!IsCompatiblePatternSuperset(actualKey, pattern.Key, offsets, out var candidateSpecificity, out var candidateExtraCount))
+					continue;
+
+				if (!found
+					|| candidateSpecificity > specificity
+					|| (candidateSpecificity == specificity && candidateExtraCount < extraCount))
+				{
+					found = true;
+					templateId = pattern.Value;
+					specificity = candidateSpecificity;
+					extraCount = candidateExtraCount;
+					ambiguous = false;
+					continue;
+				}
+
+				if (candidateSpecificity == specificity && candidateExtraCount == extraCount && pattern.Value != templateId)
+					ambiguous = true;
+			}
+
+			return found && !ambiguous;
+		}
+
+		static bool IsCompatiblePatternSuperset(
+			string actualKey,
+			string candidateKey,
+			List<(int du, int dv)> offsets,
+			out int specificity,
+			out int extraCount)
+		{
+			specificity = 0;
+			extraCount = 0;
+			if (string.IsNullOrEmpty(actualKey) || string.IsNullOrEmpty(candidateKey) || actualKey.Length != candidateKey.Length || candidateKey.Length != offsets.Count)
+				return false;
+
+			var nearestStepsByDirection = new Dictionary<(int du, int dv), int>();
+
+			for (var i = 0; i < candidateKey.Length; i++)
+			{
+				var step = GetPatternRayStep(offsets[i].du, offsets[i].dv);
+				if (step == 1 && actualKey[i] != candidateKey[i])
+					return false;
+
+				if (candidateKey[i] != '1')
+					continue;
+
+				if (actualKey[i] != '1')
+					return false;
+
+				specificity++;
+				var direction = NormalizePatternDirection(offsets[i].du, offsets[i].dv);
+				if (!nearestStepsByDirection.TryGetValue(direction, out var currentStep) || step < currentStep)
+					nearestStepsByDirection[direction] = step;
+			}
+
+			for (var i = 0; i < actualKey.Length; i++)
+			{
+				if (actualKey[i] != '1' || candidateKey[i] == '1')
+					continue;
+
+				extraCount++;
+				var direction = NormalizePatternDirection(offsets[i].du, offsets[i].dv);
+				var step = GetPatternRayStep(offsets[i].du, offsets[i].dv);
+				if (!nearestStepsByDirection.TryGetValue(direction, out var nearestStep) || nearestStep != 1 || nearestStep >= step)
+					return false;
+			}
+
+			return true;
+		}
+
+		bool TryResolveRotatedPatternTemplate(string key, AutoTileInfo.AutoTileTransitionsInfo transitions, out ushort templateId)
+		{
+			templateId = 0;
+			if (string.IsNullOrEmpty(key))
+				return false;
+
+			var radius = transitions.PatternRadius;
+			for (var turns = 1; turns < 4; turns++)
+			{
+				var rotatedKey = RotatePatternKey(key, radius, turns);
+				if (!transitions.PatternMap.TryGetValue(rotatedKey, out var rotatedTemplateId))
+					continue;
+
+				templateId = RotateTemplateCCW(transitions, rotatedTemplateId, turns);
+				return templateId != 0;
+			}
+
+			return false;
+		}
+
+		static string RotatePatternKey(string key, int radius, int turns)
+		{
+			if (turns % 4 == 0 || radius <= 0)
+				return key;
+
+			var offsets = GetPatternOffsets(radius);
+			var indexByOffset = new Dictionary<(int du, int dv), int>(offsets.Count);
+			var i = 0;
+			foreach (var offset in offsets)
+				indexByOffset[offset] = i++;
+
+			var rotated = new char[key.Length];
+			for (var src = 0; src < offsets.Count; src++)
+			{
+				var (du, dv) = offsets[src];
+				for (var t = 0; t < turns; t++)
+					(du, dv) = (dv, -du);
+
+				rotated[indexByOffset[(du, dv)]] = key[src];
+			}
+
+			return new string(rotated);
+		}
+
+		static List<(int du, int dv)> GetPatternOffsets(int radius)
+		{
+			var size = 2 * radius + 1;
+			var offsets = new List<(int du, int dv)>(size * size - 1);
+			for (var dv = -radius; dv <= radius; dv++)
+			{
+				for (var du = -radius; du <= radius; du++)
+				{
+					if (du == 0 && dv == 0)
+						continue;
+
+					offsets.Add((du, dv));
+				}
+			}
+
+			return offsets;
+		}
+
+		static (int du, int dv) NormalizePatternDirection(int du, int dv)
+		{
+			var gcd = GreatestCommonDivisor(du, dv);
+			return gcd <= 1 ? (du, dv) : (du / gcd, dv / gcd);
+		}
+
+		static int GetPatternRayStep(int du, int dv)
+		{
+			return GreatestCommonDivisor(du, dv);
+		}
+
+		static int GreatestCommonDivisor(int a, int b)
+		{
+			a = a < 0 ? -a : a;
+			b = b < 0 ? -b : b;
+			while (b != 0)
+			{
+				var t = a % b;
+				a = b;
+				b = t;
+			}
+
+			return a == 0 ? 1 : a;
+		}
+
+		static ushort RotateTemplateCCW(AutoTileInfo.AutoTileTransitionsInfo transitions, ushort templateId, int turns)
+		{
+			for (var i = 0; i < turns % 4; i++)
+				templateId = RotateTemplateCCWOnce(transitions, templateId);
+
+			return templateId;
+		}
+
+		static ushort RotateTemplateCCWOnce(AutoTileInfo.AutoTileTransitionsInfo transitions, ushort templateId)
+		{
+			if (templateId == transitions.N) return transitions.W;
+			if (templateId == transitions.W) return transitions.S;
+			if (templateId == transitions.S) return transitions.E;
+			if (templateId == transitions.E) return transitions.N;
+			if (templateId == transitions.NE) return transitions.NW;
+			if (templateId == transitions.NW) return transitions.SW;
+			if (templateId == transitions.SW) return transitions.SE;
+			if (templateId == transitions.SE) return transitions.NE;
+			if (templateId == transitions.WNE) return transitions.SWN;
+			if (templateId == transitions.SWN) return transitions.ESW;
+			if (templateId == transitions.ESW) return transitions.NES;
+			if (templateId == transitions.NES) return transitions.WNE;
+			if (templateId == transitions.U_NW) return transitions.U_SW;
+			if (templateId == transitions.U_SW) return transitions.U_SE;
+			if (templateId == transitions.U_SE) return transitions.U_NE;
+			if (templateId == transitions.U_NE) return transitions.U_NW;
+			if (templateId == transitions.End_NW) return transitions.End_SW;
+			if (templateId == transitions.End_SW) return transitions.End_SE;
+			if (templateId == transitions.End_SE) return transitions.End_NE;
+			if (templateId == transitions.End_NE) return transitions.End_NW;
+			if (templateId == transitions.Parallel_NE_SW) return transitions.Parallel_NW_SE;
+			if (templateId == transitions.Parallel_NW_SE) return transitions.Parallel_NE_SW;
+			if (templateId == transitions.NESW || templateId == transitions.Hole)
+				return templateId;
+
+			return templateId;
 		}
 
 		string BuildPatternKey(Map map, CPos cell, int radius, string neighborGroupId)
@@ -791,7 +1062,7 @@ namespace OpenRA.Mods.Common.Traits
 				return null;
 
 			var sb = new StringBuilder((2 * radius + 1) * (2 * radius + 1) - 1);
-			if (map.Grid.Type == MapGridType.Rectangular || map.Grid.Type == MapGridType.RectangularIsometric)
+			if (map.Grid.Type == MapGridType.Rectangular)
 			{
 				for (var dv = -radius; dv <= radius; dv++)
 				{
@@ -921,6 +1192,7 @@ namespace OpenRA.Mods.Common.Traits
 				: IsNeighborGroupEdge(map, cell + swOffset, style, neighborGroup, groupPriority, neighborGroupId, (byte)(AutoTileMasks.N | AutoTileMasks.E));
 
 			var allOrth = nT && eT && sT && wT;
+			var allowEndCaps = map.Grid.Type != MapGridType.RectangularIsometric;
 
 			if (transitions.Hole != 0 && allOrth && neT && nwT && seT && swT)
 			{
@@ -952,25 +1224,25 @@ namespace OpenRA.Mods.Common.Traits
 				return true;
 			}
 
-			if (transitions.End_NW != 0 && nT && wT && !eT && !sT && !nwT)
+			if (allowEndCaps && transitions.End_NW != 0 && nT && wT && !eT && !sT && !nwT)
 			{
 				templateId = transitions.End_NW;
 				return true;
 			}
 
-			if (transitions.End_NE != 0 && nT && eT && !sT && !wT && !neT)
+			if (allowEndCaps && transitions.End_NE != 0 && nT && eT && !sT && !wT && !neT)
 			{
 				templateId = transitions.End_NE;
 				return true;
 			}
 
-			if (transitions.End_SE != 0 && sT && eT && !nT && !wT && !seT)
+			if (allowEndCaps && transitions.End_SE != 0 && sT && eT && !nT && !wT && !seT)
 			{
 				templateId = transitions.End_SE;
 				return true;
 			}
 
-			if (transitions.End_SW != 0 && sT && wT && !nT && !eT && !swT)
+			if (allowEndCaps && transitions.End_SW != 0 && sT && wT && !nT && !eT && !swT)
 			{
 				templateId = transitions.End_SW;
 				return true;
@@ -1110,6 +1382,74 @@ namespace OpenRA.Mods.Common.Traits
 
 			neighborGroupId = selectedGroupId;
 			return neighborGroupId != null;
+		}
+
+		bool TryFindPatternNeighborGroup(Map map, CPos cell, AutoTileStyle style, int groupPriority, out string neighborGroupId)
+		{
+			neighborGroupId = null;
+			var selectedPriority = int.MinValue;
+			string selectedGroupId = null;
+
+			foreach (var transition in style.Transitions)
+			{
+				if (transition.Value.PatternMap.Count == 0 || transition.Value.PatternRadius <= 0)
+					continue;
+
+				var candidateGroupId = transition.Key;
+				if (!groups.TryGetValue(candidateGroupId, out var neighborGroup))
+					continue;
+
+				if (!HasBaseGroupInPatternRadius(map, cell, candidateGroupId, transition.Value.PatternRadius))
+					continue;
+
+				if (neighborGroup.Priority <= selectedPriority)
+					continue;
+
+				selectedPriority = neighborGroup.Priority;
+				selectedGroupId = candidateGroupId;
+			}
+
+			neighborGroupId = selectedGroupId;
+			return neighborGroupId != null;
+		}
+
+		bool HasBaseGroupInPatternRadius(Map map, CPos cell, string groupId, int radius)
+		{
+			if (radius <= 0)
+				return false;
+
+			if (map.Grid.Type == MapGridType.Rectangular)
+			{
+				for (var dv = -radius; dv <= radius; dv++)
+				{
+					for (var du = -radius; du <= radius; du++)
+					{
+						if (du == 0 && dv == 0)
+							continue;
+
+						if (IsBaseGroup(map, cell + new CVec(du, dv), groupId))
+							return true;
+					}
+				}
+
+				return false;
+			}
+
+			var uv = cell.ToMPos(map.Grid.Type);
+			for (var dv = -radius; dv <= radius; dv++)
+			{
+				for (var du = -radius; du <= radius; du++)
+				{
+					if (du == 0 && dv == 0)
+						continue;
+
+					var n = new MPos(uv.U + du, uv.V + dv).ToCPos(map.Grid.Type);
+					if (IsBaseGroup(map, n, groupId))
+						return true;
+				}
+			}
+
+			return false;
 		}
 
 		bool IsBaseNeighborGroupEdge(

@@ -1,4 +1,4 @@
-#region Copyright & License Information
+﻿#region Copyright & License Information
 /*
  * Copyright (c) The OpenRA Developers and Contributors
  * This file is part of OpenRA, which is free software. It is made
@@ -18,6 +18,33 @@ using OpenRA.Mods.Common.Traits;
 
 namespace OpenRA.Mods.Common.Widgets
 {
+	static class TerrainTemplateIndexHelper
+	{
+		public static bool TryGetIndex(TerrainTemplateInfo template, out byte index)
+		{
+			index = 0;
+			if (template == null || template.TilesCount <= 0)
+				return false;
+
+			if (template.PickAny)
+			{
+				index = (byte)Game.CosmeticRandom.Next(0, template.TilesCount);
+				return true;
+			}
+
+			for (var i = 0; i < template.TilesCount; i++)
+			{
+				if (template.Contains(i) && template[i] != null)
+				{
+					index = (byte)i;
+					return true;
+				}
+			}
+
+			return false;
+		}
+	}
+
 	public sealed class EditorTileBrush : IEditorBrush
 	{
 		public readonly TerrainTemplateInfo TerrainTemplate;
@@ -29,6 +56,7 @@ namespace OpenRA.Mods.Common.Widgets
 		readonly EditorViewportControllerWidget editorWidget;
 		readonly EditorActionManager editorActionManager;
 		readonly IAutoTile autoTile;
+		readonly HashSet<CPos> strokeAutoTileSeeds = new();
 
 		bool painting;
 
@@ -76,9 +104,15 @@ namespace OpenRA.Mods.Common.Widgets
 			if (mi.Button == MouseButton.Left)
 			{
 				if (mi.Event == MouseInputEvent.Down)
+				{
 					painting = true;
+					strokeAutoTileSeeds.Clear();
+				}
 				else if (mi.Event == MouseInputEvent.Up)
+				{
 					painting = false;
+					FinalizeStrokeAutoTile();
+				}
 			}
 
 			if (!painting)
@@ -94,6 +128,7 @@ namespace OpenRA.Mods.Common.Widgets
 			{
 				FloodFillWithBrush(cell);
 				painting = false;
+				strokeAutoTileSeeds.Clear();
 			}
 			else
 				PaintCell(cell, isMoving);
@@ -110,7 +145,10 @@ namespace OpenRA.Mods.Common.Widgets
 			// Only base templates should trigger autotile resolution.
 			// Non-base transition templates must be paintable directly for reference/test layouts.
 			if (autoTile != null && autoTile.IsAutoTileTemplate(Template) && autoTile.IsAutoTileBaseTemplate(Template))
+			{
 				editorActionManager.Add(new AutoTileEditorAction(Template, world.Map, cell, autoTile));
+				strokeAutoTileSeeds.Add(cell);
+			}
 			else
 				editorActionManager.Add(new PaintTileEditorAction(Template, world.Map, cell));
 		}
@@ -132,6 +170,15 @@ namespace OpenRA.Mods.Common.Widgets
 				editorActionManager.Add(new AutoTileFloodFillEditorAction(Template, map, cell, autoTile));
 			else
 				editorActionManager.Add(new FloodFillEditorAction(Template, map, cell));
+		}
+
+		void FinalizeStrokeAutoTile()
+		{
+			if (autoTile == null || strokeAutoTileSeeds.Count == 0)
+				return;
+
+			editorActionManager.Add(new AutoTileFinalizeEditorAction(world.Map, strokeAutoTileSeeds, autoTile));
+			strokeAutoTileSeeds.Clear();
 		}
 
 		bool PlacementOverlapsSameTemplate(TerrainTemplateInfo template, CPos cell)
@@ -269,8 +316,8 @@ namespace OpenRA.Mods.Common.Widgets
 		readonly Queue<UndoTile> undoTiles = new();
 		readonly HashSet<CPos> undoCells = new();
 		readonly HashSet<CPos> autoTileCells = new();
-		const int AutoTileUpdateRadius = 1;
-		const int AutoTileMaxPasses = 4;
+		const int AutoTileUpdateRadius = 3;
+		const int AutoTileMaxPasses = 8;
 
 		public AutoTileEditorAction(ushort template, Map map, CPos cell, IAutoTile autoTile)
 		{
@@ -344,30 +391,41 @@ namespace OpenRA.Mods.Common.Widgets
 
 			var mapTiles = map.Tiles;
 			var mapHeight = map.Height;
+			var totalUpdates = 0;
 			for (var pass = 0; pass < AutoTileMaxPasses; pass++)
 			{
+				var normalizedTiles = NormalizeAutoTileCells(mapTiles);
 				var updates = new List<(CPos Cell, TerrainTile Current, ushort ResolvedTemplateId)>();
-
-				// Resolve only within the local neighborhood touched by this brush action.
-				foreach (var c in autoTileCells.OrderBy(c => c.Y).ThenBy(c => c.X))
+				try
 				{
-					var current = mapTiles[c];
-					if (!autoTile.IsAutoTileTemplate(current.Type))
-						continue;
+					// Resolve only within the local neighborhood touched by this brush action.
+					foreach (var c in autoTileCells.OrderBy(c => c.Y).ThenBy(c => c.X))
+					{
+						var current = normalizedTiles.TryGetValue(c, out var originalTile) ? originalTile : mapTiles[c];
+						if (!autoTile.IsAutoTileTemplate(current.Type))
+							continue;
 
-					var resolvedTemplateId = autoTile.ResolveTemplate(map, c);
-					if (resolvedTemplateId == current.Type)
-						continue;
+						var resolvedTemplateId = autoTile.ResolveTemplate(map, c);
+						if (resolvedTemplateId == current.Type)
+							continue;
 
-					var resolvedTemplate = terrainInfo.Templates[resolvedTemplateId];
-					if (resolvedTemplate.Size.X != 1 || resolvedTemplate.Size.Y != 1)
-						continue;
+						var resolvedTemplate = terrainInfo.Templates[resolvedTemplateId];
+						if (resolvedTemplate.Size.X != 1 || resolvedTemplate.Size.Y != 1)
+							continue;
 
-					updates.Add((c, current, resolvedTemplateId));
+						updates.Add((c, current, resolvedTemplateId));
+					}
+				}
+				finally
+				{
+					RestoreNormalizedAutoTileCells(mapTiles, normalizedTiles);
 				}
 
 				if (updates.Count == 0)
 					break;
+
+				totalUpdates += updates.Count;
+				LogAutoTilePass("AutoTileEditorAction", pass, updates);
 
 				foreach (var update in updates)
 				{
@@ -375,21 +433,271 @@ namespace OpenRA.Mods.Common.Widgets
 					var current = update.Current;
 					var resolvedTemplate = terrainInfo.Templates[update.ResolvedTemplateId];
 
-					var index = resolvedTemplate.PickAny ? (byte)Game.CosmeticRandom.Next(0, resolvedTemplate.TilesCount) : (byte)0;
+					if (!TerrainTemplateIndexHelper.TryGetIndex(resolvedTemplate, out var index))
+						continue;
 					RememberUndo(c, current, mapHeight[c]);
 
 					mapTiles[c] = new TerrainTile(update.ResolvedTemplateId, index);
 
 					var baseHeight = mapHeight.Contains(c) ? mapHeight[c] : (byte)0;
 					mapHeight[c] = (byte)(baseHeight + resolvedTemplate[index].Height).Clamp(0, map.Grid.MaximumTerrainHeight);
+					AddAutoTileCells(c);
 				}
 			}
+
+			Log.Write("debug", $"AutoTileEditorAction seed={cell} touched={autoTileCells.Count} updates={totalUpdates}");
+		}
+
+		static void LogAutoTilePass(string label, int pass, List<(CPos Cell, TerrainTile Current, ushort ResolvedTemplateId)> updates)
+		{
+			var sample = string.Join(", ", updates.Take(12).Select(u => $"({u.Cell.X},{u.Cell.Y}) {u.Current.Type}->{u.ResolvedTemplateId}"));
+			Log.Write("debug", $"{label} pass={pass} updates={updates.Count} sample=[{sample}]");
+		}
+
+		Dictionary<CPos, TerrainTile> NormalizeAutoTileCells(CellLayer<TerrainTile> mapTiles)
+		{
+			var normalizedTiles = new Dictionary<CPos, TerrainTile>();
+			foreach (var c in autoTileCells.OrderBy(c => c.Y).ThenBy(c => c.X))
+			{
+				var current = mapTiles[c];
+				if (!autoTile.IsAutoTileTemplate(current.Type) || autoTile.IsAutoTileBaseTemplate(current.Type))
+					continue;
+
+				var baseTemplateId = autoTile.GetAutoTileBaseTemplate(current.Type);
+				if (baseTemplateId == current.Type)
+					continue;
+
+				var baseTemplate = terrainInfo.Templates[baseTemplateId];
+				if (baseTemplate.Size.X != 1 || baseTemplate.Size.Y != 1)
+					continue;
+
+				normalizedTiles[c] = current;
+				mapTiles[c] = new TerrainTile(baseTemplateId, current.Index);
+			}
+
+			return normalizedTiles;
+		}
+
+		static void RestoreNormalizedAutoTileCells(CellLayer<TerrainTile> mapTiles, Dictionary<CPos, TerrainTile> normalizedTiles)
+		{
+			foreach (var normalizedTile in normalizedTiles)
+				mapTiles[normalizedTile.Key] = normalizedTile.Value;
 		}
 
 		void AddAutoTileCells(CPos cellToAdd)
 		{
 			foreach (var offset in GetAutoTileOffsets(map, cellToAdd))
 				autoTileCells.Add(cellToAdd + offset);
+		}
+
+		static IEnumerable<CVec> GetAutoTileOffsets(Map map, CPos cell)
+		{
+			var offsets = new List<CVec>();
+			if (map.Grid.Type == MapGridType.Rectangular || map.Grid.Type == MapGridType.RectangularIsometric)
+			{
+				for (var dy = -AutoTileUpdateRadius; dy <= AutoTileUpdateRadius; dy++)
+					for (var dx = -AutoTileUpdateRadius; dx <= AutoTileUpdateRadius; dx++)
+						offsets.Add(new CVec(dx, dy));
+				return offsets;
+			}
+
+			var uv = cell.ToMPos(map.Grid.Type);
+			for (var dv = -AutoTileUpdateRadius; dv <= AutoTileUpdateRadius; dv++)
+			{
+				for (var du = -AutoTileUpdateRadius; du <= AutoTileUpdateRadius; du++)
+				{
+					var n = new MPos(uv.U + du, uv.V + dv).ToCPos(map.Grid.Type);
+					offsets.Add(n - cell);
+				}
+			}
+
+			return offsets;
+		}
+
+		void RememberUndo(CPos cellToRemember, TerrainTile tile, byte height)
+		{
+			if (!undoCells.Add(cellToRemember))
+				return;
+
+			undoTiles.Enqueue(new UndoTile(cellToRemember, tile, height));
+		}
+	}
+
+	sealed class AutoTileFinalizeEditorAction : IEditorAction
+	{
+		public string Text => "Retile";
+
+		readonly Map map;
+		readonly IAutoTile autoTile;
+		readonly ITemplatedTerrainInfo terrainInfo;
+		readonly HashSet<CPos> autoTileCells = new();
+		readonly Queue<UndoTile> undoTiles = new();
+		readonly HashSet<CPos> undoCells = new();
+
+		const int AutoTileUpdateRadius = 3;
+		const int AutoTileMaxPasses = 8;
+		const int AutoTileFinalizePadding = 8;
+
+		public AutoTileFinalizeEditorAction(Map map, IEnumerable<CPos> seeds, IAutoTile autoTile)
+		{
+			this.map = map;
+			this.autoTile = autoTile;
+			terrainInfo = (ITemplatedTerrainInfo)map.Rules.TerrainInfo;
+
+			var strokeSeeds = seeds.ToList();
+			foreach (var seed in strokeSeeds)
+				AddAutoTileCells(seed);
+
+			AddAutoTileBoundingRegion(strokeSeeds);
+		}
+
+		public void Execute()
+		{
+			Do();
+		}
+
+		public void Do()
+		{
+			ApplyAutoTile();
+		}
+
+		public void Undo()
+		{
+			var mapTiles = map.Tiles;
+			var mapHeight = map.Height;
+
+			while (undoTiles.Count > 0)
+			{
+				var undoTile = undoTiles.Dequeue();
+				mapTiles[undoTile.Cell] = undoTile.MapTile;
+				mapHeight[undoTile.Cell] = undoTile.Height;
+			}
+		}
+
+		void ApplyAutoTile()
+		{
+			if (autoTile == null || autoTileCells.Count == 0)
+				return;
+
+			var mapTiles = map.Tiles;
+			var mapHeight = map.Height;
+			var totalUpdates = 0;
+			for (var pass = 0; pass < AutoTileMaxPasses; pass++)
+			{
+				var normalizedTiles = NormalizeAutoTileCells(mapTiles);
+				var updates = new List<(CPos Cell, TerrainTile Current, ushort ResolvedTemplateId)>();
+				try
+				{
+					foreach (var c in autoTileCells.OrderBy(c => c.Y).ThenBy(c => c.X))
+					{
+						var current = normalizedTiles.TryGetValue(c, out var originalTile) ? originalTile : mapTiles[c];
+						if (!autoTile.IsAutoTileTemplate(current.Type))
+							continue;
+
+						var resolvedTemplateId = autoTile.ResolveTemplate(map, c);
+						if (resolvedTemplateId == current.Type)
+							continue;
+
+						var resolvedTemplate = terrainInfo.Templates[resolvedTemplateId];
+						if (resolvedTemplate.Size.X != 1 || resolvedTemplate.Size.Y != 1)
+							continue;
+
+						updates.Add((c, current, resolvedTemplateId));
+					}
+				}
+				finally
+				{
+					RestoreNormalizedAutoTileCells(mapTiles, normalizedTiles);
+				}
+
+				if (updates.Count == 0)
+					break;
+
+				totalUpdates += updates.Count;
+				LogAutoTilePass("AutoTileFinalizeEditorAction", pass, updates);
+
+				foreach (var update in updates)
+				{
+					var c = update.Cell;
+					var current = update.Current;
+					var resolvedTemplate = terrainInfo.Templates[update.ResolvedTemplateId];
+					if (!TerrainTemplateIndexHelper.TryGetIndex(resolvedTemplate, out var index))
+						continue;
+
+					RememberUndo(c, current, mapHeight[c]);
+
+					mapTiles[c] = new TerrainTile(update.ResolvedTemplateId, index);
+
+					var baseHeight = mapHeight.Contains(c) ? mapHeight[c] : (byte)0;
+					mapHeight[c] = (byte)(baseHeight + resolvedTemplate[index].Height).Clamp(0, map.Grid.MaximumTerrainHeight);
+					AddAutoTileCells(c);
+				}
+			}
+
+			Log.Write("debug", $"AutoTileFinalizeEditorAction seeds={autoTileCells.Count} updates={totalUpdates}");
+		}
+
+		static void LogAutoTilePass(string label, int pass, List<(CPos Cell, TerrainTile Current, ushort ResolvedTemplateId)> updates)
+		{
+			var sample = string.Join(", ", updates.Take(12).Select(u => $"({u.Cell.X},{u.Cell.Y}) {u.Current.Type}->{u.ResolvedTemplateId}"));
+			Log.Write("debug", $"{label} pass={pass} updates={updates.Count} sample=[{sample}]");
+		}
+
+		Dictionary<CPos, TerrainTile> NormalizeAutoTileCells(CellLayer<TerrainTile> mapTiles)
+		{
+			var normalizedTiles = new Dictionary<CPos, TerrainTile>();
+			foreach (var c in autoTileCells.OrderBy(c => c.Y).ThenBy(c => c.X))
+			{
+				var current = mapTiles[c];
+				if (!autoTile.IsAutoTileTemplate(current.Type) || autoTile.IsAutoTileBaseTemplate(current.Type))
+					continue;
+
+				var baseTemplateId = autoTile.GetAutoTileBaseTemplate(current.Type);
+				if (baseTemplateId == current.Type)
+					continue;
+
+				var baseTemplate = terrainInfo.Templates[baseTemplateId];
+				if (baseTemplate.Size.X != 1 || baseTemplate.Size.Y != 1)
+					continue;
+
+				normalizedTiles[c] = current;
+				mapTiles[c] = new TerrainTile(baseTemplateId, current.Index);
+			}
+
+			return normalizedTiles;
+		}
+
+		static void RestoreNormalizedAutoTileCells(CellLayer<TerrainTile> mapTiles, Dictionary<CPos, TerrainTile> normalizedTiles)
+		{
+			foreach (var normalizedTile in normalizedTiles)
+				mapTiles[normalizedTile.Key] = normalizedTile.Value;
+		}
+
+		void AddAutoTileCells(CPos cellToAdd)
+		{
+			foreach (var offset in GetAutoTileOffsets(map, cellToAdd))
+				autoTileCells.Add(cellToAdd + offset);
+		}
+
+		void AddAutoTileBoundingRegion(List<CPos> seeds)
+		{
+			if (seeds.Count == 0)
+				return;
+
+			var minX = seeds.Min(c => c.X) - AutoTileFinalizePadding;
+			var maxX = seeds.Max(c => c.X) + AutoTileFinalizePadding;
+			var minY = seeds.Min(c => c.Y) - AutoTileFinalizePadding;
+			var maxY = seeds.Max(c => c.Y) + AutoTileFinalizePadding;
+
+			for (var y = minY; y <= maxY; y++)
+			{
+				for (var x = minX; x <= maxX; x++)
+				{
+					var c = new CPos(x, y);
+					if (map.Tiles.Contains(c))
+						autoTileCells.Add(c);
+				}
+			}
 		}
 
 		static IEnumerable<CVec> GetAutoTileOffsets(Map map, CPos cell)
@@ -442,8 +750,8 @@ namespace OpenRA.Mods.Common.Widgets
 		readonly Queue<UndoTile> undoTiles = new();
 		readonly HashSet<CPos> undoCells = new();
 		readonly HashSet<CPos> autoTileCells = new();
-		const int AutoTileUpdateRadius = 1;
-		const int AutoTileMaxPasses = 4;
+		const int AutoTileUpdateRadius = 3;
+		const int AutoTileMaxPasses = 8;
 
 		public AutoTileFloodFillEditorAction(ushort template, Map map, CPos cell, IAutoTile autoTile)
 		{
@@ -580,30 +888,41 @@ namespace OpenRA.Mods.Common.Widgets
 
 			var mapTiles = map.Tiles;
 			var mapHeight = map.Height;
+			var totalUpdates = 0;
 			for (var pass = 0; pass < AutoTileMaxPasses; pass++)
 			{
+				var normalizedTiles = NormalizeAutoTileCells(mapTiles);
 				var updates = new List<(CPos Cell, TerrainTile Current, ushort ResolvedTemplateId)>();
-
-				// Resolve only within the local neighborhood touched by this brush action.
-				foreach (var c in autoTileCells.OrderBy(c => c.Y).ThenBy(c => c.X))
+				try
 				{
-					var current = mapTiles[c];
-					if (!autoTile.IsAutoTileTemplate(current.Type))
-						continue;
+					// Resolve only within the local neighborhood touched by this brush action.
+					foreach (var c in autoTileCells.OrderBy(c => c.Y).ThenBy(c => c.X))
+					{
+						var current = normalizedTiles.TryGetValue(c, out var originalTile) ? originalTile : mapTiles[c];
+						if (!autoTile.IsAutoTileTemplate(current.Type))
+							continue;
 
-					var resolvedTemplateId = autoTile.ResolveTemplate(map, c);
-					if (resolvedTemplateId == current.Type)
-						continue;
+						var resolvedTemplateId = autoTile.ResolveTemplate(map, c);
+						if (resolvedTemplateId == current.Type)
+							continue;
 
-					var resolvedTemplate = terrainInfo.Templates[resolvedTemplateId];
-					if (resolvedTemplate.Size.X != 1 || resolvedTemplate.Size.Y != 1)
-						continue;
+						var resolvedTemplate = terrainInfo.Templates[resolvedTemplateId];
+						if (resolvedTemplate.Size.X != 1 || resolvedTemplate.Size.Y != 1)
+							continue;
 
-					updates.Add((c, current, resolvedTemplateId));
+						updates.Add((c, current, resolvedTemplateId));
+					}
+				}
+				finally
+				{
+					RestoreNormalizedAutoTileCells(mapTiles, normalizedTiles);
 				}
 
 				if (updates.Count == 0)
 					break;
+
+				totalUpdates += updates.Count;
+				LogAutoTilePass("AutoTileFloodFillEditorAction", pass, updates);
 
 				foreach (var update in updates)
 				{
@@ -611,15 +930,55 @@ namespace OpenRA.Mods.Common.Widgets
 					var current = update.Current;
 					var resolvedTemplate = terrainInfo.Templates[update.ResolvedTemplateId];
 
-					var index = resolvedTemplate.PickAny ? (byte)Game.CosmeticRandom.Next(0, resolvedTemplate.TilesCount) : (byte)0;
+					if (!TerrainTemplateIndexHelper.TryGetIndex(resolvedTemplate, out var index))
+						continue;
 					RememberUndo(c, current, mapHeight[c]);
 
 					mapTiles[c] = new TerrainTile(update.ResolvedTemplateId, index);
 
 					var baseHeight = mapHeight.Contains(c) ? mapHeight[c] : (byte)0;
 					mapHeight[c] = (byte)(baseHeight + resolvedTemplate[index].Height).Clamp(0, map.Grid.MaximumTerrainHeight);
+					AddAutoTileCells(c);
 				}
 			}
+
+			Log.Write("debug", $"AutoTileFloodFillEditorAction touched={autoTileCells.Count} updates={totalUpdates}");
+		}
+
+		static void LogAutoTilePass(string label, int pass, List<(CPos Cell, TerrainTile Current, ushort ResolvedTemplateId)> updates)
+		{
+			var sample = string.Join(", ", updates.Take(12).Select(u => $"({u.Cell.X},{u.Cell.Y}) {u.Current.Type}->{u.ResolvedTemplateId}"));
+			Log.Write("debug", $"{label} pass={pass} updates={updates.Count} sample=[{sample}]");
+		}
+
+		Dictionary<CPos, TerrainTile> NormalizeAutoTileCells(CellLayer<TerrainTile> mapTiles)
+		{
+			var normalizedTiles = new Dictionary<CPos, TerrainTile>();
+			foreach (var c in autoTileCells.OrderBy(c => c.Y).ThenBy(c => c.X))
+			{
+				var current = mapTiles[c];
+				if (!autoTile.IsAutoTileTemplate(current.Type) || autoTile.IsAutoTileBaseTemplate(current.Type))
+					continue;
+
+				var baseTemplateId = autoTile.GetAutoTileBaseTemplate(current.Type);
+				if (baseTemplateId == current.Type)
+					continue;
+
+				var baseTemplate = terrainInfo.Templates[baseTemplateId];
+				if (baseTemplate.Size.X != 1 || baseTemplate.Size.Y != 1)
+					continue;
+
+				normalizedTiles[c] = current;
+				mapTiles[c] = new TerrainTile(baseTemplateId, current.Index);
+			}
+
+			return normalizedTiles;
+		}
+
+		static void RestoreNormalizedAutoTileCells(CellLayer<TerrainTile> mapTiles, Dictionary<CPos, TerrainTile> normalizedTiles)
+		{
+			foreach (var normalizedTile in normalizedTiles)
+				mapTiles[normalizedTile.Key] = normalizedTile.Value;
 		}
 
 		void AddAutoTileCells(CPos cellToAdd)
