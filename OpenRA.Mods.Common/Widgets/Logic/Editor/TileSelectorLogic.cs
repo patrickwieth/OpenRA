@@ -27,18 +27,36 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			public readonly string[] Categories;
 			public readonly string[] SearchTerms;
 			public readonly string Tooltip;
+			public readonly string DisplayLabel;
 
 			public TileSelectorTemplate(TerrainTemplateInfo template)
 			{
 				Template = template;
 				Categories = template.Categories;
-				Tooltip = template.Id.ToString(NumberFormatInfo.CurrentInfo);
-				SearchTerms = new[] { Tooltip };
+
+				if (template.Id == HighCliffTileIds.RaiseSelectorTemplateId)
+				{
+					DisplayLabel = "UP";
+					Tooltip = "Raise Height";
+				}
+				else if (template.Id == HighCliffTileIds.LowerSelectorTemplateId)
+				{
+					DisplayLabel = "DOWN";
+					Tooltip = "Lower Height";
+				}
+				else
+				{
+					DisplayLabel = null;
+					Tooltip = template.Id.ToString(NumberFormatInfo.CurrentInfo);
+				}
+
+				SearchTerms = DisplayLabel != null ? new[] { Tooltip, DisplayLabel } : new[] { Tooltip };
 			}
 		}
 
 		readonly ITemplatedTerrainInfo terrainInfo;
 		readonly TileSelectorTemplate[] allTemplates;
+		readonly string[] visibleCategories;
 
 		[ObjectCreator.UseCtor]
 		public TileSelectorLogic(Widget widget, ModData modData, World world, WorldRenderer worldRenderer)
@@ -49,8 +67,10 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				throw new InvalidDataException("TileSelectorLogic requires a template-based tileset.");
 
 			allTemplates = terrainInfo.Templates.Values.Select(t => new TileSelectorTemplate(t)).ToArray();
+			visibleCategories = terrainInfo.EditorTemplateOrder.ToArray();
 
 			allCategories = allTemplates.SelectMany(t => t.Categories)
+				.Where(visibleCategories.Contains)
 				.Distinct()
 				.OrderBy(CategoryOrder)
 				.ToArray();
@@ -71,6 +91,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 						allTemplates.Where(t => t.SearchTerms.Any(
 							s => s.Contains(searchFilter, StringComparison.CurrentCultureIgnoreCase)))
 						.SelectMany(t => t.Categories)
+						.Where(visibleCategories.Contains)
 						.Distinct()
 						.OrderBy(CategoryOrder));
 				else
@@ -110,6 +131,10 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 				var preview = item.Get<TerrainTemplatePreviewWidget>("TILE_PREVIEW");
 				preview.SetTemplate(terrainInfo.Templates[tileId]);
+
+				var label = item.Get<LabelWidget>("HEIGHT_TOOL_LABEL");
+				label.GetText = () => t.DisplayLabel;
+				label.IsVisible = () => t.DisplayLabel != null;
 
 				// Scale templates to fit within the panel
 				var scale = 1f;

@@ -297,6 +297,14 @@ Container@EDITOR_WORLD_ROOT:
 								TerrainTemplatePreview@TILE_PREVIEW:
 									X: 4
 									Y: 4
+								Label@HEIGHT_TOOL_LABEL:
+									X: 8
+									Y: 8
+									Width: PARENT_WIDTH - 16
+									Height: 18
+									Font: TinyBold
+									Align: Center
+
 		Container@LAYER_WIDGETS:
 			X: WINDOW_WIDTH - 320
 			Y: 354

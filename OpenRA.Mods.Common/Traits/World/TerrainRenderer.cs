@@ -61,11 +61,13 @@ namespace OpenRA.Mods.Common.Traits
 
 	public sealed class TerrainRenderer : IRenderTerrain, IWorldLoaded, INotifyActorDisposing, ITiledTerrainRenderer
 	{
+		const int HighCliffBaseTerrainSearchRadius = 4;
 		readonly Map map;
 		TerrainSpriteLayer spriteLayer;
 		readonly DefaultTerrain terrainInfo;
 		readonly DefaultTileCache tileCache;
 		WorldRenderer worldRenderer;
+		bool renderHighCliffsAsOverlay;
 		bool disposed;
 
 		public TerrainRenderer(World world)
@@ -81,24 +83,88 @@ namespace OpenRA.Mods.Common.Traits
 		void IWorldLoaded.WorldLoaded(World world, WorldRenderer wr)
 		{
 			worldRenderer = wr;
+			renderHighCliffsAsOverlay = world.WorldActor.TraitOrDefault<HighCliffOverlay>() != null;
 			spriteLayer = new TerrainSpriteLayer(world, wr, tileCache.MissingTile, BlendMode.Alpha, world.Type != WorldType.Editor);
 			foreach (var cell in map.AllCells)
 				UpdateCell(cell);
 
-			map.Tiles.CellEntryChanged += UpdateCell;
+			map.Tiles.CellEntryChanged += UpdateCellFromTileChange;
 			map.Height.CellEntryChanged += UpdateCell;
 		}
 
 		public void UpdateCell(CPos cell)
 		{
-			var tile = map.Tiles[cell];
-			var palette = terrainInfo.Palette;
-			if (terrainInfo.Templates.TryGetValue(tile.Type, out var template))
-				palette = ((DefaultTerrainTemplateInfo)template).Palette ?? palette;
+			var tile = GetRenderedTerrainTile(cell);
+			var palette = GetPalette(tile.Type);
 
 			var sprite = tileCache.TileSprite(tile);
 			var paletteReference = worldRenderer.Palette(palette);
 			spriteLayer.Update(cell, sprite, paletteReference);
+		}
+
+		void UpdateCellFromTileChange(CPos cell)
+		{
+			UpdateCell(cell);
+			if (!renderHighCliffsAsOverlay)
+				return;
+
+			for (var dy = -HighCliffBaseTerrainSearchRadius; dy <= HighCliffBaseTerrainSearchRadius; dy++)
+			{
+				for (var dx = -HighCliffBaseTerrainSearchRadius; dx <= HighCliffBaseTerrainSearchRadius; dx++)
+				{
+					var c = cell + new CVec(dx, dy);
+					if (!map.Contains(c))
+						continue;
+
+					if (HighCliffTileIds.IsTemplate(map.Tiles[c].Type))
+						UpdateCell(c);
+				}
+			}
+		}
+
+		string GetPalette(ushort templateId)
+		{
+			var palette = terrainInfo.Palette;
+			if (terrainInfo.Templates.TryGetValue(templateId, out var template))
+				palette = ((DefaultTerrainTemplateInfo)template).Palette ?? palette;
+
+			return palette;
+		}
+
+		TerrainTile GetRenderedTerrainTile(CPos cell)
+		{
+			var tile = map.Tiles[cell];
+			if (renderHighCliffsAsOverlay && HighCliffTileIds.IsTemplate(tile.Type))
+				return FindNearbyBaseTerrainTile(cell);
+
+			return tile;
+		}
+
+		TerrainTile FindNearbyBaseTerrainTile(CPos cell)
+		{
+			for (var radius = 1; radius <= HighCliffBaseTerrainSearchRadius; radius++)
+			{
+				for (var dy = -radius; dy <= radius; dy++)
+				{
+					for (var dx = -radius; dx <= radius; dx++)
+					{
+						if (dx != -radius && dx != radius && dy != -radius && dy != radius)
+							continue;
+
+						var c = cell + new CVec(dx, dy);
+						if (!map.Contains(c))
+							continue;
+
+						var tile = map.Tiles[c];
+						if (HighCliffTileIds.IsTemplate(tile.Type))
+							continue;
+
+						return GetRenderedTerrainTile(c);
+					}
+				}
+			}
+
+			return ((ITerrainInfo)terrainInfo).DefaultTerrainTile;
 		}
 
 		void IRenderTerrain.RenderTerrain(WorldRenderer wr, Viewport viewport)
@@ -114,7 +180,7 @@ namespace OpenRA.Mods.Common.Traits
 			if (disposed)
 				return;
 
-			map.Tiles.CellEntryChanged -= UpdateCell;
+			map.Tiles.CellEntryChanged -= UpdateCellFromTileChange;
 			map.Height.CellEntryChanged -= UpdateCell;
 
 			spriteLayer.Dispose();

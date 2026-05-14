@@ -1430,7 +1430,12 @@ namespace OpenRA.Mods.Common.Server
 						server.SendFluentMessageTo(connectionToEcho, message);
 				}
 
-				var terrainColors = server.ModData.DefaultTerrainInfo[server.Map.TileSet].RestrictedPlayerColors.ToList();
+				var terrainInfo = server.ModData.DefaultTerrainInfo.TryGetValue(server.Map.TileSet, out var tileSetInfo)
+					? tileSetInfo
+					: server.ModData.DefaultTerrainInfo
+						.FirstOrDefault(kv => kv.Key.Equals(server.Map.TileSet, StringComparison.OrdinalIgnoreCase))
+						.Value;
+				var terrainColors = terrainInfo?.RestrictedPlayerColors.ToList() ?? new List<Color>();
 				var playerColors = server.LobbyInfo.Clients.Where(c => c.Index != playerIndex).Select(c => c.Color)
 					.Concat(server.Map.Players.Players.Values.Select(p => p.Color)).ToList();
 

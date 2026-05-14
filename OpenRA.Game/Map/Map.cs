@@ -997,6 +997,33 @@ namespace OpenRA
 			return new WDist(offset.Z);
 		}
 
+		/// <summary>
+		/// Returns the discrete terrain height step for a cell on the default ground layer.
+		/// </summary>
+		public byte TerrainHeightStep(CPos cell)
+		{
+			if (cell.Layer != 0)
+				throw new ArgumentOutOfRangeException(nameof(cell), "Terrain height steps are only defined for the default ground layer.");
+
+			return Height.TryGetValue(cell, out var height) ? height : (byte)0;
+		}
+
+		/// <summary>
+		/// Returns the discrete terrain height step for the ground cell containing a world position.
+		/// </summary>
+		public byte TerrainHeightStep(WPos pos)
+		{
+			return TerrainHeightStep(CellContaining(pos));
+		}
+
+		/// <summary>
+		/// Returns the terrain surface height under a world position on the default ground layer.
+		/// </summary>
+		public WDist TerrainSurfaceHeight(WPos pos)
+		{
+			return new WDist(pos.Z - DistanceAboveTerrain(pos).Length);
+		}
+
 		public WRot TerrainOrientation(CPos cell)
 		{
 			if (Ramp.TryGetValue(cell, out var ramp))

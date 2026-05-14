@@ -34,6 +34,74 @@ namespace OpenRA.Mods.Common
 			return map.DistanceAboveTerrain(self.CenterPosition).Length == 0;
 		}
 
+		/// <summary>
+		/// Tries to get the discrete ground terrain height step beneath the actor's current world position.
+		/// This reflects the base terrain cell and intentionally ignores custom movement layers such as tunnels or bridges.
+		/// </summary>
+		public static bool TryGetGroundTerrainHeightStep(this Actor self, out byte terrainHeightStep)
+		{
+			terrainHeightStep = 0;
+
+			if (!TryGetGroundMap(self, out var map))
+				return false;
+
+			var groundCell = map.CellContaining(self.CenterPosition);
+			if (!map.Contains(groundCell))
+				return false;
+
+			terrainHeightStep = map.TerrainHeightStep(groundCell);
+			return true;
+		}
+
+		/// <summary>
+		/// Tries to get the exact ground terrain surface height beneath the actor's current world position.
+		/// This reflects the base terrain surface and intentionally ignores custom movement layers such as tunnels or bridges.
+		/// </summary>
+		public static bool TryGetTerrainSurfaceHeight(this Actor self, out WDist terrainSurfaceHeight)
+		{
+			terrainSurfaceHeight = WDist.Zero;
+
+			if (!TryGetGroundMap(self, out var map))
+				return false;
+
+			var groundCell = map.CellContaining(self.CenterPosition);
+			if (!map.Contains(groundCell))
+				return false;
+
+			terrainSurfaceHeight = map.TerrainSurfaceHeight(self.CenterPosition);
+			return true;
+		}
+
+		/// <summary>
+		/// Tries to get the actor's altitude above the base terrain at its current world position.
+		/// This is zero for actors resting on terrain and positive for actors above it.
+		/// </summary>
+		public static bool TryGetAltitudeAboveTerrain(this Actor self, out WDist altitudeAboveTerrain)
+		{
+			altitudeAboveTerrain = WDist.Zero;
+
+			if (!TryGetGroundMap(self, out var map))
+				return false;
+
+			var groundCell = map.CellContaining(self.CenterPosition);
+			if (!map.Contains(groundCell))
+				return false;
+
+			altitudeAboveTerrain = map.DistanceAboveTerrain(self.CenterPosition);
+			return true;
+		}
+
+		static bool TryGetGroundMap(Actor self, out Map map)
+		{
+			map = null;
+
+			if (self.OccupiesSpace == null || !self.IsInWorld)
+				return false;
+
+			map = self.World.Map;
+			return true;
+		}
+
 		public static bool AppearsFriendlyTo(this Actor self, Actor toActor)
 		{
 			var stance = toActor.Owner.RelationshipWith(self.Owner);
