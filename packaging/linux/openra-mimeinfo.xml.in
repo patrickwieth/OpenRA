@@ -6,4 +6,10 @@
     <comment>Join OpenRA server</comment>
     <glob weight="60" pattern="openra-{MODID}-{TAG}://*"/>
   </mime-type>
+  <mime-type type="x-scheme-handler/ymca">
+    <icon name="openra-{MODID}" />
+    <generic-icon name="applications-games"/>
+    <comment>Join YMCA server</comment>
+    <glob weight="60" pattern="ymca://*"/>
+  </mime-type>
 </mime-info>

@@ -5,9 +5,10 @@ cd "{GAME_INSTALL_DIR}"
 
 # Search for server connection
 PROTOCOL_PREFIX="openra-{MODID}-{TAG}://"
+STABLE_PROTOCOL_PREFIX="ymca://"
 JOIN_SERVER=""
-if [ "${1#${PROTOCOL_PREFIX}}" != "${1}" ]; then
-	JOIN_SERVER="Launch.Connect=${1#${PROTOCOL_PREFIX}}"
+if [ "${1#${PROTOCOL_PREFIX}}" != "${1}" ] || [ "${1#${STABLE_PROTOCOL_PREFIX}}" != "${1}" ]; then
+	JOIN_SERVER="Launch.URI=${1}"
 fi
 
 # Run the game

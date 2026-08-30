@@ -111,17 +111,8 @@ NSTask *gameTask;
 		if (joinServerUrl && [joinServerUrl length] > 0)
 		{
 			NSString *prefix = [joinServerUrl stringByAppendingString: @"://"];
-			if ([url hasPrefix: prefix])
-			{
-				NSString *trimmed = [url substringFromIndex:[prefix length]];
-				NSArray *parts = [trimmed componentsSeparatedByString:@":"];
-				NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
-
-				if ([parts count] == 2 && [formatter numberFromString: [parts objectAtIndex:1]] != nil)
-					[gameArgs addObject: [NSString stringWithFormat: @"Launch.Connect=%@", trimmed]];
-
-				[formatter release];
-			}
+			if ([url hasPrefix: prefix] || [url hasPrefix: @"ymca://"])
+				[gameArgs addObject: [NSString stringWithFormat: @"Launch.URI=%@", url]];
 		}
 	}
 
@@ -140,6 +131,7 @@ NSTask *gameTask;
 		if (joinServerUrl && [joinServerUrl length] > 0 && bundleIdentifier)
 		{
 			LSSetDefaultHandlerForURLScheme((CFStringRef)joinServerUrl, (CFStringRef)bundleIdentifier);
+			LSSetDefaultHandlerForURLScheme(CFSTR("ymca"), (CFStringRef)bundleIdentifier);
 			[[NSAppleEventManager sharedAppleEventManager] setEventHandler:self andSelector:@selector(getUrl:withReplyEvent:) forEventClass:kInternetEventClass andEventID:kAEGetURL];
 		}
 	}
