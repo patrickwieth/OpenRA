@@ -19,6 +19,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using OpenRA;
@@ -163,6 +164,9 @@ namespace OpenRA.Server
 			get => internalState;
 			set => internalState = value;
 		}
+
+		public DateTime? AutoStartAtUtc { get; set; }
+		public int LastAutoStartCountdownSecond { get; set; } = -1;
 
 		public static void SyncClientToPlayerReference(Session.Client c, PlayerReference pr)
 		{
@@ -1253,6 +1257,8 @@ namespace OpenRA.Server
 
 				foreach (var t in serverTraits.WithInterface<INotifySyncLobbyInfo>())
 					t.LobbyInfoSynced(this);
+
+				WriteLobbyStatus();
 			}
 		}
 
@@ -1274,6 +1280,7 @@ namespace OpenRA.Server
 				// The full LobbyInfo includes ping info, so we can delay the next partial ping update
 				// TODO: Replace the special-case ping updates with more general LobbyInfo delta updates
 				pingUpdated.Restart();
+				WriteLobbyStatus();
 			}
 		}
 
@@ -1307,6 +1314,40 @@ namespace OpenRA.Server
 
 				foreach (var t in serverTraits.WithInterface<INotifySyncLobbyInfo>())
 					t.LobbyInfoSynced(this);
+			}
+		}
+
+		public void WriteLobbyStatus()
+		{
+			if (string.IsNullOrEmpty(Settings.LobbyStatusFile))
+				return;
+
+			try
+			{
+				var directory = Path.GetDirectoryName(Settings.LobbyStatusFile);
+				if (!string.IsNullOrEmpty(directory))
+					Directory.CreateDirectory(directory);
+
+				var status = new
+				{
+					State = State.ToString(),
+					AutoStartAtUtc,
+					Players = LobbyInfo.NonBotClients.Select(client => new
+					{
+						client.Name,
+						Ready = client.State == Session.ClientState.Ready,
+						IsObserver = client.IsObserver,
+						client.Team,
+						client.SpawnPoint
+					}).ToArray()
+				};
+				var temporaryPath = Settings.LobbyStatusFile + ".tmp";
+				File.WriteAllText(temporaryPath, JsonSerializer.Serialize(status));
+				File.Move(temporaryPath, Settings.LobbyStatusFile, true);
+			}
+			catch (Exception ex)
+			{
+				Log.Write("server", $"Failed to write lobby status: {ex.Message}");
 			}
 		}
 
@@ -1363,6 +1404,8 @@ namespace OpenRA.Server
 				orderBuffer.Start(gameSpeed, Conns.Where(c => c.Validated).Select(c => c.PlayerIndex));
 
 				State = ServerState.GameStarted;
+				AutoStartAtUtc = null;
+				WriteLobbyStatus();
 
 				if (IsMultiplayer)
 					OrderLatency = gameSpeed.OrderLatency;

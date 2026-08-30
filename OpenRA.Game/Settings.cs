@@ -83,6 +83,15 @@ namespace OpenRA
 		[Desc("For dedicated servers only, if non-empty, only allow players using these exact names to join.")]
 		public string[] AllowedPlayerNames = Array.Empty<string>();
 
+		[Desc("For dedicated servers only, delay automatic game start by this many seconds after all players are ready.")]
+		public int AutoStartDelaySeconds = 0;
+
+		[Desc("For dedicated servers only, automatically assign opposing teams to distant spawn points.")]
+		public bool AutoAssignCompetitiveSpawns = false;
+
+		[Desc("For dedicated servers only, write live lobby information to this JSON file.")]
+		public string LobbyStatusFile = "";
+
 		[Desc("For dedicated servers only, if non-empty, only allow authenticated players with these profile IDs to join.")]
 		public int[] ProfileIDWhitelist = Array.Empty<int>();
 

@@ -256,29 +256,28 @@ namespace OpenRA.Mods.Common.Server
 			lock (server.LobbyInfo)
 			{
 				var nonBotPlayers = server.LobbyInfo.NonBotPlayers;
+				var canStart = nonBotPlayers.All(c => c.State == Session.ClientState.Ready)
+					&& server.LobbyInfo.Clients.Any(c => c.IsAdmin && c.State == Session.ClientState.Ready)
+					&& (server.LobbyInfo.GlobalSettings.EnableSingleplayer || nonBotPlayers.Count() >= 2)
+					&& !server.LobbyInfo.Slots.Any(sl => sl.Value.Required && server.LobbyInfo.ClientInSlot(sl.Key) == null)
+					&& !server.LobbyInfo.Slots.All(sl => server.LobbyInfo.ClientInSlot(sl.Key) == null)
+					&& !LobbyUtils.InsufficientEnabledSpawnPoints(server.Map, server.LobbyInfo);
 
-				// Are all players and admin (could be spectating) ready?
-				if (nonBotPlayers.Any(c => c.State != Session.ClientState.Ready) ||
-					server.LobbyInfo.Clients.First(c => c.IsAdmin).State != Session.ClientState.Ready)
+				if (!canStart)
+				{
+					if (server.AutoStartAtUtc != null)
+					{
+						server.AutoStartAtUtc = null;
+						server.LastAutoStartCountdownSecond = -1;
+						server.SendMessage("Game start cancelled because a player is not ready.");
+						server.WriteLobbyStatus();
+					}
+
 					return;
+				}
 
-				// Does server have at least 2 human players?
-				if (!server.LobbyInfo.GlobalSettings.EnableSingleplayer && nonBotPlayers.Count() < 2)
-					return;
-
-				// Are the map conditions satisfied?
-				if (server.LobbyInfo.Slots.Any(sl => sl.Value.Required && server.LobbyInfo.ClientInSlot(sl.Key) == null))
-					return;
-
-				// Don't start without any players
-				if (server.LobbyInfo.Slots.All(sl => server.LobbyInfo.ClientInSlot(sl.Key) == null))
-					return;
-
-				// Does the host have the map installed?
 				if (server.Type != ServerType.Dedicated && server.ModData.MapCache[server.Map.Uid].Status != MapStatus.Available)
 				{
-					// Client 0 will always be the Host
-					// In some cases client 0 doesn't exist, so we untick all players
 					var host = server.LobbyInfo.Clients.FirstOrDefault(c => c.Index == 0);
 					if (host != null)
 						host.State = Session.ClientState.NotReady;
@@ -290,10 +289,34 @@ namespace OpenRA.Mods.Common.Server
 					return;
 				}
 
-				if (LobbyUtils.InsufficientEnabledSpawnPoints(server.Map, server.LobbyInfo))
+				if (server.Settings.AutoStartDelaySeconds <= 0)
+				{
+					server.StartGame();
 					return;
+				}
 
-				server.StartGame();
+				if (server.AutoStartAtUtc == null)
+				{
+					server.AutoStartAtUtc = DateTime.UtcNow.AddSeconds(server.Settings.AutoStartDelaySeconds);
+					server.LastAutoStartCountdownSecond = server.Settings.AutoStartDelaySeconds;
+					server.SendMessage($"All players are ready. Game starts in {server.Settings.AutoStartDelaySeconds} seconds.");
+					server.WriteLobbyStatus();
+					return;
+				}
+
+				var seconds = Math.Max(0, (int)Math.Ceiling((server.AutoStartAtUtc.Value - DateTime.UtcNow).TotalSeconds));
+				if (seconds <= 0)
+				{
+					server.StartGame();
+					return;
+				}
+
+				if (seconds != server.LastAutoStartCountdownSecond)
+				{
+					server.LastAutoStartCountdownSecond = seconds;
+					server.SendMessage($"Game starts in {seconds}...");
+					server.WriteLobbyStatus();
+				}
 			}
 		}
 
@@ -349,6 +372,12 @@ namespace OpenRA.Mods.Common.Server
 				if (LobbyUtils.InsufficientEnabledSpawnPoints(server.Map, server.LobbyInfo))
 				{
 					server.SendFluentMessageTo(conn, InsufficientEnabledSpawnPoints);
+					return true;
+				}
+
+				if (server.Settings.AutoStartDelaySeconds > 0)
+				{
+					CheckAutoStart(server);
 					return true;
 				}
 
@@ -949,7 +978,12 @@ namespace OpenRA.Mods.Common.Server
 			}
 		}
 
-		void OpenRA.Server.ITick.Tick(S server) => server.VoteKickTracker.Tick();
+		void OpenRA.Server.ITick.Tick(S server)
+		{
+			server.VoteKickTracker.Tick();
+			if (server.State == ServerState.WaitingPlayers && server.AutoStartAtUtc != null)
+				CheckAutoStart(server);
+		}
 
 		static bool MakeAdmin(S server, Connection conn, Session.Client client, string s)
 		{
@@ -1447,6 +1481,59 @@ namespace OpenRA.Mods.Common.Server
 			return null;
 		}
 
+		static void AssignCompetitiveSpawns(S server)
+		{
+			if (!server.Settings.AutoAssignCompetitiveSpawns)
+				return;
+
+			var players = server.LobbyInfo.NonBotPlayers.OrderBy(client => client.Index).ToArray();
+			if (players.Length != 2)
+				return;
+
+			var availableSpawns = Enumerable.Range(1, server.Map.SpawnPoints.Length)
+				.Where(spawn => !server.LobbyInfo.DisabledSpawnPoints.Contains(spawn))
+				.ToArray();
+			if (availableSpawns.Length < 2)
+				return;
+
+			var firstSpawn = availableSpawns[0];
+			var secondSpawn = availableSpawns[1];
+			var longestDistance = long.MinValue;
+			foreach (var first in availableSpawns)
+			{
+				foreach (var second in availableSpawns.Where(spawn => spawn != first))
+				{
+					var firstPosition = server.Map.SpawnPoints[first - 1];
+					var secondPosition = server.Map.SpawnPoints[second - 1];
+					var deltaX = (long)firstPosition.X - secondPosition.X;
+					var deltaY = (long)firstPosition.Y - secondPosition.Y;
+					var distance = deltaX * deltaX + deltaY * deltaY;
+					if (distance <= longestDistance)
+						continue;
+
+					longestDistance = distance;
+					firstSpawn = first;
+					secondSpawn = second;
+				}
+			}
+
+			players[0].Team = 1;
+			players[0].SpawnPoint = firstSpawn;
+			players[1].Team = 2;
+			players[1].SpawnPoint = secondSpawn;
+			foreach (var player in players)
+			{
+				if (player.Slot == null)
+					continue;
+
+				server.LobbyInfo.Slots[player.Slot].LockTeam = true;
+				server.LobbyInfo.Slots[player.Slot].LockSpawn = true;
+			}
+
+			server.SyncLobbySlots();
+			server.SyncLobbyClients();
+		}
+
 		public void ClientJoined(S server, Connection conn)
 		{
 			lock (server.LobbyInfo)
@@ -1459,6 +1546,8 @@ namespace OpenRA.Mods.Common.Server
 				// Validate whether color is allowed and get an alternative if it isn't
 				if (client.Slot != null && !server.LobbyInfo.Slots[client.Slot].LockColor)
 					client.Color = SanitizePlayerColor(server, client.Color, client.Index);
+
+				AssignCompetitiveSpawns(server);
 
 				// Report any custom map details
 				// HACK: this isn't the best place for this to live, but if we move it somewhere else
