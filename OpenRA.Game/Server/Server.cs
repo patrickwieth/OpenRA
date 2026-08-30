@@ -1340,7 +1340,9 @@ namespace OpenRA.Server
 					$"\"Players\":[{string.Join(",", players)}]}}";
 				var temporaryPath = Settings.LobbyStatusFile + ".tmp";
 				File.WriteAllText(temporaryPath, json);
-				File.Move(temporaryPath, Settings.LobbyStatusFile, true);
+				if (File.Exists(Settings.LobbyStatusFile))
+					File.Delete(Settings.LobbyStatusFile);
+				File.Move(temporaryPath, Settings.LobbyStatusFile);
 			}
 			catch (Exception ex)
 			{
