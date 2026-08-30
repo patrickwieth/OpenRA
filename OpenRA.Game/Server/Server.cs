@@ -19,7 +19,6 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using OpenRA;
@@ -1328,21 +1327,19 @@ namespace OpenRA.Server
 				if (!string.IsNullOrEmpty(directory))
 					Directory.CreateDirectory(directory);
 
-				var status = new
-				{
-					State = State.ToString(),
-					AutoStartAtUtc,
-					Players = LobbyInfo.NonBotClients.Select(client => new
-					{
-						client.Name,
-						Ready = client.State == Session.ClientState.Ready,
-						IsObserver = client.IsObserver,
-						client.Team,
-						client.SpawnPoint
-					}).ToArray()
-				};
+				string JsonString(string value) => "\"" + value
+					.Replace("\\", "\\\\")
+					.Replace("\"", "\\\"")
+					.Replace("\r", "\\r")
+					.Replace("\n", "\\n") + "\"";
+				var players = LobbyInfo.NonBotClients.Select(client =>
+					$"{{\"Name\":{JsonString(client.Name)},\"Ready\":{(client.State == Session.ClientState.Ready ? "true" : "false")}," +
+					$"\"IsObserver\":{(client.IsObserver ? "true" : "false")},\"Team\":{client.Team},\"SpawnPoint\":{client.SpawnPoint}}}");
+				var autoStart = AutoStartAtUtc == null ? "null" : JsonString(AutoStartAtUtc.Value.ToString("O"));
+				var json = $"{{\"State\":{JsonString(State.ToString())},\"AutoStartAtUtc\":{autoStart}," +
+					$"\"Players\":[{string.Join(",", players)}]}}";
 				var temporaryPath = Settings.LobbyStatusFile + ".tmp";
-				File.WriteAllText(temporaryPath, JsonSerializer.Serialize(status));
+				File.WriteAllText(temporaryPath, json);
 				File.Move(temporaryPath, Settings.LobbyStatusFile, true);
 			}
 			catch (Exception ex)
