@@ -20,21 +20,24 @@ namespace OpenRA.Test
 		public void ParsesPasswordFromJoinUri()
 		{
 			var launch = new LaunchArguments(new Arguments(
-				"Launch.URI=ymca://tournament.example.org:1236?password=a%26b+c"));
+				"Launch.URI=ymca://tournament.example.org:1236?password=a%26b+c&name=L%C3%B6rdenMcFairGen%C3%BC"));
 
 			var endpoint = launch.GetConnectEndPoint();
 			Assert.That(endpoint.ToString(), Is.EqualTo("tournament.example.org:1236"));
 			Assert.That(launch.Password, Is.EqualTo("a&b c"));
+			Assert.That(launch.PlayerName, Is.EqualTo("LördenMcFairGenü"));
 		}
 
 		[Test]
 		public void ExplicitPasswordOverridesJoinUriPassword()
 		{
 			var launch = new LaunchArguments(new Arguments(
-				"Launch.URI=ymca://localhost:1234?password=from-uri",
-				"Launch.Password=from-argument"));
+				"Launch.URI=ymca://localhost:1234?password=from-uri&name=from-uri",
+				"Launch.Password=from-argument",
+				"Launch.PlayerName=from-argument"));
 
 			Assert.That(launch.Password, Is.EqualTo("from-argument"));
+			Assert.That(launch.PlayerName, Is.EqualTo("from-argument"));
 		}
 	}
 }

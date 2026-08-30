@@ -61,6 +61,9 @@ namespace OpenRA.Mods.Common.LoadScreens
 			var connect = Launch.GetConnectEndPoint();
 			if (connect != null)
 			{
+				if (!string.IsNullOrEmpty(Launch.PlayerName))
+					Game.Settings.Player.Name = Settings.SanitizedPlayerName(Launch.PlayerName);
+
 				Game.LoadShellMap();
 				Game.RemoteDirectConnect(connect, Launch.Password);
 				return;

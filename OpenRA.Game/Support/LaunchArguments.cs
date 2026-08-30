@@ -25,6 +25,9 @@ namespace OpenRA
 		[Desc("Password used when connecting through Launch.URI or Launch.Connect.")]
 		public string Password;
 
+		[Desc("Player name used when connecting through Launch.URI.")]
+		public string PlayerName;
+
 		[Desc("Automatically start playing the given replay file.")]
 		public string Replay;
 
@@ -46,8 +49,13 @@ namespace OpenRA
 				if (args.Contains("Launch." + f.Name))
 					FieldLoader.LoadField(this, f.Name, args.GetValue("Launch." + f.Name, ""));
 
-			if (string.IsNullOrEmpty(Password) && Uri.TryCreate(URI, UriKind.Absolute, out var uri))
-				Password = GetQueryParameter(uri, "password");
+			if (Uri.TryCreate(URI, UriKind.Absolute, out var uri))
+			{
+				if (string.IsNullOrEmpty(Password))
+					Password = GetQueryParameter(uri, "password");
+				if (string.IsNullOrEmpty(PlayerName))
+					PlayerName = GetQueryParameter(uri, "name");
+			}
 		}
 
 		static string GetQueryParameter(Uri uri, string name)
