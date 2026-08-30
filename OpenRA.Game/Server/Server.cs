@@ -92,6 +92,9 @@ namespace OpenRA.Server
 		[FluentReference]
 		const string NoPermission = "notification-no-permission-to-join";
 
+		[FluentReference]
+		const string IncorrectPlayerName = "notification-incorrect-player-name";
+
 		[FluentReference("command")]
 		const string UnknownServerCommand = "notification-unknown-server-command";
 
@@ -502,6 +505,15 @@ namespace OpenRA.Server
 					Handicap = 0,
 					State = Session.ClientState.Invalid,
 				};
+
+				if (Settings.AllowedPlayerNames.Length > 0
+					&& !Settings.AllowedPlayerNames.Contains(client.Name, StringComparer.OrdinalIgnoreCase))
+				{
+					Log.Write("server", $"Rejected connection from {newConn.EndPoint}; player name '{client.Name}' is not allowed.");
+					SendOrderTo(newConn, "ServerError", IncorrectPlayerName);
+					DropClient(newConn);
+					return;
+				}
 
 				if (ModData.Manifest.Id != handshake.Mod)
 				{

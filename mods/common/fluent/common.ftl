@@ -82,6 +82,7 @@ notification-no-port-forward = Server port is not accessible from the internet.
 notification-blacklisted-server-name = Server name contains a blacklisted word.
 notification-requires-authentication = Server requires players to have an OpenRA forum account.
 notification-no-permission-to-join = You do not have permission to join this server.
+notification-incorrect-player-name = Your player name is not registered for this tournament match.
 notification-slot-closed = Your slot was closed by the host.
 
 ## LobbySettingsNotification
