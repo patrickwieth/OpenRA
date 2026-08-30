@@ -86,8 +86,17 @@ namespace OpenRA
 		[Desc("For dedicated servers only, delay automatic game start by this many seconds after all players are ready.")]
 		public int AutoStartDelaySeconds = 0;
 
+		[Desc("For dedicated servers only, require this many human players before automatic start.")]
+		public int RequiredPlayerCount = 2;
+
 		[Desc("For dedicated servers only, automatically assign opposing teams to distant spawn points.")]
 		public bool AutoAssignCompetitiveSpawns = false;
+
+		[Desc("Player names assigned to team one by automatic competitive spawn setup.")]
+		public string[] TeamOnePlayerNames = Array.Empty<string>();
+
+		[Desc("Player names assigned to team two by automatic competitive spawn setup.")]
+		public string[] TeamTwoPlayerNames = Array.Empty<string>();
 
 		[Desc("For dedicated servers only, write live lobby information to this JSON file.")]
 		public string LobbyStatusFile = "";

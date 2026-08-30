@@ -258,7 +258,8 @@ namespace OpenRA.Mods.Common.Server
 				var nonBotPlayers = server.LobbyInfo.NonBotPlayers;
 				var canStart = nonBotPlayers.All(c => c.State == Session.ClientState.Ready)
 					&& server.LobbyInfo.Clients.Any(c => c.IsAdmin && c.State == Session.ClientState.Ready)
-					&& (server.LobbyInfo.GlobalSettings.EnableSingleplayer || nonBotPlayers.Count() >= 2)
+					&& (server.LobbyInfo.GlobalSettings.EnableSingleplayer
+						|| nonBotPlayers.Count() >= server.Settings.RequiredPlayerCount)
 					&& !server.LobbyInfo.Slots.Any(sl => sl.Value.Required && server.LobbyInfo.ClientInSlot(sl.Key) == null)
 					&& !server.LobbyInfo.Slots.All(sl => server.LobbyInfo.ClientInSlot(sl.Key) == null)
 					&& !LobbyUtils.InsufficientEnabledSpawnPoints(server.Map, server.LobbyInfo);
@@ -1486,52 +1487,97 @@ namespace OpenRA.Mods.Common.Server
 			if (!server.Settings.AutoAssignCompetitiveSpawns)
 				return;
 
-			var players = server.LobbyInfo.NonBotPlayers.OrderBy(client => client.Index).ToArray();
-			if (players.Length != 2)
+			var players = server.LobbyInfo.NonBotPlayers.ToArray();
+			Session.Client[] FindTeam(string[] names) => names.Select(name => players.FirstOrDefault(player =>
+				player.Name.Equals(name, StringComparison.OrdinalIgnoreCase))).Where(player => player != null).ToArray();
+			var teamOne = FindTeam(server.Settings.TeamOnePlayerNames);
+			var teamTwo = FindTeam(server.Settings.TeamTwoPlayerNames);
+			if (teamOne.Length != server.Settings.TeamOnePlayerNames.Length
+				|| teamTwo.Length != server.Settings.TeamTwoPlayerNames.Length
+				|| teamOne.Length == 0 || teamTwo.Length == 0)
 				return;
 
 			var availableSpawns = Enumerable.Range(1, server.Map.SpawnPoints.Length)
-				.Where(spawn => !server.LobbyInfo.DisabledSpawnPoints.Contains(spawn))
-				.ToArray();
-			if (availableSpawns.Length < 2)
+				.Where(spawn => !server.LobbyInfo.DisabledSpawnPoints.Contains(spawn)).ToArray();
+			if (availableSpawns.Length < teamOne.Length + teamTwo.Length)
 				return;
 
-			var firstSpawn = availableSpawns[0];
-			var secondSpawn = availableSpawns[1];
-			var longestDistance = long.MinValue;
-			foreach (var first in availableSpawns)
+			long Distance(int first, int second)
 			{
-				foreach (var second in availableSpawns.Where(spawn => spawn != first))
-				{
-					var firstPosition = server.Map.SpawnPoints[first - 1];
-					var secondPosition = server.Map.SpawnPoints[second - 1];
-					var deltaX = (long)firstPosition.X - secondPosition.X;
-					var deltaY = (long)firstPosition.Y - secondPosition.Y;
-					var distance = deltaX * deltaX + deltaY * deltaY;
-					if (distance <= longestDistance)
-						continue;
+				var firstPosition = server.Map.SpawnPoints[first - 1];
+				var secondPosition = server.Map.SpawnPoints[second - 1];
+				var deltaX = (long)firstPosition.X - secondPosition.X;
+				var deltaY = (long)firstPosition.Y - secondPosition.Y;
+				return deltaX * deltaX + deltaY * deltaY;
+			}
 
-					longestDistance = distance;
-					firstSpawn = first;
-					secondSpawn = second;
+			var best = Array.Empty<int>();
+			var bestScore = long.MinValue;
+			foreach (var assignment in Permutations(availableSpawns, teamOne.Length + teamTwo.Length))
+			{
+				var within = 0L;
+				for (var i = 0; i < teamOne.Length; i++)
+					for (var j = i + 1; j < teamOne.Length; j++)
+						within += Distance(assignment[i], assignment[j]);
+				for (var i = 0; i < teamTwo.Length; i++)
+					for (var j = i + 1; j < teamTwo.Length; j++)
+						within += Distance(assignment[teamOne.Length + i], assignment[teamOne.Length + j]);
+
+				var between = long.MaxValue;
+				for (var i = 0; i < teamOne.Length; i++)
+					for (var j = 0; j < teamTwo.Length; j++)
+						between = Math.Min(between, Distance(assignment[i], assignment[teamOne.Length + j]));
+				var score = between * 2 - within;
+				if (score > bestScore)
+				{
+					bestScore = score;
+					best = assignment;
 				}
 			}
 
-			players[0].Team = 1;
-			players[0].SpawnPoint = firstSpawn;
-			players[1].Team = 2;
-			players[1].SpawnPoint = secondSpawn;
-			foreach (var player in players)
+			for (var i = 0; i < teamOne.Length; i++)
+			{
+				teamOne[i].Team = 1;
+				teamOne[i].SpawnPoint = best[i];
+			}
+			for (var i = 0; i < teamTwo.Length; i++)
+			{
+				teamTwo[i].Team = 2;
+				teamTwo[i].SpawnPoint = best[teamOne.Length + i];
+			}
+
+			foreach (var player in teamOne.Concat(teamTwo))
 			{
 				if (player.Slot == null)
 					continue;
-
 				server.LobbyInfo.Slots[player.Slot].LockTeam = true;
 				server.LobbyInfo.Slots[player.Slot].LockSpawn = true;
 			}
 
 			server.SyncLobbySlots();
 			server.SyncLobbyClients();
+		}
+
+		static IEnumerable<int[]> Permutations(int[] values, int length)
+		{
+			var selected = new int[length];
+			IEnumerable<int[]> Build(int index)
+			{
+				if (index == length)
+				{
+					yield return selected.ToArray();
+					yield break;
+				}
+
+				foreach (var value in values.Where(value => !selected.Take(index).Contains(value)))
+				{
+					selected[index] = value;
+					foreach (var result in Build(index + 1))
+						yield return result;
+				}
+			}
+
+			return Build(0);
 		}
 
 		public void ClientJoined(S server, Connection conn)
