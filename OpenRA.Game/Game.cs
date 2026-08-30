@@ -139,8 +139,9 @@ namespace OpenRA
 		static ConnectionState lastConnectionState = ConnectionState.PreConnecting;
 		public static int LocalClientId => OrderManager.Connection.LocalClientId;
 
-		public static void RemoteDirectConnect(ConnectionTarget endpoint)
+		public static void RemoteDirectConnect(ConnectionTarget endpoint, string password = "")
 		{
+			CurrentServerSettings.Password = password ?? "";
 			OnRemoteDirectConnect(endpoint);
 		}
 

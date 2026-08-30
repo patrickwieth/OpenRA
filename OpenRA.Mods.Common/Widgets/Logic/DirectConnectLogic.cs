@@ -64,7 +64,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				widget.Visible = false;
 				Game.RunAfterTick(() =>
 				{
-					ConnectionLogic.Connect(directConnectEndPoint, "", () => { Ui.CloseWindow(); openLobby(); }, DoNothing);
+					ConnectionLogic.Connect(directConnectEndPoint, CurrentServerSettings.Password, () => { Ui.CloseWindow(); openLobby(); }, DoNothing);
 					widget.Visible = true;
 				});
 			}

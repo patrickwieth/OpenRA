@@ -62,7 +62,7 @@ namespace OpenRA.Mods.Common.LoadScreens
 			if (connect != null)
 			{
 				Game.LoadShellMap();
-				Game.RemoteDirectConnect(connect);
+				Game.RemoteDirectConnect(connect, Launch.Password);
 				return;
 			}
 
