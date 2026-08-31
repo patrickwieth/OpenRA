@@ -11,6 +11,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -246,9 +247,34 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 			var updateLabel = rootMenu.GetOrNull("UPDATE_NOTICE");
 			if (updateLabel != null)
+			{
 				updateLabel.IsVisible = () => !newsOpen && menuType != MenuType.None &&
 					menuType != MenuType.StartupPrompts &&
 					webServices.ModVersionStatus == ModVersionStatus.Outdated;
+
+				var updateButton = updateLabel.GetOrNull<ButtonWidget>("UPDATE_BUTTON");
+				if (updateButton != null)
+				{
+					var downloading = false;
+					updateButton.GetText = () => downloading ? "Downloading update..." :
+						$"Install YMCA {webServices.LatestVersion}";
+					updateButton.IsDisabled = () => downloading || string.IsNullOrEmpty(webServices.UpdateDownloadUrl);
+					updateButton.OnClick = async () =>
+					{
+						downloading = true;
+						try
+						{
+							var path = await webServices.DownloadUpdate();
+							Game.RunAfterTick(() => LaunchUpdate(path));
+						}
+						catch
+						{
+							downloading = false;
+							TryOpenUrl(webServices.UpdateReleaseUrl);
+						}
+					};
+				}
+			}
 
 			menuType = MenuType.StartupPrompts;
 
@@ -526,6 +552,56 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				{ "isSavePanel", false },
 				{ "world", null }
 			});
+		}
+
+		static void LaunchUpdate(string path)
+		{
+			try
+			{
+				if (Platform.CurrentPlatform == PlatformType.Windows)
+				{
+					Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+					Game.Exit();
+				}
+				else if (Platform.CurrentPlatform == PlatformType.OSX)
+					Process.Start(new ProcessStartInfo("/usr/bin/open", "\"" + path + "\"") { UseShellExecute = false });
+				else if (Platform.CurrentPlatform == PlatformType.Linux)
+				{
+					var appImage = Environment.GetEnvironmentVariable("APPIMAGE");
+					if (!string.IsNullOrEmpty(appImage) && File.Exists(appImage))
+					{
+						var replacement = appImage + ".update";
+						File.Copy(path, replacement, true);
+						File.Delete(appImage);
+						File.Move(replacement, appImage);
+						File.Delete(path);
+						path = appImage;
+					}
+
+					var chmod = Process.Start(new ProcessStartInfo("chmod", "+x \"" + path + "\"") { UseShellExecute = false });
+					chmod.WaitForExit();
+					Process.Start(new ProcessStartInfo(path) { UseShellExecute = false });
+					Game.Exit();
+				}
+			}
+			catch { }
+		}
+
+		static void TryOpenUrl(string url)
+		{
+			if (string.IsNullOrEmpty(url))
+				return;
+
+			try
+			{
+				if (Platform.CurrentPlatform == PlatformType.Windows)
+					Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+				else if (Platform.CurrentPlatform == PlatformType.OSX)
+					Process.Start("/usr/bin/open", "\"" + url + "\"");
+				else
+					Process.Start("xdg-open", "\"" + url + "\"");
+			}
+			catch { }
 		}
 
 		protected override void Dispose(bool disposing)
