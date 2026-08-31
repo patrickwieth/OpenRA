@@ -11,6 +11,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -116,7 +117,7 @@ namespace OpenRA.Mods.Common
 			});
 		}
 
-		static bool IsNewerVersion(string available, string current)
+		public static bool IsNewerVersion(string available, string current)
 		{
 			if (!Version.TryParse(available.TrimStart('v', 'V'), out var availableVersion) ||
 				!Version.TryParse(current.TrimStart('v', 'V'), out var currentVersion))
@@ -149,7 +150,7 @@ namespace OpenRA.Mods.Common
 			{
 				using var sha = SHA256.Create();
 				using var stream = File.OpenRead(path);
-				var actual = string.Concat(sha.ComputeHash(stream).Select(b => b.ToString("x2")));
+				var actual = string.Concat(sha.ComputeHash(stream).Select(b => b.ToString("x2", CultureInfo.InvariantCulture)));
 				if (!string.Equals(actual, UpdateSha256, StringComparison.OrdinalIgnoreCase))
 				{
 					File.Delete(path);
