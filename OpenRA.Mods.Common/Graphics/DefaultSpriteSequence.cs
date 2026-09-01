@@ -193,7 +193,7 @@ namespace OpenRA.Mods.Common.Graphics
 		[Desc("Change the position in-game on X, Y, Z.")]
 		protected static readonly SpriteSequenceField<float3> Offset = new(nameof(Offset), float3.Zero);
 
-		[Desc("Anchor the sprite at its center or bottom edge.")]
+		[Desc("Anchor the sprite at its center, or align its bottom edge to an isometric footprint inferred from the frame width.")]
 		protected static readonly SpriteSequenceField<SpriteAnchor> Anchor = new(nameof(Anchor), SpriteAnchor.Center);
 
 		[Desc("Apply an OpenGL/Photoshop inspired blend mode.")]
@@ -548,7 +548,7 @@ namespace OpenRA.Mods.Common.Graphics
 					var dx = r.Offset.X + (r.FlipX ? -s.Offset.X : s.Offset.X);
 					var dy = r.Offset.Y + (r.FlipY ? -s.Offset.Y : s.Offset.Y);
 					if (r.Anchor == SpriteAnchor.Bottom)
-						dy -= s.Size.Y / 2;
+						dy += s.Size.X / 4 - s.Size.Y / 2;
 
 					var dz = r.Offset.Z + s.Offset.Z + r.ZRamp * dy;
 					var sprite = new Sprite(s.Sheet, FlipRectangle(s.Bounds, r.FlipX, r.FlipY), r.ZRamp, new float3(dx, dy, dz), s.Channel, r.BlendMode);
