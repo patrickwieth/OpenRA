@@ -84,15 +84,12 @@ namespace OpenRA.Mods.Common.Traits.Render
 			var displayHealth = selected || (regularWorld && statusBars == StatusBarsType.AlwaysShow)
 				|| (regularWorld && statusBars == StatusBarsType.DamageShow && self.GetDamageState() != DamageState.Undamaged);
 
-			// Extra bars are shown when:
-			//  * actor is selected / in active drag rectangle / under the mouse
-			//  * status bar preference is set to "always show" or "when damaged"
-			var displayExtra = selected || (regularWorld && statusBars != StatusBarsType.Standard);
+			// Extra bars (e.g. support power charge) are only shown for selected actors.
+			var displayExtra = selected;
 
 			// PERF: Only search rollover enumerable if needed.
-			if (!displayHealth || !displayExtra)
-				if (self.World.Selection.RolloverContains(self))
-					displayHealth = displayExtra = true;
+			if (!displayHealth && self.World.Selection.RolloverContains(self))
+				displayHealth = true;
 
 			if (selected)
 				foreach (var r in RenderSelectionBox(self, wr, Info.SelectionBoxColor))
