@@ -19,6 +19,8 @@ using OpenRA.Primitives;
 
 namespace OpenRA.Mods.Common.Graphics
 {
+	public enum SpriteAnchor { Center, Bottom }
+
 	public class DefaultSpriteSequenceLoader : ISpriteSequenceLoader
 	{
 		public readonly int BgraSheetSize = 2048;
@@ -93,6 +95,7 @@ namespace OpenRA.Mods.Common.Graphics
 		{
 			public int Token;
 			public float3 Offset;
+			public SpriteAnchor Anchor;
 			public bool FlipX;
 			public bool FlipY;
 			public float ZRamp;
@@ -189,6 +192,9 @@ namespace OpenRA.Mods.Common.Graphics
 
 		[Desc("Change the position in-game on X, Y, Z.")]
 		protected static readonly SpriteSequenceField<float3> Offset = new(nameof(Offset), float3.Zero);
+
+		[Desc("Anchor the sprite at its center or bottom edge.")]
+		protected static readonly SpriteSequenceField<SpriteAnchor> Anchor = new(nameof(Anchor), SpriteAnchor.Center);
 
 		[Desc("Apply an OpenGL/Photoshop inspired blend mode.")]
 		protected static readonly SpriteSequenceField<BlendMode> BlendMode = new(nameof(BlendMode), OpenRA.BlendMode.Alpha);
@@ -470,6 +476,7 @@ namespace OpenRA.Mods.Common.Graphics
 			var flipY = LoadField(FlipY, data, defaults);
 			var zRamp = LoadField(ZRamp, data, defaults);
 			var offset = LoadField(Offset, data, defaults);
+			var anchor = LoadField(Anchor, data, defaults);
 			var blendMode = LoadField(BlendMode, data, defaults);
 
 			var combineNode = data.NodeWithKeyOrDefault(Combine.Key);
@@ -489,6 +496,7 @@ namespace OpenRA.Mods.Common.Graphics
 						{
 							Token = cache.ReserveSprites(f.Filename, f.LoadFrames, f.Location),
 							Offset = subOffset + offset,
+							Anchor = anchor,
 							FlipX = subFlipX ^ flipX,
 							FlipY = subFlipY ^ flipY,
 							BlendMode = blendMode,
@@ -506,6 +514,7 @@ namespace OpenRA.Mods.Common.Graphics
 					{
 						Token = cache.ReserveSprites(f.Filename, f.LoadFrames, f.Location),
 						Offset = offset,
+						Anchor = anchor,
 						FlipX = flipX,
 						FlipY = flipY,
 						BlendMode = blendMode,
@@ -538,6 +547,9 @@ namespace OpenRA.Mods.Common.Graphics
 
 					var dx = r.Offset.X + (r.FlipX ? -s.Offset.X : s.Offset.X);
 					var dy = r.Offset.Y + (r.FlipY ? -s.Offset.Y : s.Offset.Y);
+					if (r.Anchor == SpriteAnchor.Bottom)
+						dy -= s.Size.Y / 2;
+
 					var dz = r.Offset.Z + s.Offset.Z + r.ZRamp * dy;
 					var sprite = new Sprite(s.Sheet, FlipRectangle(s.Bounds, r.FlipX, r.FlipY), r.ZRamp, new float3(dx, dy, dz), s.Channel, r.BlendMode);
 					if (depthSprite == null)
