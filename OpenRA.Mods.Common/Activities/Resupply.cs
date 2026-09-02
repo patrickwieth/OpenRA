@@ -93,7 +93,7 @@ namespace OpenRA.Mods.Common.Activities
 			// Ground repair facilities can define a transit-only docking cell.
 			// Move onto that cell instead of the building center, which may lie
 			// between cells for even-sized footprints.
-			if (activeResupplyTypes.HasFlag(ResupplyType.Repair) && host.OccupiesSpace is Building building)
+			if (aircraft == null && activeResupplyTypes.HasFlag(ResupplyType.Repair) && host.OccupiesSpace is Building building)
 			{
 				var dockingCells = building.TransitOnlyCells();
 				if (dockingCells.Length > 0)
