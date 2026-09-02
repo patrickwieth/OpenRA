@@ -10,6 +10,7 @@
 #endregion
 
 using System;
+using System.Linq;
 using OpenRA.Graphics;
 using OpenRA.Primitives;
 using OpenRA.Traits;
@@ -101,7 +102,15 @@ namespace OpenRA.Mods.Common.Traits
 				var xMax = int.MinValue;
 				var yMin = int.MaxValue;
 				var yMax = int.MinValue;
-				foreach (var c in buildingInfo.OccupiedTiles(self.Location))
+				// Transit-only cells are docking and exit areas, not part of the
+				// building body represented by the selection decoration.
+				var selectionTiles = buildingInfo.FootprintTiles(self.Location, FootprintCellType.Occupied)
+					.Concat(buildingInfo.FootprintTiles(self.Location, FootprintCellType.OccupiedUntargetable))
+					.ToArray();
+				if (selectionTiles.Length == 0)
+					selectionTiles = buildingInfo.OccupiedTiles(self.Location).ToArray();
+
+				foreach (var c in selectionTiles)
 				{
 					xMin = Math.Min(xMin, c.X);
 					xMax = Math.Max(xMax, c.X);
