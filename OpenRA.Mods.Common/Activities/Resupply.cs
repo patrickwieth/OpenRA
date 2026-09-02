@@ -39,6 +39,7 @@ namespace OpenRA.Mods.Common.Activities
 		readonly PlayerResources playerResources;
 		readonly int unitCost;
 		readonly MoveCooldownHelper moveCooldownHelper;
+		readonly WVec resupplyOffset;
 
 		int remainingTicks;
 		bool played;
@@ -88,6 +89,19 @@ namespace OpenRA.Mods.Common.Activities
 			var cannotRearmAtHost = rearmable == null || !rearmable.Info.RearmActors.Contains(host.Info.Name) || rearmable.RearmableAmmoPools.All(p => p.HasFullAmmo);
 			if (!cannotRearmAtHost)
 				activeResupplyTypes |= ResupplyType.Rearm;
+
+			// Ground repair facilities can define a transit-only docking cell.
+			// Move onto that cell instead of the building center, which may lie
+			// between cells for even-sized footprints.
+			if (activeResupplyTypes.HasFlag(ResupplyType.Repair) && host.OccupiesSpace is Building building)
+			{
+				var dockingCells = building.TransitOnlyCells();
+				if (dockingCells.Length > 0)
+				{
+					var dockingCell = dockingCells.OrderBy(c => (c - self.Location).LengthSquared).First();
+					resupplyOffset = self.World.Map.CenterOfCell(dockingCell) - host.CenterPosition;
+				}
+			}
 		}
 
 		public override bool Tick(Actor self)
@@ -112,7 +126,7 @@ namespace OpenRA.Mods.Common.Activities
 				else if (activeResupplyTypes.HasFlag(ResupplyType.RepairNear))
 					isCloseEnough = host.IsInRange(self.CenterPosition, closeEnough);
 				else
-					isCloseEnough = (host.CenterPosition - self.CenterPosition).HorizontalLengthSquared <= closeEnough.LengthSquared;
+					isCloseEnough = (host.CenterPosition + resupplyOffset - self.CenterPosition).HorizontalLengthSquared <= closeEnough.LengthSquared;
 			}
 
 			// This ensures transports are also cancelled when the host becomes invalid
@@ -141,13 +155,11 @@ namespace OpenRA.Mods.Common.Activities
 
 			if (activeResupplyTypes != 0 && (aircraft == null || activeResupplyTypes.HasFlag(ResupplyType.RepairNear)) && !isCloseEnough)
 			{
-				var targetCell = self.World.Map.CellContaining(host.Actor.CenterPosition);
+				var targetCell = self.World.Map.CellContaining(host.Actor.CenterPosition + resupplyOffset);
 
-				// HACK: Repairable needs the actor to move to host center.
-				// TODO: Get rid of this or at least replace it with something less hacky.
 				moveCooldownHelper.NotifyMoveQueued();
 				if (!activeResupplyTypes.HasFlag(ResupplyType.RepairNear))
-					QueueChild(move.MoveOntoTarget(self, host, WVec.Zero, null, moveInfo.GetTargetLineColor()));
+					QueueChild(move.MoveOntoTarget(self, host, resupplyOffset, null, moveInfo.GetTargetLineColor()));
 				else
 					QueueChild(move.MoveWithinRange(host, closeEnough, targetLineColor: moveInfo.GetTargetLineColor()));
 
