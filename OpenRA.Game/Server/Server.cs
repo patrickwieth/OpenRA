@@ -142,6 +142,7 @@ namespace OpenRA.Server
 		readonly int randomSeed;
 		readonly List<TcpListener> listeners = new();
 		readonly TypeDictionary serverTraits = new();
+		readonly HashSet<int> spectatorOnlyClients = new();
 		readonly PlayerDatabase playerDatabase;
 
 		OrderBuffer orderBuffer;
@@ -154,6 +155,7 @@ namespace OpenRA.Server
 		GameInformation gameInfo;
 		readonly List<GameInformation.Player> worldPlayers = new();
 		readonly Stopwatch pingUpdated = Stopwatch.StartNew();
+		DateTime? gameOverShutdownAtUtc;
 
 		public readonly VoteKickTracker VoteKickTracker;
 		readonly PlayerMessageTracker playerMessageTracker;
@@ -166,6 +168,8 @@ namespace OpenRA.Server
 
 		public DateTime? AutoStartAtUtc { get; set; }
 		public int LastAutoStartCountdownSecond { get; set; } = -1;
+
+		public bool IsSpectatorOnly(Session.Client client) => spectatorOnlyClients.Contains(client.Index);
 
 		public static void SyncClientToPlayerReference(Session.Client c, PlayerReference pr)
 		{
@@ -336,6 +340,7 @@ namespace OpenRA.Server
 					ServerName = settings.Name,
 					EnableSingleplayer = settings.EnableSingleplayer || Type != ServerType.Dedicated,
 					EnableSyncReports = settings.EnableSyncReports,
+					AllowSpectators = settings.AllowSpectators,
 					GameUid = Guid.NewGuid().ToString(),
 					Dedicated = Type == ServerType.Dedicated
 				}
@@ -372,6 +377,9 @@ namespace OpenRA.Server
 
 						foreach (var t in serverTraits.WithInterface<ITick>())
 							t.Tick(this);
+
+						if (gameOverShutdownAtUtc <= DateTime.UtcNow)
+							Shutdown();
 
 						if (State == ServerState.GameStarted)
 						{
@@ -484,7 +492,10 @@ namespace OpenRA.Server
 
 				var handshake = HandshakeResponse.Deserialize(data, name);
 
-				if (!string.IsNullOrEmpty(Settings.Password) && handshake.Password != Settings.Password)
+				var expectedPassword = handshake.Spectator && !string.IsNullOrEmpty(Settings.SpectatorPassword)
+					? Settings.SpectatorPassword
+					: Settings.Password;
+				if (!string.IsNullOrEmpty(expectedPassword) && handshake.Password != expectedPassword)
 				{
 					var message = string.IsNullOrEmpty(handshake.Password) ? RequiresPassword : IncorrectPassword;
 					SendOrderTo(newConn, "AuthenticationError", message);
@@ -510,6 +521,7 @@ namespace OpenRA.Server
 				};
 
 				if (Settings.AllowedPlayerNames.Length > 0
+					&& !(handshake.Spectator && Settings.AllowSpectators)
 					&& !Settings.AllowedPlayerNames.Contains(client.Name, StringComparer.OrdinalIgnoreCase))
 				{
 					Log.Write("server", $"Rejected connection from {newConn.EndPoint}; player name '{client.Name}' is not allowed.");
@@ -560,8 +572,8 @@ namespace OpenRA.Server
 				{
 					lock (LobbyInfo)
 					{
-						client.Slot = LobbyInfo.FirstEmptySlot();
-						client.IsAdmin = !LobbyInfo.Clients.Any(c => c.IsAdmin);
+						client.Slot = handshake.Spectator ? null : LobbyInfo.FirstEmptySlot();
+						client.IsAdmin = !handshake.Spectator && !LobbyInfo.Clients.Any(c => c.IsAdmin);
 
 						if (client.IsObserver && !LobbyInfo.GlobalSettings.AllowSpectators)
 						{
@@ -577,6 +589,8 @@ namespace OpenRA.Server
 
 						// Promote connection to a valid client
 						LobbyInfo.Clients.Add(client);
+						if (handshake.Spectator)
+							spectatorOnlyClients.Add(client.Index);
 						newConn.Validated = true;
 
 						// Disable chat UI to stop the client sending messages that we know we will reject
@@ -797,6 +811,9 @@ namespace OpenRA.Server
 					winner.Outcome = WinState.Won;
 					winner.OutcomeTimestampUtc = now;
 				}
+
+				if (Type == ServerType.Dedicated && Settings.ExitOnGameOver)
+					gameOverShutdownAtUtc = now.AddSeconds(Math.Max(0, Settings.GameOverShutdownDelaySeconds));
 			}
 		}
 
@@ -1205,6 +1222,7 @@ namespace OpenRA.Server
 					SendFluentMessage(LobbyDisconnected, "player", dropClient.Name);
 
 				LobbyInfo.Clients.RemoveAll(c => c.Index == toDrop.PlayerIndex);
+				spectatorOnlyClients.Remove(toDrop.PlayerIndex);
 
 				// Client was the server admin
 				// TODO: Reassign admin for game in progress via an order
@@ -1213,7 +1231,7 @@ namespace OpenRA.Server
 					// Remove any bots controlled by the admin
 					LobbyInfo.Clients.RemoveAll(c => c.Bot != null && c.BotControllerClientIndex == toDrop.PlayerIndex);
 
-					var nextAdmin = LobbyInfo.Clients.Where(c1 => c1.Bot == null)
+					var nextAdmin = LobbyInfo.Clients.Where(c1 => c1.Bot == null && !IsSpectatorOnly(c1))
 						.MinByOrDefault(c => c.Index);
 
 					if (nextAdmin != null)

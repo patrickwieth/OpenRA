@@ -39,6 +39,7 @@ namespace OpenRA.Network
 		public string Mod;
 		public string Version;
 		public string Password;
+		public bool Spectator;
 
 		// Default value is hardcoded to 7 so that newer servers
 		// (which define OrdersProtocol > 7) can detect older clients
@@ -77,10 +78,14 @@ namespace OpenRA.Network
 
 		public string Serialize()
 		{
+			var fields = new[] { "Mod", "Version", "Password", "Fingerprint", "AuthSignature", "OrdersProtocol" }
+				.Select(p => FieldSaver.SaveField(this, p)).ToList();
+			if (Spectator)
+				fields.Add(FieldSaver.SaveField(this, nameof(Spectator)));
+
 			var data = new List<MiniYamlNode>
 			{
-				new("Handshake", null,
-					new[] { "Mod", "Version", "Password", "Fingerprint", "AuthSignature", "OrdersProtocol" }.Select(p => FieldSaver.SaveField(this, p)).ToList()),
+				new("Handshake", null, fields),
 				new("Client", FieldSaver.Save(Client))
 			};
 

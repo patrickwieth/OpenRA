@@ -28,6 +28,12 @@ namespace OpenRA
 		[Desc("Player name used when connecting through Launch.URI.")]
 		public string PlayerName;
 
+		[Desc("Join as a spectator when connecting through Launch.URI.")]
+		public bool Spectator;
+
+		[Desc("Replay URL used by ymca://replay links.")]
+		public string ReplayUrl;
+
 		[Desc("Automatically start playing the given replay file.")]
 		public string Replay;
 
@@ -51,10 +57,17 @@ namespace OpenRA
 
 			if (Uri.TryCreate(URI, UriKind.Absolute, out var uri))
 			{
-				if (string.IsNullOrEmpty(Password))
-					Password = GetQueryParameter(uri, "password");
-				if (string.IsNullOrEmpty(PlayerName))
-					PlayerName = GetQueryParameter(uri, "name");
+				if (uri.Host.Equals("replay", StringComparison.OrdinalIgnoreCase))
+					ReplayUrl = GetQueryParameter(uri, "url");
+				else
+				{
+					if (string.IsNullOrEmpty(Password))
+						Password = GetQueryParameter(uri, "password");
+					if (string.IsNullOrEmpty(PlayerName))
+						PlayerName = GetQueryParameter(uri, "name");
+					if (bool.TryParse(GetQueryParameter(uri, "spectator"), out var spectator))
+						Spectator = spectator;
+				}
 			}
 		}
 
@@ -74,6 +87,9 @@ namespace OpenRA
 
 		public ConnectionTarget GetConnectEndPoint()
 		{
+			if (!string.IsNullOrEmpty(ReplayUrl))
+				return null;
+
 			try
 			{
 				Uri uri;

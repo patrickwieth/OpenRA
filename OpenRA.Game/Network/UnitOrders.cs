@@ -278,6 +278,7 @@ namespace OpenRA.Network
 						Mod = mod.Id,
 						Version = mod.Metadata.Version,
 						Password = CurrentServerSettings.Password,
+						Spectator = CurrentServerSettings.Spectator,
 						Fingerprint = localProfile.Fingerprint,
 						OrdersProtocol = ProtocolVersion.Orders
 					};
@@ -291,6 +292,7 @@ namespace OpenRA.Network
 						IsImmediate = true,
 						TargetString = response.Serialize()
 					});
+					CurrentServerSettings.Spectator = false;
 
 					break;
 				}

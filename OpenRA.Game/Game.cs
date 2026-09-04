@@ -10,6 +10,7 @@
 #endregion
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
@@ -18,6 +19,7 @@ using System.Linq;
 using System.Net;
 using System.Runtime;
 using System.Threading;
+using System.Threading.Tasks;
 using OpenRA.Graphics;
 using OpenRA.Network;
 using OpenRA.Primitives;
@@ -139,10 +141,48 @@ namespace OpenRA
 		static ConnectionState lastConnectionState = ConnectionState.PreConnecting;
 		public static int LocalClientId => OrderManager.Connection.LocalClientId;
 
-		public static void RemoteDirectConnect(ConnectionTarget endpoint, string password = "")
+		public static void RemoteDirectConnect(ConnectionTarget endpoint, string password = "", bool spectator = false)
 		{
 			CurrentServerSettings.Password = password ?? "";
+			CurrentServerSettings.Spectator = spectator;
 			OnRemoteDirectConnect(endpoint);
+		}
+
+		public static async Task DownloadAndPlayReplayAsync(string replayUrl)
+		{
+			if (!Uri.TryCreate(replayUrl, UriKind.Absolute, out var uri)
+				|| uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp)
+			{
+				Log.Write("client", $"Rejected invalid replay URL: {replayUrl}");
+				return;
+			}
+
+			var directory = Path.Combine(Platform.SupportDir, "Replays", "Downloads");
+			Directory.CreateDirectory(directory);
+			var path = Path.Combine(directory, $"YMCA-{DateTime.UtcNow:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}.orarep");
+			var temporaryPath = path + ".download";
+			try
+			{
+				using var client = HttpClientFactory.Create();
+				using var response = await client.GetAsync(uri, System.Net.Http.HttpCompletionOption.ResponseHeadersRead);
+				response.EnsureSuccessStatusCode();
+				await using (var source = await response.Content.ReadAsStreamAsync())
+				await using (var destination = File.Create(temporaryPath))
+					await source.CopyToAsync(destination);
+
+				File.Move(temporaryPath, path);
+				RunAfterTick(() =>
+				{
+					Ui.ResetAll();
+					JoinReplay(path);
+				});
+			}
+			catch (Exception ex)
+			{
+				Log.Write("client", $"Failed to download replay from {uri}: {ex}");
+				if (File.Exists(temporaryPath))
+					File.Delete(temporaryPath);
+			}
 		}
 
 		// Hacky workaround for orderManager visibility
@@ -306,13 +346,52 @@ namespace OpenRA
 			Settings = new Settings(Path.Combine(Platform.SupportDir, "settings.yaml"), args);
 		}
 
+		static readonly ConcurrentQueue<string> PendingLaunchUris = new();
+
 		public static RunStatus InitializeAndRun(string[] args)
 		{
-			Initialize(new Arguments(args));
+			var arguments = new Arguments(args);
+			var launchUri = arguments.GetValue("Launch.URI", null);
+			using var launchUriBroker = new LaunchUriBroker(PendingLaunchUris.Enqueue);
+			if (launchUriBroker.ForwardToRunningInstance(launchUri))
+				return RunStatus.Success;
+
+			Initialize(arguments);
 
 			// Proactively collect memory during loading to reduce peak memory.
 			GC.Collect();
 			return Run();
+		}
+
+		static void ProcessPendingLaunchUri()
+		{
+			string uri = null;
+			while (PendingLaunchUris.TryDequeue(out var pending))
+				uri = pending;
+
+			if (uri == null)
+				return;
+
+			var launch = new LaunchArguments(new Arguments(new[] { $"Launch.URI={uri}" }));
+			if (!string.IsNullOrEmpty(launch.ReplayUrl))
+			{
+				LoadShellMap();
+				Renderer.Window.Raise();
+				_ = DownloadAndPlayReplayAsync(launch.ReplayUrl);
+				return;
+			}
+
+			var endpoint = launch.GetConnectEndPoint();
+			if (endpoint == null)
+				return;
+
+			if (!string.IsNullOrEmpty(launch.PlayerName))
+				Settings.Player.Name = Settings.SanitizedPlayerName(launch.PlayerName);
+
+			// Reset any menu, lobby, replay, or active game before joining the new server.
+			LoadShellMap();
+			Renderer.Window.Raise();
+			RemoteDirectConnect(endpoint, launch.Password, launch.Spectator);
 		}
 
 		static void Initialize(Arguments args)
@@ -796,6 +875,8 @@ namespace OpenRA
 
 			while (state == RunStatus.Running)
 			{
+				ProcessPendingLaunchUri();
+
 				var logicInterval = Ui.Timestep;
 				var logicWorld = worldRenderer?.World;
 
@@ -1007,6 +1088,7 @@ namespace OpenRA
 	public static class CurrentServerSettings
 	{
 		public static string Password;
+		public static bool Spectator;
 		public static ConnectionTarget Target;
 		public static ExternalMod ServerExternalMod;
 	}

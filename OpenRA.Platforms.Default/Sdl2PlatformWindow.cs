@@ -492,6 +492,12 @@ namespace OpenRA.Platforms.Default
 			SDL.SDL_SetWindowGrab(Window, SDL.SDL_bool.SDL_FALSE);
 		}
 
+		public void Raise()
+		{
+			VerifyThreadAffinity();
+			SDL.SDL_RaiseWindow(Window);
+		}
+
 		public void PumpInput(IInputHandler inputHandler)
 		{
 			VerifyThreadAffinity();

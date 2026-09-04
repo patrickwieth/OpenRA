@@ -69,6 +69,7 @@ namespace OpenRA
 
 		void GrabWindowMouseFocus();
 		void ReleaseWindowMouseFocus();
+		void Raise();
 
 		IHardwareCursor CreateHardwareCursor(string name, Size size, byte[] data, int2 hotspot, bool pixelDouble);
 		void SetHardwareCursor(IHardwareCursor cursor);

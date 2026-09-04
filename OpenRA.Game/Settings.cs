@@ -65,6 +65,12 @@ namespace OpenRA
 		[Desc("Locks the game with a password.")]
 		public string Password = "";
 
+		[Desc("Allow clients to join as spectators.")]
+		public bool AllowSpectators = true;
+
+		[Desc("Optional separate password that can only be used for spectator connections.")]
+		public string SpectatorPassword = "";
+
 		[Desc("Allow users to search UPnP/NAT-PMP enabled devices for automatic port forwarding.")]
 		public bool DiscoverNatDevices = false;
 
@@ -100,6 +106,12 @@ namespace OpenRA
 
 		[Desc("For dedicated servers only, write live lobby information to this JSON file.")]
 		public string LobbyStatusFile = "";
+
+		[Desc("For dedicated servers only, shut down after the game has a final winner so the replay is finalized.")]
+		public bool ExitOnGameOver = false;
+
+		[Desc("Delay before ExitOnGameOver shuts down the server, allowing clients to display the game-over screen.")]
+		public int GameOverShutdownDelaySeconds = 5;
 
 		[Desc("For dedicated servers only, if non-empty, only allow authenticated players with these profile IDs to join.")]
 		public int[] ProfileIDWhitelist = Array.Empty<int>();

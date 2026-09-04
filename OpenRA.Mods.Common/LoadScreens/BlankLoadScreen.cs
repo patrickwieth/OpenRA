@@ -57,6 +57,14 @@ namespace OpenRA.Mods.Common.LoadScreens
 				Game.BenchmarkMode(Launch.Benchmark);
 			}
 
+			// Download and play a replay linked through the YMCA protocol.
+			if (!string.IsNullOrEmpty(Launch.ReplayUrl))
+			{
+				Game.LoadShellMap();
+				_ = Game.DownloadAndPlayReplayAsync(Launch.ReplayUrl);
+				return;
+			}
+
 			// Join a server directly
 			var connect = Launch.GetConnectEndPoint();
 			if (connect != null)
@@ -65,7 +73,7 @@ namespace OpenRA.Mods.Common.LoadScreens
 					Game.Settings.Player.Name = Settings.SanitizedPlayerName(Launch.PlayerName);
 
 				Game.LoadShellMap();
-				Game.RemoteDirectConnect(connect, Launch.Password);
+				Game.RemoteDirectConnect(connect, Launch.Password, Launch.Spectator);
 				return;
 			}
 

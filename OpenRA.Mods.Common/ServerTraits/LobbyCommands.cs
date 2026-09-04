@@ -392,6 +392,10 @@ namespace OpenRA.Mods.Common.Server
 		{
 			lock (server.LobbyInfo)
 			{
+				// Public tournament spectator links must never be able to claim a player slot.
+				if (server.IsSpectatorOnly(client))
+					return false;
+
 				if (!server.LobbyInfo.Slots.TryGetValue(s, out var slot))
 				{
 					Log.Write("server", $"Invalid slot: {s}");
